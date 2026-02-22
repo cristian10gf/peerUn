@@ -13,12 +13,17 @@
 2. [Composición y Diseño de la Solución](#2-composición-y-diseño-de-la-solución)
 3. [Flujo Funcional Detallado](#3-flujo-funcional-detallado)
 4. [Justificación de la Propuesta](#4-justificación-de-la-propuesta)
+5. [Capturas de UI — PeerUn](#5-capturas-de-ui--peerun)
 
 ---
 
 ## 1. Referentes Analizados
 
 ### 1.1 Buddycheck
+
+<p align="center">
+  <img src="images/buddycheck/buddycheck-logo.png" alt="Logo Buddycheck" height="60">
+</p>
 
 **Descripción general**
 
@@ -48,6 +53,18 @@ El profesor puede usar preguntas predefinidas (tipo Likert) o crear criterios pe
 - No tiene app móvil nativa; funciona a través del navegador del LMS.
 - Es de pago; no disponible para estudiantes de Uninorte sin licencia institucional.
 - No existe versión en español.
+
+**Capturas de la interfaz de Buddycheck**
+
+| Configuración de evaluación | Biblioteca de preguntas |
+|:---:|:---:|
+| ![Buddycheck - Configuración](images/buddycheck/buddycheck-evaluation-form.png) | ![Buddycheck - Preguntas](images/buddycheck/buddycheck-question-library.png) |
+
+| Progreso de la actividad | Reportes por estudiante y grupo |
+|:---:|:---:|
+| ![Buddycheck - Progreso](images/buddycheck/buddycheck-activity-overview.png) | ![Buddycheck - Reportes](images/buddycheck/buddycheck-student-reports.png) |
+
+> *Fuente: VU Collaborate Help — Victoria University*
 
 ---
 
@@ -83,9 +100,25 @@ Usa el modelo de cuatro criterios con descriptores de nivel que el enunciado del
 - Sin integración LTI nativa con Brightspace; importación manual vía CSV.
 - La detección de anomalías requiere un umbral mínimo de respuestas.
 
+**Capturas de la interfaz de CATME**
+
+| Tabla de evaluación BARS | Categorías de rating (Contributing) |
+|:---:|:---:|
+| ![CATME - Tabla](images/catme/catme-peer-evaluation-table.png) | ![CATME - Categorías](images/catme/catme-rating-categories.png) |
+
+| Resultados por estudiante (alertas) | Wizard de configuración de clase |
+|:---:|:---:|
+| ![CATME - Resultados](images/catme/catme-activity-results.png) | ![CATME - Wizard](images/catme/catme-class-setup.png) |
+
+> *Fuente: info.catme.org — Purdue University*
+
 ---
 
 ### 1.3 TEAMMATES (National University of Singapore)
+
+<p align="center">
+  <img src="images/teammates/teammates-logo.png" alt="Logo TEAMMATES" height="60">
+</p>
 
 **Descripción general**
 
@@ -115,6 +148,22 @@ No impone criterios fijos; el instructor crea preguntas desde cero (MCQ, escala 
 - Sin integración LMS nativa ni app móvil.
 - Configuración compleja para instructores sin experiencia.
 - Sin alertas automáticas sobre patrones de evaluación.
+
+**Capturas de la interfaz de TEAMMATES**
+
+| Vista general | Evaluación entre pares |
+|:---:|:---:|
+| ![TEAMMATES - Overview](images/teammates/teammates-overview.png) | ![TEAMMATES - Peer Eval](images/teammates/teammates-peer-evaluations.png) |
+
+| Control de visibilidad | Reportes y estadísticas |
+|:---:|:---:|
+| ![TEAMMATES - Visibilidad](images/teammates/teammates-visibility-control.png) | ![TEAMMATES - Reportes](images/teammates/teammates-reports-stats.png) |
+
+| Tipos de preguntas |
+|:---:|
+| ![TEAMMATES - Preguntas](images/teammates/teammates-question-types.png) |
+
+> *Fuente: teammatesv4.appspot.com — National University of Singapore*
 
 ---
 
@@ -197,6 +246,8 @@ No impone criterios fijos; el instructor crea preguntas desde cero (MCQ, escala 
 
 ### 2.3 Modelo de datos (entidades principales)
 
+![Diagrama de base de datos](images/db.png)
+
 ```
 Usuario          Curso                  CategoriaGrupo
 ────────         ─────────────          ──────────────────
@@ -268,6 +319,12 @@ ONBOARDING
     └── Detalle: grupo → estudiante → puntuación por criterio
 ```
 
+**Mockups del flujo del profesor:**
+
+| Gestión de cursos | Promedios y analíticas |
+|:---:|:---:|
+| ![Profesor - Cursos](images/profesor_course_mgmt.png) | ![Profesor - Resultados](images/grade_averages_analytics.png) |
+
 ---
 
 ### 3.2 Flujo del Estudiante
@@ -308,6 +365,12 @@ ONBOARDING
     │  Puntuación recibida por criterio (promedio de pares)
     └── Promedio general del grupo
 ```
+
+**Mockup del formulario de evaluación:**
+
+<p align="center">
+  <img src="images/student_peer_evaluation.png" alt="Evaluación entre pares - Estudiante" width="360">
+</p>
 
 ---
 
@@ -393,9 +456,42 @@ StudentShell
 | Visibilidad pública/privada por evaluación | TEAMMATES y Buddycheck demuestran que es un requisito no negociable en contexto educativo |
 | Ventana de tiempo configurable | Flexibilidad para diferentes dinámicas pedagógicas (sprint vs. fin de semestre) |
 | Sin autoevaluación | Simplifica el formulario y reduce el sesgo de autocomplacencia; diferenciador explícito del enunciado |
-| Roble como backend (auth + DB) | Plataforma disponible y gratuita en Uninorte; elimina necesidad de servidor propio |
-| GetX para DI + navegación + estado | Requisito explícito del enunciado; facilita clean architecture con Bindings por módulo |
+---
 
+## 5. Capturas de UI — PeerUn
+
+> Esta sección presenta las pantallas de la aplicación PeerUn organizadas por flujo. Cada placeholder indica qué pantalla debe ir en ese espacio.
+
+### 5.1 Autenticación
+
+| Pantalla | Captura |
+|---|:---:|
+| **Login** — Formulario de inicio de sesión con email y contraseña (Roble) | ![Login](images/peerun/login.png) | 
+| **Registro** — Formulario de registro de nuevo usuario | ![Registro](images/peerun/register.png) |
+| **Magic Link** — Pantalla de procesamiento del enlace mágico de invitación | ![Magic Link](images/peerun/magic-link.png) |
+
+### 5.2 Flujo del Profesor (TeacherShell)
+
+| Pantalla | Captura |
+|---|:---:|
+| **Dashboard del Profesor** (`/teacher/home`) — Resumen general: cursos activos, evaluaciones en progreso, estadísticas rápidas | ![Teacher Home](images/peerun/teacher-home.png) |
+| **Lista de Cursos** (`/teacher/courses`) — Todos los cursos creados por el profesor con acceso rápido | ![Teacher Courses](images/peerun/teacher-courses.png) |
+| **Detalle del Curso — Grupos** (`/teacher/courses/:id/groups`) — Importar CSV/JSON de Brightspace, ver categorías y grupos con sus miembros | ![Teacher Groups](images/peerun/teacher-groups.png) |
+| **Detalle del Curso — Evaluaciones** (`/teacher/courses/:id/assessments`) — Lista de evaluaciones del curso con estado (activa/cerrada) y progreso | ![Teacher Assessments](images/peerun/teacher-assessments.png) |
+| **Crear/Disparar Evaluación** — Modal o pantalla para configurar nueva evaluación: nombre, categoría, duración, visibilidad | ![Teacher Create Assessment](images/peerun/teacher-create-assessment.png) |
+| **Resultados de Evaluación** (`/teacher/courses/:id/assessments/:assId/results`) — Dashboard de resultados: promedios por grupo, por estudiante, detalle por criterio | ![Teacher Results](images/peerun/teacher-results.png) |
+| **Generar Enlace de Invitación** (`/teacher/courses/:id/invite`) — Pantalla para generar y compartir el enlace mágico del curso | ![Teacher Invite](images/peerun/teacher-invite.png) |
+| **Perfil del Profesor** (`/teacher/profile`) — Información personal, configuraciones de cuenta | ![Teacher Profile](images/peerun/teacher-profile.png) |
+
+### 5.3 Flujo del Estudiante (StudentShell)
+
+| Pantalla | Captura |
+|---|:---:|
+| **Home del Estudiante** (`/student/home`) — Mis cursos y evaluaciones activas pendientes con countdown | ![Student Home](images/peerun/student-home.png) |
+| **Mi Grupo** (`/student/courses/:id/my-group`) — Ver equipo asignado y compañeros dentro del curso | ![Student My Group](images/peerun/student-my-group.png) |
+| **Formulario de Evaluación** (`/student/courses/:id/assessments/:assId/evaluate`) — Evaluación peer-to-peer: 4 criterios BARS por cada compañero, navegación entre compañeros | ![Student Evaluate](images/peerun/student-evaluate.png) |
+| **Resultados Propios** (solo en evaluaciones públicas) — Puntuación recibida por criterio y promedio general del grupo | ![Student Results](images/peerun/student-results.png) |
+| **Perfil del Estudiante** (`/student/profile`) — Información personal del estudiante | ![Student Profile](images/peerun/student-profile.png) |
 ---
 
 *Propuesta elaborada por Cristian — Febrero 2026*
