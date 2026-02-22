@@ -1,0 +1,55 @@
+sequenceDiagram
+    title Flujo 3.1 - Profesor
+    autonumber
+
+    actor Profesor
+    participant App as App Flutter (TeacherShell)
+    participant API as Backend PeerUn
+    participant DB as Roble DB
+    participant LMS as Brightspace
+    participant Push as FCM
+
+    Profesor->>App: Registro/Login
+    App->>API: POST /auth/login
+    API->>DB: Validar credenciales y rol=teacher
+    DB-->>API: JWT + perfil
+    API-->>App: Sesión iniciada
+
+    Profesor->>App: Crear curso
+    App->>API: POST /cursos
+    API->>DB: INSERT curso(profesor_id, nombre)
+    DB-->>API: curso_id
+    API-->>App: Curso creado
+
+    Profesor->>App: Generar enlace mágico
+    App->>API: POST /cursos/{cursoId}/invitaciones
+    API->>DB: INSERT invitaciones_estudiante(token, expira_at)
+    DB-->>API: token generado
+    API-->>App: URL de invitación
+
+    Profesor->>App: Importar grupos (CSV/JSON)
+    App->>API: POST /cursos/{cursoId}/grupos/import
+    API->>LMS: Parse/Map de categorías y grupos
+    LMS-->>API: Estructura normalizada
+    API->>DB: UPSERT categorias_grupo, grupos, grupo_miembros
+    DB-->>API: Importación OK
+    API-->>App: Resumen de importación
+
+    Profesor->>App: Disparar evaluación
+    App->>API: POST /actividades
+    API->>DB: INSERT actividad(categoria, ventana, visibilidad)
+    DB-->>API: actividad_id
+
+    par Notificar estudiantes
+        API-)Push: Send push por curso/categoría
+    and Habilitar actividad
+        API->>DB: UPDATE actividad estado=activa
+    end
+
+    API-->>App: Evaluación activa
+
+    Profesor->>App: Ver monitoreo y resultados
+    App->>API: GET /actividades/{id}/resultados
+    API->>DB: Agregados por actividad/grupo/estudiante
+    DB-->>API: Dataset consolidado
+    API-->>App: Dashboard + detalle

@@ -1,0 +1,33 @@
+sequenceDiagram
+    title Flujo 3.3/3.4 - Cálculo de promedios y consulta
+    autonumber
+
+    actor Profesor
+    participant App as App Flutter
+    participant API as Assessment Service
+    participant DB as Roble DB
+
+    Profesor->>App: Solicitar resultados de actividad
+    App->>API: GET /teacher/activities/{actividadId}/analytics
+
+    API->>DB: Obtener respuestas + criterios por actividad
+    DB-->>API: Respuestas crudas
+
+    loop Por cada evaluado i
+        API->>API: score_{i,a} = avg_j(avg_4_criterios(j->i))
+    end
+
+    API->>API: activityAverage = avg(score_{i,a})
+    API->>DB: Consultar histórico por grupo y estudiante
+    DB-->>API: Resultados de actividades previas
+
+    loop Por cada grupo
+        API->>API: groupAverage = avg(scores del grupo en actividades)
+    end
+
+    loop Por cada estudiante
+        API->>API: studentAverage = avg(score_{i,a} en todas las actividades)
+    end
+
+    API-->>App: activityAverage + groupAverage + studentAverage + detalle criterios
+    App-->>Profesor: Dashboard y desglose grupo > estudiante > criterio
