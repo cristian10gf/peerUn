@@ -1,0 +1,297 @@
+{
+  "version": "1.0.0",
+  "darkMode": true,
+  "gridEnabling": false,
+  "detailLevel": "All",
+  "tablePositions": [
+    {
+      "name": "usuarios",
+      "schemaName": "public",
+      "x": 183.10086266128462,
+      "y": 83.30911781575537
+    },
+    {
+      "name": "cursos",
+      "schemaName": "public",
+      "x": -266.3216763750002,
+      "y": -38.446312281249995
+    },
+    {
+      "name": "curso_estudiantes",
+      "schemaName": "public",
+      "x": 142.3298245623054,
+      "y": -240.34915249363178
+    },
+    {
+      "name": "categorias_grupo",
+      "schemaName": "public",
+      "x": 1082.4697342812499,
+      "y": 36.59904359374997
+    },
+    {
+      "name": "grupos",
+      "schemaName": "public",
+      "x": 696.8497331250003,
+      "y": 419.8843119579037
+    },
+    {
+      "name": "grupo_miembros",
+      "schemaName": "public",
+      "x": 219.33861283012843,
+      "y": 353.03748977756095
+    },
+    {
+      "name": "actividades",
+      "schemaName": "public",
+      "x": 608.1121898510848,
+      "y": -254.47563537669322
+    },
+    {
+      "name": "respuestas",
+      "schemaName": "public",
+      "x": 627.4368246743925,
+      "y": 158.8606133829863
+    },
+    {
+      "name": "criterios",
+      "schemaName": "public",
+      "x": 1052.2147738682868,
+      "y": 265.5956928826324
+    },
+    {
+      "name": "invitaciones_estudiante",
+      "schemaName": "public",
+      "x": -158.45036492933812,
+      "y": 191.14666019530466
+    }
+  ],
+  "tableGroupCollapseStates": [],
+  "stickyNoteLayouts": [],
+  "referencePaths": [
+    {
+      "firstFieldNames": [
+        "profesor_id"
+      ],
+      "firstTableName": "cursos",
+      "firstSchemaName": "public",
+      "firstRelation": "*",
+      "secondFieldNames": [
+        "id"
+      ],
+      "secondTableName": "usuarios",
+      "secondSchemaName": "public",
+      "secondRelation": "1",
+      "checkPoints": []
+    },
+    {
+      "firstFieldNames": [
+        "curso_id"
+      ],
+      "firstTableName": "curso_estudiantes",
+      "firstSchemaName": "public",
+      "firstRelation": "*",
+      "secondFieldNames": [
+        "id"
+      ],
+      "secondTableName": "cursos",
+      "secondSchemaName": "public",
+      "secondRelation": "1",
+      "checkPoints": []
+    },
+    {
+      "firstFieldNames": [
+        "estudiante_id"
+      ],
+      "firstTableName": "curso_estudiantes",
+      "firstSchemaName": "public",
+      "firstRelation": "*",
+      "secondFieldNames": [
+        "id"
+      ],
+      "secondTableName": "usuarios",
+      "secondSchemaName": "public",
+      "secondRelation": "1",
+      "checkPoints": []
+    },
+    {
+      "firstFieldNames": [
+        "curso_id"
+      ],
+      "firstTableName": "categorias_grupo",
+      "firstSchemaName": "public",
+      "firstRelation": "*",
+      "secondFieldNames": [
+        "id"
+      ],
+      "secondTableName": "cursos",
+      "secondSchemaName": "public",
+      "secondRelation": "1",
+      "checkPoints": []
+    },
+    {
+      "firstFieldNames": [
+        "categoria_id"
+      ],
+      "firstTableName": "grupos",
+      "firstSchemaName": "public",
+      "firstRelation": "*",
+      "secondFieldNames": [
+        "id"
+      ],
+      "secondTableName": "categorias_grupo",
+      "secondSchemaName": "public",
+      "secondRelation": "1",
+      "checkPoints": []
+    },
+    {
+      "firstFieldNames": [
+        "grupo_id"
+      ],
+      "firstTableName": "grupo_miembros",
+      "firstSchemaName": "public",
+      "firstRelation": "*",
+      "secondFieldNames": [
+        "id"
+      ],
+      "secondTableName": "grupos",
+      "secondSchemaName": "public",
+      "secondRelation": "1",
+      "checkPoints": []
+    },
+    {
+      "firstFieldNames": [
+        "estudiante_id"
+      ],
+      "firstTableName": "grupo_miembros",
+      "firstSchemaName": "public",
+      "firstRelation": "*",
+      "secondFieldNames": [
+        "id"
+      ],
+      "secondTableName": "usuarios",
+      "secondSchemaName": "public",
+      "secondRelation": "1",
+      "checkPoints": []
+    },
+    {
+      "firstFieldNames": [
+        "curso_id"
+      ],
+      "firstTableName": "actividades",
+      "firstSchemaName": "public",
+      "firstRelation": "*",
+      "secondFieldNames": [
+        "id"
+      ],
+      "secondTableName": "cursos",
+      "secondSchemaName": "public",
+      "secondRelation": "1",
+      "checkPoints": []
+    },
+    {
+      "firstFieldNames": [
+        "categoria_id"
+      ],
+      "firstTableName": "actividades",
+      "firstSchemaName": "public",
+      "firstRelation": "*",
+      "secondFieldNames": [
+        "id"
+      ],
+      "secondTableName": "categorias_grupo",
+      "secondSchemaName": "public",
+      "secondRelation": "1",
+      "checkPoints": []
+    },
+    {
+      "firstFieldNames": [
+        "actividad_id"
+      ],
+      "firstTableName": "respuestas",
+      "firstSchemaName": "public",
+      "firstRelation": "*",
+      "secondFieldNames": [
+        "id"
+      ],
+      "secondTableName": "actividades",
+      "secondSchemaName": "public",
+      "secondRelation": "1",
+      "checkPoints": []
+    },
+    {
+      "firstFieldNames": [
+        "evaluador_id"
+      ],
+      "firstTableName": "respuestas",
+      "firstSchemaName": "public",
+      "firstRelation": "*",
+      "secondFieldNames": [
+        "id"
+      ],
+      "secondTableName": "usuarios",
+      "secondSchemaName": "public",
+      "secondRelation": "1",
+      "checkPoints": []
+    },
+    {
+      "firstFieldNames": [
+        "evaluado_id"
+      ],
+      "firstTableName": "respuestas",
+      "firstSchemaName": "public",
+      "firstRelation": "*",
+      "secondFieldNames": [
+        "id"
+      ],
+      "secondTableName": "usuarios",
+      "secondSchemaName": "public",
+      "secondRelation": "1",
+      "checkPoints": []
+    },
+    {
+      "firstFieldNames": [
+        "curso_id"
+      ],
+      "firstTableName": "invitaciones_estudiante",
+      "firstSchemaName": "public",
+      "firstRelation": "*",
+      "secondFieldNames": [
+        "id"
+      ],
+      "secondTableName": "cursos",
+      "secondSchemaName": "public",
+      "secondRelation": "1",
+      "checkPoints": []
+    },
+    {
+      "firstFieldNames": [
+        "created_by"
+      ],
+      "firstTableName": "invitaciones_estudiante",
+      "firstSchemaName": "public",
+      "firstRelation": "*",
+      "secondFieldNames": [
+        "id"
+      ],
+      "secondTableName": "usuarios",
+      "secondSchemaName": "public",
+      "secondRelation": "1",
+      "checkPoints": []
+    },
+    {
+      "firstFieldNames": [
+        "respuesta_id"
+      ],
+      "firstTableName": "criterios",
+      "firstSchemaName": "public",
+      "firstRelation": "*",
+      "secondFieldNames": [
+        "id"
+      ],
+      "secondTableName": "respuestas",
+      "secondSchemaName": "public",
+      "secondRelation": "1",
+      "checkPoints": []
+    }
+  ]
+}
