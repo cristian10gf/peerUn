@@ -351,6 +351,12 @@ peereval_student
 
 ---
 ## 5. Capturas de UI — PeerEval
+
+
+| Diseño en Figma — PeerEval |
+|---|
+| [Ver diseño](https://www.figma.com/design/udMDW2rCzrqdQaGOlnx01m/PeerEval-Duo?node-id=0-1&t=n3e1VkxxZqw1Calz-1) |
+
 ### 5.1 UI Profesor
 | **Login** | **Dashboard** |
 |:---:|:---:|
@@ -369,5 +375,9 @@ peereval_student
 | **Resultados** | |
 | ![Resultados](captures/Resultados_estudiante.png) | |
 
+---
+
+
+---
 
 *Propuesta elaborada por Flavio Arregoces — Febrero 2026*
