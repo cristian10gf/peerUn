@@ -3,7 +3,8 @@
 > **Estudiante:** Cristian  
 > **Proyecto:** Aplicación móvil de evaluación entre pares para trabajo colaborativo universitario  
 > **Fecha:** 18 de febrero de 2026  
-> **Tecnologías definidas:** Flutter · GetX · Roble (auth + DB) · Brightspace (fuente de grupos)
+> **Tecnologías definidas:** Flutter · GetX · Roble (auth + DB) · Brightspace (fuente de grupos)  
+> **Prototipo interactivo:** [Ver prototipo](docs/prototipo.html)
 
 ---
 
