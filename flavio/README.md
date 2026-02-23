@@ -354,21 +354,21 @@ peereval_student
 ### 5.1 UI Profesor
 | Pantalla | Captura |
 |---|:---:|
-| **Login** — (Roble) | ![Login](captures\Login.png) | 
-| **Dashboard**  | ![Registro](captures\Dashboard.png) |
-| **Grupos**  | ![Grupos](captures\Grupos.png) |
-| **Evaluación**  | ![Evaluación](captures\Evaluación.png) | 
-| **Resultados**  | ![Resultados](captures\Resultados.png) |
-| **Resultados - Detalle**  | ![Resultados-Detalle](captures\Resultados-Detalle.png) |
+| **Login** — (Roble) | ![Login](captures/Login.png) | 
+| **Dashboard**  | ![Registro](captures/Dashboard.png) |
+| **Grupos**  | ![Grupos](captures/Grupos.png) |
+| **Evaluación**  | ![Evaluación](captures/Evaluación.png) | 
+| **Resultados**  | ![Resultados](captures/Resultados.png) |
+| **Resultados - Detalle**  | ![Resultados-Detalle](captures/Resultados-Detalle.png) |
 
 ### 5.2 UI Estudiante
 | Pantalla | Captura |
 |---|:---:|
-| **Login** — (Roble) | ![Login](captures\Login_estudiante.png) | 
-| **Cursos**  | ![Cursos](captures\Cursos.png) |
-| **Evaluar**  | ![Evaluar](captures\Evaluar.png) |
-| **Criterios**  | ![Criterios](captures\Criterios.png) | 
-| **Resultados**  | ![Resultados](captures\Resultados_estudiante.png) |
+| **Login** — (Roble) | ![Login](captures/Login_estudiante.png) | 
+| **Cursos**  | ![Cursos](captures/Cursos.png) |
+| **Evaluar**  | ![Evaluar](captures/Evaluar.png) |
+| **Criterios**  | ![Criterios](captures/Criterios.png) | 
+| **Resultados**  | ![Resultados](captures/Resultados_estudiante.png) |
 
 
 *Propuesta elaborada por Flavio Arregoces — Febrero 2026*
