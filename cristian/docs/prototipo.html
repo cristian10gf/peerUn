@@ -1,0 +1,5553 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>PeerUn — Prototipo Interactivo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.js"></script>
+<style>
+/* ═══════════════════════════════════════════ */
+/*  CSS VARIABLES — Design Tokens              */
+/* ═══════════════════════════════════════════ */
+:root {
+  --accent: #4F46E5;
+  --negative: #FF453A;
+  --positive: #32D74B;
+  --warning: #FFD60A;
+  --avatar-purple: #BF5AF2;
+  --overlay-dim: #00000080;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="dark"] {
+  --bg: #0C0C0C;
+  --surface: #1A1A1A;
+  --surface-elevated: #242424;
+  --border: #2A2A2A;
+  --border-strong: #3A3A3A;
+  --text-primary: #FFFFFF;
+  --text-secondary: #8A8A8A;
+  --text-muted: #525252;
+  --accent-light: #312E81;
+  --text-on-warning: #000000;
+}
+
+[data-theme="light"] {
+  --bg: #F5F5F7;
+  --surface: #FFFFFF;
+  --surface-elevated: #F0F0F2;
+  --border: #E5E5E7;
+  --border-strong: #D1D1D6;
+  --text-primary: #1A1A1A;
+  --text-secondary: #6B6B6B;
+  --text-muted: #999999;
+  --accent-light: #EEF2FF;
+  --text-on-warning: #000000;
+}
+
+/* ═══════════════════════════════════════════ */
+/*  RESET & BASE                               */
+/* ═══════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #111;
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ═══════════════════════════════════════════ */
+/*  GLOBAL CONTROLS BAR                        */
+/* ═══════════════════════════════════════════ */
+.controls-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px 20px;
+  background: rgba(10,10,10,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.controls-bar .control-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.controls-bar label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.control-pill {
+  display: flex;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.control-pill button {
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: #888;
+  transition: all var(--transition);
+}
+
+.control-pill button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.control-pill button:hover:not(.active) {
+  color: #ccc;
+  background: rgba(255,255,255,0.05);
+}
+
+/* ═══════════════════════════════════════════ */
+/*  PHONE SHELL                                */
+/* ═══════════════════════════════════════════ */
+.phone-container {
+  margin-top: 80px;
+  margin-bottom: 40px;
+  padding: 12px;
+  border-radius: 44px;
+  background: #1a1a1a;
+  box-shadow: 0 25px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06);
+  position: relative;
+}
+
+.phone-container::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 28px;
+  background: #111;
+  border-radius: 14px;
+  z-index: 50;
+}
+
+.phone-screen {
+  width: 393px;
+  height: 852px;
+  border-radius: 36px;
+  overflow: hidden;
+  position: relative;
+  background: var(--bg);
+  transition: background var(--transition);
+}
+
+/* ═══════════════════════════════════════════ */
+/*  SCREEN SYSTEM                              */
+/* ═══════════════════════════════════════════ */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  transform: translateX(20px);
+  background: var(--bg);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+
+.screen::-webkit-scrollbar { display: none; }
+
+.screen.active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+/* ═══════════════════════════════════════════ */
+/*  STATUS BAR                                 */
+/* ═══════════════════════════════════════════ */
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 54px;
+  padding: 14px 24px 0;
+  flex-shrink: 0;
+}
+
+.status-bar .time {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: color var(--transition);
+}
+
+.sb-icons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-primary);
+  transition: color var(--transition);
+}
+
+.sb-icons i { width: 16px; height: 16px; }
+.sb-icons .battery { width: 20px; height: 16px; }
+
+/* ═══════════════════════════════════════════ */
+/*  TAB BAR                                    */
+/* ═══════════════════════════════════════════ */
+.tab-bar {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  height: 84px;
+  padding: 8px 0 24px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+}
+
+.tab-item i { width: 24px; height: 24px; color: var(--text-muted); transition: color var(--transition); }
+.tab-item span { font-size: 10px; font-weight: 500; color: var(--text-muted); transition: color var(--transition); }
+.tab-item.active i { color: var(--accent); }
+.tab-item.active span { color: var(--accent); font-weight: 600; }
+
+/* ═══════════════════════════════════════════ */
+/*  COMMON COMPONENTS                          */
+/* ═══════════════════════════════════════════ */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  height: 24px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.chip-red { background: #FF453A20; color: var(--negative); }
+.chip-yellow { background: #FFD60A20; color: var(--warning); }
+.chip-green { background: #32D74B20; color: var(--positive); }
+
+.progress-bar-bg {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-elevated);
+  transition: background var(--transition);
+}
+
+.progress-bar-fill {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--accent);
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  background: var(--accent-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  flex-shrink: 0;
+  transition: background var(--transition);
+}
+
+.icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background var(--transition);
+}
+
+.icon-box i { width: 22px; height: 22px; color: var(--accent); }
+
+.nav-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 44px;
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+
+.nav-bar .back-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  padding: 0;
+  transition: color var(--transition);
+}
+
+.nav-bar .back-btn i { width: 24px; height: 24px; }
+
+.clickable { cursor: pointer; transition: opacity 0.15s; }
+.clickable:active { opacity: 0.7; }
+
+.divider {
+  width: 100%;
+  height: 1px;
+  background: var(--border);
+  flex-shrink: 0;
+  transition: background var(--transition);
+}
+
+/* ═══════════════════════════════════════════ */
+/*  SCREEN 1: LOGIN                            */
+/* ═══════════════════════════════════════════ */
+.login-screen {
+  padding: 60px 24px 40px;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-bg {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-lg);
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-bg span {
+  font-size: 36px;
+  font-weight: 800;
+  color: #FFFFFF;
+}
+
+.login-screen .logo-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.login-screen .app-name {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  color: var(--text-primary);
+  transition: color var(--transition);
+}
+
+.login-screen .app-subtitle {
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  transition: color var(--transition);
+}
+
+.form-area {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  margin-top: 48px;
+}
+
+.form-area .field-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: -8px;
+  transition: color var(--transition);
+}
+
+.input-field {
+  display: flex;
+  align-items: center;
+  height: 52px;
+  padding: 0 16px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  gap: 10px;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.input-field i { width: 20px; height: 20px; color: var(--text-muted); flex-shrink: 0; transition: color var(--transition); }
+.input-field span { font-size: 15px; color: var(--text-muted); transition: color var(--transition); }
+
+.input-field.password-field {
+  justify-content: space-between;
+}
+
+.input-field .left-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 52px;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  font-family: inherit;
+  gap: 8px;
+  transition: transform 0.15s, opacity 0.15s;
+}
+
+.btn-primary:active { transform: scale(0.98); opacity: 0.9; }
+
+.btn-outline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 52px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 600;
+  border: 1.5px solid var(--accent);
+  cursor: pointer;
+  width: 100%;
+  font-family: inherit;
+  transition: transform 0.15s, opacity 0.15s;
+}
+
+.btn-outline:active { transform: scale(0.98); opacity: 0.9; }
+
+.divider-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 0;
+  width: 100%;
+}
+
+.divider-area .line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+  transition: background var(--transition);
+}
+
+.divider-area .or-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  transition: color var(--transition);
+}
+
+.footer-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: auto;
+  transition: color var(--transition);
+}
+
+/* ═══════════════════════════════════════════ */
+/*  SCREEN 2: STUDENT HOME                     */
+/* ═══════════════════════════════════════════ */
+.home-header {
+  padding: 8px 24px 20px;
+}
+
+.home-header h1 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text-primary);
+  transition: color var(--transition);
+}
+
+.home-header p {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  transition: color var(--transition);
+}
+
+.section { padding: 0 24px; width: 100%; }
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.section-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: color var(--transition);
+}
+
+.badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--negative);
+  color: #FFFFFF;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.eval-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.eval-card .title { font-size: 15px; font-weight: 600; color: var(--text-primary); transition: color var(--transition); }
+.eval-card .subtitle { font-size: 13px; color: var(--text-secondary); transition: color var(--transition); }
+.eval-card .meta { font-size: 12px; color: var(--text-muted); transition: color var(--transition); }
+.eval-card .action-link { font-size: 13px; font-weight: 600; color: var(--accent); cursor: pointer; }
+
+.cards-stack { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+
+.spacer { height: 24px; flex-shrink: 0; }
+
+.course-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+}
+
+.course-card .course-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.course-card .course-name { font-size: 15px; font-weight: 600; color: var(--text-primary); transition: color var(--transition); }
+.course-card .course-meta { font-size: 12px; color: var(--text-muted); transition: color var(--transition); }
+.course-card .chevron { color: var(--text-muted); width: 20px; height: 20px; transition: color var(--transition); }
+
+.flex-spacer { flex: 1; }
+
+/* ═══════════════════════════════════════════ */
+/*  SCREEN 3: TEACHER HOME                     */
+/* ═══════════════════════════════════════════ */
+.teacher-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 24px 16px;
+}
+
+.teacher-header .h-text { flex: 1; }
+
+.teacher-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text-primary);
+  transition: color var(--transition);
+}
+
+.teacher-header p {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  transition: color var(--transition);
+}
+
+.notif-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.notif-btn i { width: 22px; height: 22px; color: var(--text-primary); transition: color var(--transition); }
+
+.stats-row {
+  display: flex;
+  gap: 12px;
+  padding: 0 24px 16px;
+}
+
+.stat-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.stat-card .stat-number {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
+.stat-card .stat-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: color var(--transition);
+}
+
+.teacher-eval-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.progress-row .progress-bar-bg { flex: 1; }
+.progress-row .pct { font-size: 12px; font-weight: 600; color: var(--accent); }
+
+.teacher-link { font-size: 13px; font-weight: 500; color: var(--accent); cursor: pointer; }
+
+.cta-container { padding: 0 24px; width: 100%; }
+
+/* ═══════════════════════════════════════════ */
+/*  SCREEN 4: EVALUATION FORM                  */
+/* ═══════════════════════════════════════════ */
+.peer-indicators {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px 16px;
+  flex-shrink: 0;
+}
+
+.peer-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.peer-circle.done { background: var(--positive); color: #FFFFFF; }
+.peer-circle.done i { width: 18px; height: 18px; }
+.peer-circle.current { background: var(--accent); color: #FFFFFF; }
+.peer-circle.pending {
+  background: var(--surface-elevated);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  font-weight: 500;
+}
+
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  scrollbar-width: none;
+}
+
+.scroll-area::-webkit-scrollbar { display: none; }
+
+.criteria-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.criteria-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.criteria-header i { width: 18px; height: 18px; color: var(--accent); }
+.criteria-header span { font-size: 16px; font-weight: 600; color: var(--text-primary); transition: color var(--transition); }
+
+.criteria-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  transition: color var(--transition);
+}
+
+.options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.option-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.option-item:hover { border-color: var(--accent); }
+
+.option-item.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.option-item .radio {
+  width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  border: 2px solid var(--border-strong);
+  background: transparent;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.option-item.selected .radio {
+  border-color: var(--accent);
+  background: #FFFFFF;
+}
+
+.option-item.selected .radio::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.option-item .option-text {
+  font-size: 14px;
+  color: var(--text-primary);
+  transition: color var(--transition);
+}
+
+.option-item.selected .option-text { color: #FFFFFF; font-weight: 500; }
+
+.form-footer {
+  padding: 12px 24px 34px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.form-footer .hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  transition: color var(--transition);
+}
+
+/* ═══════════════════════════════════════════ */
+/*  SCREEN 5: TEACHER RESULTS                  */
+/* ═══════════════════════════════════════════ */
+.activity-info {
+  padding: 8px 24px 16px;
+}
+
+.activity-info .course-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  transition: color var(--transition);
+}
+
+.activity-info .completion {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  transition: color var(--transition);
+}
+
+.avg-card-container { padding: 0 24px 16px; }
+
+.avg-inner {
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.avg-inner .avg-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: color var(--transition);
+}
+
+.avg-inner .avg-number {
+  font-size: 48px;
+  font-weight: 800;
+  letter-spacing: -2px;
+  color: var(--accent);
+}
+
+.avg-inner .avg-total {
+  font-size: 14px;
+  color: var(--text-muted);
+  transition: color var(--transition);
+}
+
+.criteria-scores {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  padding-top: 8px;
+}
+
+.criteria-score-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.criteria-score-item .score-val {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.criteria-score-item .score-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-align: center;
+  transition: color var(--transition);
+}
+
+.students-section { padding: 0 24px; }
+
+.student-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  cursor: pointer;
+}
+
+.student-row .student-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.student-row .student-name { font-size: 15px; font-weight: 600; color: var(--text-primary); transition: color var(--transition); }
+.student-row .student-avg { font-size: 12px; color: var(--text-muted); transition: color var(--transition); }
+.student-row .student-score { font-size: 20px; font-weight: 700; }
+.student-row .chevron { color: var(--text-muted); width: 18px; height: 18px; transition: color var(--transition); }
+
+/* ═══════════════════════════════════════════ */
+/*  ANIMATIONS                                 */
+/* ═══════════════════════════════════════════ */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.screen.active > * {
+  animation: fadeIn 0.4s ease backwards;
+}
+
+.screen.active > *:nth-child(1) { animation-delay: 0s; }
+.screen.active > *:nth-child(2) { animation-delay: 0.05s; }
+.screen.active > *:nth-child(3) { animation-delay: 0.1s; }
+.screen.active > *:nth-child(4) { animation-delay: 0.15s; }
+.screen.active > *:nth-child(5) { animation-delay: 0.2s; }
+.screen.active > *:nth-child(6) { animation-delay: 0.25s; }
+.screen.active > *:nth-child(7) { animation-delay: 0.3s; }
+.screen.active > *:nth-child(8) { animation-delay: 0.35s; }
+.screen.active > *:nth-child(9) { animation-delay: 0.4s; }
+.screen.active > *:nth-child(10) { animation-delay: 0.45s; }
+.screen.active > *:nth-child(11) { animation-delay: 0.5s; }
+.screen.active > *:nth-child(12) { animation-delay: 0.55s; }
+
+/* ═══════════════════════════════════════════ */
+/*  SCREEN: REGISTER                           */
+/* ═══════════════════════════════════════════ */
+.register-screen {
+  padding: 50px 24px 30px;
+  align-items: center;
+}
+
+.register-screen .logo-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.register-screen .app-name {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  transition: color var(--transition);
+}
+
+.register-screen .app-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  transition: color var(--transition);
+}
+
+.role-selector {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.role-btn {
+  flex: 1;
+  height: 44px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.role-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #FFFFFF;
+}
+
+.login-link {
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-top: 16px;
+  transition: color var(--transition);
+}
+
+.login-link a {
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+/* ═══════════════════════════════════════════ */
+/*  PROFILE SCREENS                            */
+/* ═══════════════════════════════════════════ */
+.profile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 24px 16px;
+}
+
+.profile-header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  transition: color var(--transition);
+}
+
+.profile-header .settings-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 0;
+  transition: color var(--transition);
+}
+
+.profile-header .settings-btn i { width: 24px; height: 24px; }
+
+.profile-avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 24px 20px;
+}
+
+.avatar-large {
+  width: 72px;
+  height: 72px;
+  border-radius: 36px;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.profile-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  transition: color var(--transition);
+}
+
+.profile-email {
+  font-size: 13px;
+  color: var(--text-secondary);
+  transition: color var(--transition);
+}
+
+.profile-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 12px;
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.config-section {
+  padding: 0 24px;
+  width: 100%;
+}
+
+.config-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  transition: color var(--transition);
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: border-color var(--transition);
+}
+
+.menu-item:last-child { border-bottom: none; }
+
+.menu-item i { width: 20px; height: 20px; color: var(--text-secondary); transition: color var(--transition); }
+
+.menu-item span {
+  flex: 1;
+  font-size: 15px;
+  color: var(--text-primary);
+  transition: color var(--transition);
+}
+
+.menu-item .menu-chevron { color: var(--text-muted); width: 18px; height: 18px; margin-left: auto; transition: color var(--transition); }
+
+.toggle-switch {
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--border-strong);
+  position: relative;
+  cursor: pointer;
+  transition: background var(--transition);
+  flex-shrink: 0;
+}
+
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  background: #FFFFFF;
+  transition: transform var(--transition);
+}
+
+.toggle-switch.active {
+  background: var(--accent);
+}
+
+.toggle-switch.active::after {
+  transform: translateX(20px);
+}
+
+.btn-logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--negative);
+  font-size: 15px;
+  font-weight: 600;
+  border: 1.5px solid var(--negative);
+  cursor: pointer;
+  width: 100%;
+  font-family: inherit;
+  gap: 8px;
+  transition: transform 0.15s, opacity 0.15s;
+}
+
+.btn-logout:active { transform: scale(0.98); opacity: 0.9; }
+
+/* ═══════════════════════════════════════════ */
+/*  SEARCH BAR                                 */
+/* ═══════════════════════════════════════════ */
+.search-bar {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 14px;
+  margin: 0 24px 16px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  gap: 10px;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.search-bar i { width: 18px; height: 18px; color: var(--text-muted); transition: color var(--transition); }
+.search-bar span { font-size: 14px; color: var(--text-muted); transition: color var(--transition); }
+
+/* ═══════════════════════════════════════════ */
+/*  COURSE BADGES & DETAIL                     */
+/* ═══════════════════════════════════════════ */
+.course-badges {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.course-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.course-badge i { width: 12px; height: 12px; }
+
+.course-badge-subtle {
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+}
+
+.course-badge-red {
+  background: #FF453A20;
+  color: var(--negative);
+}
+
+.import-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--accent-light);
+  border: 1px dashed var(--accent);
+  margin: 0 24px 16px;
+}
+
+.import-banner .import-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.import-banner .import-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  transition: color var(--transition);
+}
+
+.import-banner .btn-import {
+  align-self: flex-start;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  margin-bottom: 12px;
+}
+
+.category-header .cat-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: color var(--transition);
+}
+
+.category-header .cat-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: color var(--transition);
+}
+
+.group-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.group-card .group-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: color var(--transition);
+}
+
+.member-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.member-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 20px;
+  background: var(--surface-elevated);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  transition: background var(--transition), color var(--transition);
+}
+
+.member-chip .mini-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+/* ═══════════════════════════════════════════ */
+/*  CREATE ASSESSMENT                          */
+/* ═══════════════════════════════════════════ */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.form-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: color var(--transition);
+}
+
+.form-input {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 15px;
+  color: var(--text-primary);
+  transition: all var(--transition);
+}
+
+.form-input span { color: var(--text-muted); }
+.form-input i { width: 18px; height: 18px; color: var(--text-muted); margin-left: auto; }
+
+.form-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 15px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.form-select i { width: 18px; height: 18px; color: var(--text-muted); }
+
+.visibility-cards {
+  display: flex;
+  gap: 10px;
+}
+
+.visibility-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 2px solid var(--border);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.visibility-card.selected {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.visibility-card i { width: 24px; height: 24px; color: var(--text-muted); transition: color var(--transition); }
+.visibility-card.selected i { color: var(--accent); }
+
+.visibility-card span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: color var(--transition);
+}
+
+.visibility-card.selected span { color: var(--accent); }
+
+.summary-info-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: all var(--transition);
+}
+
+.summary-info-card .summary-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: color var(--transition);
+}
+
+.summary-info-card .summary-title i { width: 16px; height: 16px; color: var(--accent); }
+
+.summary-info-card ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 22px;
+}
+
+.summary-info-card li {
+  font-size: 13px;
+  color: var(--text-secondary);
+  position: relative;
+  transition: color var(--transition);
+}
+
+.summary-info-card li::before {
+  content: '•';
+  position: absolute;
+  left: -14px;
+  color: var(--accent);
+}
+
+/* ═══════════════════════════════════════════ */
+/*  PEER SELECT                                */
+/* ═══════════════════════════════════════════ */
+.info-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  flex-wrap: wrap;
+}
+
+.info-box .timer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #FFD60A20;
+  color: var(--warning);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.info-box .timer-badge i { width: 14px; height: 14px; }
+
+.info-box .eval-count {
+  font-size: 13px;
+  color: var(--text-secondary);
+  transition: color var(--transition);
+}
+
+.info-box .progress-mini { width: 100%; }
+
+.peer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 24px;
+  width: 100%;
+}
+
+.peer-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: all var(--transition);
+}
+
+.peer-card.highlight {
+  border-color: var(--accent);
+}
+
+.peer-card .peer-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.peer-card .peer-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.peer-card .peer-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: color var(--transition);
+}
+
+.peer-card .peer-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.peer-card .peer-status i { width: 14px; height: 14px; }
+
+.peer-card .btn-eval {
+  padding: 6px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn-eval-accent {
+  background: var(--accent);
+  color: #FFFFFF;
+}
+
+.btn-eval-subtle {
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+}
+
+.tip-card {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  margin: 16px 24px;
+  border-radius: var(--radius-md);
+  background: var(--accent-light);
+  border: 1px solid var(--accent);
+}
+
+.tip-card i { width: 20px; height: 20px; color: var(--accent); flex-shrink: 0; margin-top: 2px; }
+
+.tip-card .tip-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tip-card .tip-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.tip-card .tip-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  transition: color var(--transition);
+}
+
+/* ═══════════════════════════════════════════ */
+/*  REPORTS                                    */
+/* ═══════════════════════════════════════════ */
+.summary-cards-row {
+  display: flex;
+  gap: 10px;
+  padding: 0 24px 16px;
+}
+
+.summary-card-accent {
+  flex: 1;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: #FFFFFF;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summary-card-accent .sc-label {
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.summary-card-accent .sc-value {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
+.summary-card-accent .sc-sub {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.summary-card-surface {
+  flex: 1;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: all var(--transition);
+}
+
+.summary-card-surface .sc-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: color var(--transition);
+}
+
+.summary-card-surface .sc-value {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  color: var(--text-primary);
+  transition: color var(--transition);
+}
+
+.summary-card-surface .sc-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  transition: color var(--transition);
+}
+
+.report-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 0 24px 16px;
+}
+
+.report-tab {
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--transition);
+}
+
+.report-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #FFFFFF;
+}
+
+.activity-report-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.activity-report-card .ar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.activity-report-card .ar-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: color var(--transition);
+}
+
+.activity-report-card .ar-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: color var(--transition);
+}
+
+.score-badge {
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.score-badge-green {
+  background: #32D74B20;
+  color: var(--positive);
+}
+
+.score-badge-yellow {
+  background: #FFD60A20;
+  color: var(--warning);
+}
+
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bar-row .bar-label {
+  width: 90px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  transition: color var(--transition);
+}
+
+.bar-row .bar-track {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface-elevated);
+  transition: background var(--transition);
+}
+
+.bar-row .bar-fill {
+  height: 8px;
+  border-radius: 4px;
+}
+
+.bar-row .bar-val {
+  width: 28px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+  color: var(--text-primary);
+  transition: color var(--transition);
+}
+
+/* ═══════════════════════════════════════════ */
+/*  STUDENT RESULTS DETAIL                     */
+/* ═══════════════════════════════════════════ */
+.result-avg-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px;
+  margin: 0 24px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: all var(--transition);
+}
+
+.result-avg-card .ra-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  transition: color var(--transition);
+}
+
+.result-avg-card .ra-number {
+  font-size: 56px;
+  font-weight: 800;
+  letter-spacing: -2px;
+  color: var(--accent);
+}
+
+.result-avg-card .ra-badge {
+  display: inline-flex;
+  padding: 4px 12px;
+  border-radius: 8px;
+  background: #32D74B20;
+  color: var(--positive);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.result-avg-card .ra-group {
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: color var(--transition);
+}
+
+.criteria-detail-section {
+  padding: 0 24px;
+  width: 100%;
+}
+
+.criteria-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.criteria-detail-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: color var(--transition);
+}
+
+.criteria-detail-header .peers-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: color var(--transition);
+}
+
+.criteria-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: all var(--transition);
+}
+
+.criteria-detail-item .cdi-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.criteria-detail-item .cdi-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: color var(--transition);
+}
+
+.criteria-detail-item .cdi-score {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.criteria-detail-item .cdi-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-elevated);
+  transition: background var(--transition);
+}
+
+.criteria-detail-item .cdi-progress-fill {
+  height: 6px;
+  border-radius: 3px;
+}
+
+.criteria-detail-item .cdi-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: color var(--transition);
+}
+
+.course-label-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 24px 16px;
+}
+
+.course-label-inline i { width: 18px; height: 18px; color: var(--accent); }
+
+.course-label-inline span {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: color var(--transition);
+}
+
+.detail-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 24px 16px;
+}
+
+.detail-tab {
+  flex: 1;
+  padding: 10px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition);
+  background: transparent;
+  color: var(--text-muted);
+  border-bottom: 2px solid var(--border);
+}
+
+.detail-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ═══════════════════════════════════════════ */
+/*  ONBOARDING                                 */
+/* ═══════════════════════════════════════════ */
+.onboard-screen { padding: 0; justify-content: flex-end; }
+.onboard-carousel { flex: 1; position: relative; overflow: hidden; }
+.onboard-slide {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 60px 32px 32px; gap: 24px;
+  opacity: 0; transform: translateX(60px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+  pointer-events: none;
+}
+.onboard-slide.active { opacity: 1; transform: translateX(0); pointer-events: auto; }
+.onboard-slide.exit { opacity: 0; transform: translateX(-60px); }
+.onboard-icon-big {
+  width: 120px; height: 120px; border-radius: 32px;
+  background: var(--accent-light); display: flex; align-items: center; justify-content: center;
+}
+.onboard-icon-big i { width: 56px; height: 56px; color: var(--accent); }
+.onboard-title { font-size: 26px; font-weight: 700; text-align: center; letter-spacing: -0.5px; color: var(--text-primary); }
+.onboard-desc { font-size: 15px; color: var(--text-secondary); text-align: center; line-height: 1.5; }
+.onboard-bottom { padding: 20px 32px 48px; display: flex; flex-direction: column; gap: 16px; align-items: center; }
+.onboard-dots { display: flex; gap: 8px; }
+.onboard-dot {
+  width: 8px; height: 8px; border-radius: 4px;
+  background: var(--border-strong); transition: all var(--transition);
+}
+.onboard-dot.active { width: 24px; background: var(--accent); }
+.onboard-actions { display: flex; gap: 12px; width: 100%; }
+.onboard-actions .btn-skip {
+  flex: 1; height: 48px; border-radius: var(--radius-md);
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text-secondary); font-size: 15px; font-weight: 600;
+  font-family: inherit; cursor: pointer;
+}
+.onboard-actions .btn-next {
+  flex: 2; height: 48px; border-radius: var(--radius-md);
+  background: var(--accent); border: none; color: #fff;
+  font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer;
+  transition: transform 0.15s;
+}
+.onboard-actions .btn-next:active { transform: scale(0.97); }
+
+/* ═══════════════════════════════════════════ */
+/*  NOTIFICATIONS                              */
+/* ═══════════════════════════════════════════ */
+.notif-filters { display: flex; gap: 8px; padding: 0 24px 12px; }
+.notif-filter-btn {
+  padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border); background: transparent; color: var(--text-secondary);
+  cursor: pointer; font-family: inherit; transition: all var(--transition);
+}
+.notif-filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.notif-item {
+  display: flex; gap: 14px; padding: 16px 24px;
+  border-bottom: 1px solid var(--border); transition: background 0.15s;
+  cursor: pointer;
+}
+.notif-item:active { background: var(--surface-elevated); }
+.notif-item.unread { background: var(--accent-light); }
+.notif-icon {
+  width: 40px; height: 40px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.notif-icon i { width: 20px; height: 20px; }
+.notif-body { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.notif-body .notif-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.notif-body .notif-text { font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
+.notif-body .notif-time { font-size: 11px; color: var(--text-muted); }
+.notif-dot { width: 8px; height: 8px; border-radius: 4px; background: var(--accent); flex-shrink: 0; margin-top: 6px; }
+
+/* ═══════════════════════════════════════════ */
+/*  STUDENT DETAIL (for teacher)               */
+/* ═══════════════════════════════════════════ */
+.student-detail-header {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 16px 24px 20px;
+}
+.student-detail-header .avatar-xl {
+  width: 64px; height: 64px; border-radius: 32px;
+  font-size: 24px; font-weight: 700; color: #fff; display: flex;
+  align-items: center; justify-content: center;
+}
+.student-detail-header .sd-name { font-size: 20px; font-weight: 700; color: var(--text-primary); }
+.student-detail-header .sd-email { font-size: 13px; color: var(--text-secondary); }
+.radar-placeholder {
+  margin: 0 24px; height: 200px; border-radius: var(--radius-md);
+  background: var(--surface); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+}
+.radar-bar-chart { display: flex; align-items: flex-end; gap: 12px; height: 140px; padding: 0 16px; }
+.radar-bar {
+  flex: 1; border-radius: 6px 6px 0 0; background: var(--accent);
+  transition: height 0.6s cubic-bezier(0.4,0,0.2,1);
+  position: relative; min-width: 32px;
+}
+.radar-bar span {
+  position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
+  font-size: 12px; font-weight: 700; color: var(--text-primary);
+}
+.radar-bar-labels { display: flex; gap: 12px; padding: 8px 16px 0; }
+.radar-bar-labels span { flex: 1; text-align: center; font-size: 10px; color: var(--text-muted); min-width: 32px; }
+.eval-timeline { padding: 0 24px; }
+.timeline-item {
+  display: flex; gap: 14px; padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.timeline-dot-line { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.timeline-dot {
+  width: 12px; height: 12px; border-radius: 6px;
+  background: var(--accent); flex-shrink: 0;
+}
+.timeline-line { width: 2px; flex: 1; background: var(--border); }
+.timeline-content { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.timeline-content .tl-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.timeline-content .tl-meta { font-size: 12px; color: var(--text-muted); }
+.timeline-content .tl-score { font-size: 14px; font-weight: 700; }
+
+/* ═══════════════════════════════════════════ */
+/*  EVAL CONFIRM                               */
+/* ═══════════════════════════════════════════ */
+.confirm-screen { align-items: center; justify-content: center; padding: 40px 32px; gap: 24px; }
+.confirm-icon-big {
+  width: 100px; height: 100px; border-radius: 50px;
+  background: #32D74B20; display: flex; align-items: center; justify-content: center;
+  animation: confirmPop 0.5s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes confirmPop { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+.confirm-icon-big i { width: 48px; height: 48px; color: var(--positive); }
+.confirm-title { font-size: 24px; font-weight: 700; color: var(--text-primary); text-align: center; }
+.confirm-desc { font-size: 15px; color: var(--text-secondary); text-align: center; line-height: 1.5; }
+.confirm-summary {
+  width: 100%; padding: 20px; border-radius: var(--radius-md);
+  background: var(--surface); border: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 12px;
+}
+.confirm-summary .cs-row {
+  display: flex; justify-content: space-between; align-items: center;
+}
+.confirm-summary .cs-label { font-size: 13px; color: var(--text-secondary); }
+.confirm-summary .cs-value { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+
+
+/* ═══════════════════════════════════════════ */
+/*  EVAL HISTORY                               */
+/* ═══════════════════════════════════════════ */
+.history-tabs { display: flex; gap: 8px; padding: 0 24px 12px; }
+.history-tab {
+  padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border); background: transparent; color: var(--text-secondary);
+  cursor: pointer; font-family: inherit; transition: all var(--transition);
+}
+.history-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.history-card {
+  margin: 0 24px 12px; padding: 16px; border-radius: var(--radius-md);
+  background: var(--surface); border: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 10px; cursor: pointer;
+  transition: border-color var(--transition);
+}
+.history-card:active { border-color: var(--accent); }
+.history-card .hc-top { display: flex; justify-content: space-between; align-items: flex-start; }
+.history-card .hc-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.history-card .hc-date { font-size: 12px; color: var(--text-muted); }
+.history-card .hc-course { font-size: 13px; color: var(--text-secondary); }
+.history-card .hc-bottom { display: flex; align-items: center; gap: 12px; }
+.history-card .hc-score-pill {
+  padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 700;
+}
+.history-card .hc-peers { font-size: 12px; color: var(--text-muted); }
+
+/* ═══════════════════════════════════════════ */
+/*  GROUP DETAIL                               */
+/* ═══════════════════════════════════════════ */
+.group-detail-info {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 16px 24px;
+}
+.group-detail-info .gd-name { font-size: 20px; font-weight: 700; color: var(--text-primary); }
+.group-detail-info .gd-meta { font-size: 13px; color: var(--text-secondary); }
+.member-list { padding: 0 24px; }
+.member-detail-item {
+  display: flex; align-items: center; gap: 14px; padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.member-detail-item .md-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.member-detail-item .md-name { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.member-detail-item .md-role { font-size: 12px; color: var(--text-secondary); }
+.member-detail-item .md-score {
+  font-size: 18px; font-weight: 700; padding: 4px 12px;
+  border-radius: 8px; background: var(--surface-elevated);
+}
+.group-avg-banner {
+  margin: 16px 24px; padding: 20px; border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--accent), #7C3AED);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.group-avg-banner .ga-label { font-size: 13px; color: rgba(255,255,255,0.7); }
+.group-avg-banner .ga-number { font-size: 40px; font-weight: 800; color: #fff; }
+.group-avg-banner .ga-sub { font-size: 13px; color: rgba(255,255,255,0.6); }
+
+/* ═══════════════════════════════════════════ */
+/*  IMPORT CSV                                 */
+/* ═══════════════════════════════════════════ */
+.import-area {
+  margin: 0 24px; padding: 40px 24px; border-radius: var(--radius-md);
+  border: 2px dashed var(--border-strong); display: flex; flex-direction: column;
+  align-items: center; gap: 16px; cursor: pointer; transition: border-color var(--transition);
+}
+.import-area:hover { border-color: var(--accent); }
+.import-area.dragging { border-color: var(--accent); background: var(--accent-light); }
+.import-area i { width: 48px; height: 48px; color: var(--text-muted); }
+.import-area .ia-title { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+.import-area .ia-desc { font-size: 13px; color: var(--text-muted); text-align: center; }
+.import-preview {
+  margin: 16px 24px; border-radius: var(--radius-md);
+  background: var(--surface); border: 1px solid var(--border); overflow: hidden;
+  display: none;
+}
+.import-preview.show { display: block; }
+.import-preview-header {
+  padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface-elevated);
+}
+.import-preview-header span { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.import-table { width: 100%; font-size: 12px; border-collapse: collapse; }
+.import-table th {
+  padding: 8px 12px; text-align: left; font-weight: 600;
+  color: var(--text-secondary); background: var(--surface-elevated);
+  border-bottom: 1px solid var(--border);
+}
+.import-table td {
+  padding: 8px 12px; color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
+}
+.import-progress-section { padding: 16px 24px; display: none; }
+.import-progress-section.show { display: block; }
+.import-progress-text { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
+.import-progress-bar {
+  width: 100%; height: 8px; border-radius: 4px; background: var(--surface-elevated); overflow: hidden;
+}
+.import-progress-fill {
+  height: 100%; width: 0%; border-radius: 4px; background: var(--accent);
+  transition: width 0.4s ease;
+}
+.import-result { margin-top: 12px; font-size: 13px; color: var(--positive); display: none; }
+.import-result.show { display: flex; align-items: center; gap: 6px; }
+
+/* ═══════════════════════════════════════════ */
+/*  SETTINGS                                   */
+/* ═══════════════════════════════════════════ */
+.settings-section-title {
+  font-size: 12px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--text-muted);
+  padding: 16px 24px 8px;
+}
+.settings-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 24px; border-bottom: 1px solid var(--border);
+  cursor: pointer; transition: background 0.15s;
+}
+.settings-item:active { background: var(--surface-elevated); }
+.settings-item i { width: 20px; height: 20px; color: var(--text-secondary); }
+.settings-item .si-content { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.settings-item .si-title { font-size: 15px; font-weight: 500; color: var(--text-primary); }
+.settings-item .si-desc { font-size: 12px; color: var(--text-muted); }
+.settings-item .si-value { font-size: 13px; color: var(--text-secondary); }
+.range-slider {
+  -webkit-appearance: none; appearance: none; width: 100%;
+  height: 6px; border-radius: 3px; background: var(--surface-elevated); outline: none;
+  margin: 8px 0;
+}
+.range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 22px; height: 22px; border-radius: 11px;
+  background: var(--accent); cursor: pointer;
+  box-shadow: 0 2px 8px rgba(79,70,229,0.4);
+}
+.range-slider::-moz-range-thumb {
+  width: 22px; height: 22px; border-radius: 11px;
+  background: var(--accent); cursor: pointer; border: none;
+}
+.settings-slider-row {
+  padding: 14px 24px; border-bottom: 1px solid var(--border);
+}
+.settings-slider-row .ssr-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.settings-slider-row .ssr-label { font-size: 15px; font-weight: 500; color: var(--text-primary); }
+.settings-slider-row .ssr-value { font-size: 14px; font-weight: 600; color: var(--accent); }
+
+/* ═══════════════════════════════════════════ */
+/*  HELP & SUPPORT                             */
+/* ═══════════════════════════════════════════ */
+.help-search {
+  margin: 0 24px 16px; display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px; border-radius: var(--radius-md);
+  background: var(--surface); border: 1px solid var(--border);
+}
+.help-search i { width: 18px; height: 18px; color: var(--text-muted); }
+.help-search span { font-size: 14px; color: var(--text-muted); }
+.faq-item {
+  margin: 0 24px 8px; border-radius: var(--radius-md);
+  background: var(--surface); border: 1px solid var(--border);
+  overflow: hidden; transition: border-color var(--transition);
+}
+.faq-item.open { border-color: var(--accent); }
+.faq-question {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; cursor: pointer; gap: 12px;
+}
+.faq-question span { font-size: 14px; font-weight: 600; color: var(--text-primary); flex: 1; }
+.faq-question i { width: 18px; height: 18px; color: var(--text-muted); transition: transform var(--transition); }
+.faq-item.open .faq-question i { transform: rotate(180deg); color: var(--accent); }
+.faq-answer {
+  max-height: 0; overflow: hidden; transition: max-height 0.35s ease, padding 0.35s ease;
+  padding: 0 16px;
+}
+.faq-item.open .faq-answer { max-height: 200px; padding: 0 16px 14px; }
+.faq-answer p { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+.help-contact-card {
+  margin: 16px 24px; padding: 20px; border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--accent), #7C3AED);
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.help-contact-card i { width: 32px; height: 32px; color: #fff; }
+.help-contact-card .hc-title { font-size: 16px; font-weight: 700; color: #fff; }
+.help-contact-card .hc-desc { font-size: 13px; color: rgba(255,255,255,0.7); text-align: center; }
+.help-contact-card .hc-btn {
+  padding: 10px 24px; border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
+  color: #fff; font-size: 14px; font-weight: 600;
+  font-family: inherit; cursor: pointer;
+}
+
+/* ═══════════════════════════════════════════ */
+/*  EDIT PROFILE                               */
+/* ═══════════════════════════════════════════ */
+.edit-avatar-section {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 16px 24px 24px; position: relative;
+}
+.edit-avatar-section .avatar-edit-wrap { position: relative; }
+.edit-avatar-section .avatar-edit-btn {
+  position: absolute; bottom: 0; right: 0;
+  width: 32px; height: 32px; border-radius: 16px;
+  background: var(--accent); border: 3px solid var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.edit-avatar-section .avatar-edit-btn i { width: 14px; height: 14px; color: #fff; }
+.edit-form-group {
+  padding: 0 24px; margin-bottom: 16px;
+}
+.edit-form-group label {
+  display: block; font-size: 13px; font-weight: 600;
+  color: var(--text-secondary); margin-bottom: 6px;
+}
+.edit-input {
+  width: 100%; height: 48px; padding: 0 16px;
+  border-radius: var(--radius-md); background: var(--surface);
+  border: 1px solid var(--border); color: var(--text-primary);
+  font-size: 15px; font-family: inherit;
+  transition: border-color var(--transition);
+  outline: none;
+}
+.edit-input:focus { border-color: var(--accent); }
+.edit-input::placeholder { color: var(--text-muted); }
+.save-bar {
+  padding: 16px 24px; margin-top: auto;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+/* ═══════════════════════════════════════════ */
+/*  INTERACTIVE TOGGLE (enhanced)              */
+/* ═══════════════════════════════════════════ */
+.toggle-switch {
+  cursor: pointer;
+}
+
+/* ═══════════════════════════════════════════ */
+/*  COURSE DETAIL — TAB TOGGLE                 */
+/* ═══════════════════════════════════════════ */
+.cd-groups-content,
+.cd-evals-content {
+  display: none;
+  flex-direction: column;
+  width: 100%;
+}
+.cd-groups-content.active,
+.cd-evals-content.active {
+  display: flex;
+}
+
+/* ═══════════════════════════════════════════ */
+/*  IMPORT BANNER (enhanced with icon)         */
+/* ═══════════════════════════════════════════ */
+.import-banner-icon {
+  width: 40px; height: 40px;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 4px;
+}
+.import-banner-icon i { width: 20px; height: 20px; color: #fff; }
+
+/* ═══════════════════════════════════════════ */
+/*  ASSESSMENT CARDS                           */
+/* ═══════════════════════════════════════════ */
+.assessment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 24px 16px;
+}
+.assessment-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: background var(--transition), border-color var(--transition);
+}
+.assessment-card.ass-active {
+  border: 1.5px solid var(--accent);
+}
+.ass-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ass-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.ass-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.ass-badge-active {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+.ass-badge-closed {
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+}
+.ass-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.ass-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ass-progress-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-elevated);
+  overflow: hidden;
+}
+.ass-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+.ass-progress-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.ass-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+.ass-link {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+}
+.ass-link i { width: 14px; height: 14px; }
+
+/* ═══════════════════════════════════════════ */
+/*  SECTION HEADER ROW                         */
+/* ═══════════════════════════════════════════ */
+.section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px 12px;
+}
+.section-header-row h2 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.section-header-row .section-count {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════ */
+/*  STUDENT INVITATION SCREEN                  */
+/* ═══════════════════════════════════════════ */
+.invite-info-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  padding: 0 24px 16px;
+}
+.invite-link-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  margin: 0 24px 16px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.invite-link-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.invite-url {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.invite-copy-btn {
+  width: 36px; height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-light);
+  border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.invite-copy-btn i { width: 16px; height: 16px; color: var(--accent); }
+.invite-valid-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-elevated);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  align-self: flex-start;
+}
+.invite-valid-badge i { width: 12px; height: 12px; }
+
+.share-options-row {
+  display: flex;
+  gap: 12px;
+  padding: 0 24px 16px;
+}
+.share-option-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 8px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+.share-option-card:hover { border-color: var(--accent); }
+.share-option-card i { width: 24px; height: 24px; color: var(--accent); }
+.share-option-card span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.invite-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 24px 16px;
+}
+
+.pending-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 24px 12px;
+}
+.pending-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.pending-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px; height: 22px;
+  border-radius: 11px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0 6px;
+}
+
+.pending-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0 24px 16px;
+}
+.pending-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.pending-item:last-child { border-bottom: none; }
+.pending-avatar {
+  width: 40px; height: 40px;
+  border-radius: 20px;
+  background: var(--accent-light);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; color: var(--accent);
+  flex-shrink: 0;
+}
+.pending-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pending-email {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.pending-time {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.pending-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.pending-status-pending {
+  background: #FFD60A20;
+  color: var(--warning);
+}
+.pending-status-accepted {
+  background: #32D74B20;
+  color: var(--positive);
+}
+
+/* ═══════════════════════════════════════════ */
+/*  GENERATE LINK MODAL                        */
+/* ═══════════════════════════════════════════ */
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--overlay-dim);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.modal-sheet {
+  background: var(--surface);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: 12px 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.modal-handle {
+  width: 40px; height: 4px;
+  border-radius: 2px;
+  background: var(--border-strong);
+  align-self: center;
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-header h2 {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.modal-close-btn {
+  width: 32px; height: 32px;
+  border-radius: 16px;
+  background: var(--surface-elevated);
+  border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.modal-close-btn i { width: 18px; height: 18px; color: var(--text-secondary); }
+.modal-desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.exp-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.exp-options {
+  display: flex;
+  gap: 8px;
+}
+.exp-option {
+  flex: 1;
+  padding: 10px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.exp-option.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.modal-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: #FFD60A10;
+  border: 1px solid #FFD60A30;
+}
+.modal-warning i { width: 18px; height: 18px; color: var(--warning); flex-shrink: 0; margin-top: 1px; }
+.modal-warning span {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--  GLOBAL CONTROLS                            -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="controls-bar">
+  <div class="control-group">
+    <label>Tema</label>
+    <div class="control-pill" id="theme-toggle">
+      <button data-theme="dark" class="active">🌙 Oscuro</button>
+      <button data-theme="light">☀️ Claro</button>
+    </div>
+  </div>
+  <div class="control-group">
+    <label>Modo</label>
+    <div class="control-pill" id="mode-toggle">
+      <button data-mode="student" class="active">🎓 Estudiante</button>
+      <button data-mode="teacher">📚 Profesor</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--  PHONE SHELL                                -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="phone-container">
+  <div class="phone-screen" id="phone">
+
+    <!-- ══════════════ LOGIN ══════════════ -->
+    <div class="screen login-screen" id="screen-login">
+      <div style="height:40px"></div>
+      <div class="logo-area">
+        <div class="logo-bg"><span>P</span></div>
+        <div class="app-name">PeerUn</div>
+        <div class="app-subtitle">Evaluación entre pares</div>
+      </div>
+
+      <div class="form-area">
+        <span class="field-label">Correo electrónico</span>
+        <div class="input-field">
+          <i data-lucide="mail"></i>
+          <span>tu@uninorte.edu.co</span>
+        </div>
+        <span class="field-label">Contraseña</span>
+        <div class="input-field password-field">
+          <div class="left-group">
+            <i data-lucide="lock"></i>
+            <span>••••••••</span>
+          </div>
+          <i data-lucide="eye-off"></i>
+        </div>
+      </div>
+
+      <div style="height:32px"></div>
+
+      <button class="btn-primary clickable" onclick="navigateToHome()">Iniciar sesión</button>
+
+      <div class="divider-area">
+        <div class="line"></div>
+        <span class="or-text">o</span>
+        <div class="line"></div>
+      </div>
+
+      <button class="btn-outline clickable" onclick="goTo('screen-register')">Crear cuenta</button>
+
+      <div class="flex-spacer"></div>
+      <div class="footer-text">Powered by Roble · Uninorte</div>
+    </div>
+
+    <!-- ══════════════ STUDENT HOME ══════════════ -->
+    <div class="screen" id="screen-student-home">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="home-header">
+        <h1>Hola, Cristian 👋</h1>
+        <p>Tienes 2 evaluaciones pendientes</p>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <h2>Evaluaciones pendientes</h2>
+          <span class="teacher-link" onclick="goTo('screen-eval-history')">Historial →</span>
+        </div>
+
+        <div class="cards-stack">
+          <!-- Card 1 -->
+          <div class="card eval-card clickable" onclick="goTo('screen-peer-select')">
+            <div class="card-row">
+              <span class="title">Sprint Review 3</span>
+              <div class="chip chip-red">⏱ 2h restantes</div>
+            </div>
+            <span class="subtitle">Ingeniería de Software — Grupo 3</span>
+            <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:66%"></div></div>
+            <div class="card-row">
+              <span class="meta">2 de 3 compañeros evaluados</span>
+              <span class="action-link">Continuar →</span>
+            </div>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="card eval-card clickable" onclick="goTo('screen-peer-select')">
+            <div class="card-row">
+              <span class="title">Evaluación Parcial 2</span>
+              <div class="chip chip-yellow">⏱ 23h restantes</div>
+            </div>
+            <span class="subtitle">Diseño de Interfaces — Grupo 1</span>
+            <div class="card-row">
+              <span class="meta">0 de 4 compañeros evaluados</span>
+              <span class="action-link">Iniciar →</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="spacer"></div>
+
+      <div class="section">
+        <div class="section-header">
+          <h2>Mis cursos</h2>
+        </div>
+
+        <div class="cards-stack">
+          <div class="card course-card clickable" onclick="goTo('screen-student-courses')">
+            <div class="icon-box"><i data-lucide="code"></i></div>
+            <div class="course-info">
+              <span class="course-name">Ingeniería de Software</span>
+              <span class="course-meta">Prof. García · 28 estudiantes</span>
+            </div>
+            <i data-lucide="chevron-right" class="chevron"></i>
+          </div>
+
+          <div class="card course-card clickable" onclick="goTo('screen-student-courses')">
+            <div class="icon-box"><i data-lucide="palette"></i></div>
+            <div class="course-info">
+              <span class="course-name">Diseño de Interfaces</span>
+              <span class="course-meta">Prof. Martínez · 20 estudiantes</span>
+            </div>
+            <i data-lucide="chevron-right" class="chevron"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-spacer"></div>
+
+      <div class="tab-bar">
+        <button class="tab-item active" onclick="goTo('screen-student-home')">
+          <i data-lucide="house"></i>
+          <span>Inicio</span>
+        </button>
+        <button class="tab-item" onclick="goTo('screen-student-courses')">
+          <i data-lucide="book-open"></i>
+          <span>Cursos</span>
+        </button>
+        <button class="tab-item" onclick="goTo('screen-student-profile')">
+          <i data-lucide="user"></i>
+          <span>Perfil</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════════ TEACHER HOME ══════════════ -->
+    <div class="screen" id="screen-teacher-home">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="teacher-header">
+        <div class="h-text">
+          <h1>Hola, Prof. García 👋</h1>
+          <p>3 evaluaciones activas</p>
+        </div>
+        <button class="notif-btn clickable">
+          <i data-lucide="bell"></i>
+        </button>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <span class="stat-number" style="color:var(--accent)">78</span>
+          <span class="stat-label">Estudiantes</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number" style="color:var(--positive)">3</span>
+          <span class="stat-label">Activas</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number" style="color:var(--warning)">85%</span>
+          <span class="stat-label">Completado</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <h2>Evaluaciones activas</h2>
+          <span class="teacher-link">Ver todas →</span>
+        </div>
+
+        <div class="cards-stack">
+          <!-- Teacher Card 1 -->
+          <div class="card teacher-eval-card clickable" onclick="goTo('screen-teacher-results')">
+            <div class="card-row">
+              <span class="title">Sprint Review 3</span>
+              <div class="chip chip-green">● Activa</div>
+            </div>
+            <span class="subtitle">Ing. de Software — Grupo 3</span>
+            <div class="progress-row">
+              <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:70%"></div></div>
+              <span class="pct">70%</span>
+            </div>
+            <div class="card-row">
+              <span class="meta">21 de 30 estudiantes</span>
+              <span style="font-size:12px;font-weight:500;color:var(--negative)">Vence en 2h</span>
+            </div>
+          </div>
+
+          <!-- Teacher Card 2 -->
+          <div class="card teacher-eval-card clickable" onclick="goTo('screen-teacher-results')">
+            <div class="card-row">
+              <span class="title">Evaluación Parcial 2</span>
+              <div class="chip chip-yellow">⏱ 23h</div>
+            </div>
+            <span class="subtitle">Diseño de Interfaces — Grupo 1</span>
+            <div class="progress-row">
+              <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:20%"></div></div>
+              <span class="pct">20%</span>
+            </div>
+            <div class="card-row">
+              <span class="meta">4 de 20 estudiantes</span>
+              <span style="font-size:12px;font-weight:500;color:var(--warning)">Vence mañana</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="height:20px"></div>
+
+      <div class="cta-container">
+        <button class="btn-primary clickable" onclick="goTo('screen-create-assessment')">
+          <i data-lucide="plus" style="width:20px;height:20px"></i>
+          Crear nueva evaluación
+        </button>
+      </div>
+
+      <div class="flex-spacer"></div>
+
+      <div class="tab-bar">
+        <button class="tab-item active" onclick="goTo('screen-teacher-home')">
+          <i data-lucide="house"></i>
+          <span>Inicio</span>
+        </button>
+        <button class="tab-item" onclick="goTo('screen-teacher-courses')">
+          <i data-lucide="book-open"></i>
+          <span>Cursos</span>
+        </button>
+        <button class="tab-item" onclick="goTo('screen-reports')">
+          <i data-lucide="bar-chart-3"></i>
+          <span>Reportes</span>
+        </button>
+        <button class="tab-item" onclick="goTo('screen-teacher-profile')">
+          <i data-lucide="user"></i>
+          <span>Perfil</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════════ EVALUATION FORM ══════════════ -->
+    <div class="screen" id="screen-eval-form">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="nav-bar">
+        <button class="back-btn" onclick="goTo('screen-peer-select')"><i data-lucide="arrow-left"></i></button>
+        <div style="flex:1;display:flex;flex-direction:column">
+          <span style="font-size:16px;font-weight:600;color:var(--text-primary)">Evaluando a María López</span>
+          <span style="font-size:12px;color:var(--text-secondary)">Sprint Review 3 · 2 de 3</span>
+        </div>
+      </div>
+
+      <div class="peer-indicators">
+        <div class="peer-circle done"><i data-lucide="check"></i></div>
+        <div class="peer-circle current">2</div>
+        <div class="peer-circle pending">3</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="scroll-area">
+        <!-- Criteria 1: Puntualidad -->
+        <div class="criteria-section">
+          <div class="criteria-header">
+            <i data-lucide="timer"></i>
+            <span>Puntualidad</span>
+          </div>
+          <p class="criteria-desc">¿El compañero asistió y fue puntual en las reuniones y entregas?</p>
+          <div class="options-list" data-criteria="1">
+            <div class="option-item selected" onclick="selectOption(this)">
+              <div class="radio"></div>
+              <span class="option-text">5.0 — Siempre puntual</span>
+            </div>
+            <div class="option-item" onclick="selectOption(this)">
+              <div class="radio"></div>
+              <span class="option-text">4.0 — Casi siempre puntual</span>
+            </div>
+            <div class="option-item" onclick="selectOption(this)">
+              <div class="radio"></div>
+              <span class="option-text">3.0 — A veces puntual</span>
+            </div>
+            <div class="option-item" onclick="selectOption(this)">
+              <div class="radio"></div>
+              <span class="option-text">2.0 — Rara vez puntual</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Criteria 2: Contribuciones -->
+        <div class="criteria-section">
+          <div class="criteria-header">
+            <i data-lucide="lightbulb"></i>
+            <span>Contribuciones</span>
+          </div>
+          <p class="criteria-desc">¿Aportó ideas, trabajo y soluciones al proyecto?</p>
+          <div class="options-list" data-criteria="2">
+            <div class="option-item" onclick="selectOption(this)">
+              <div class="radio"></div>
+              <span class="option-text">5.0 — Excelentes aportes</span>
+            </div>
+            <div class="option-item" onclick="selectOption(this)">
+              <div class="radio"></div>
+              <span class="option-text">4.0 — Buenos aportes</span>
+            </div>
+            <div class="option-item" onclick="selectOption(this)">
+              <div class="radio"></div>
+              <span class="option-text">3.0 — Aportes regulares</span>
+            </div>
+            <div class="option-item" onclick="selectOption(this)">
+              <div class="radio"></div>
+              <span class="option-text">2.0 — Pocos aportes</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-footer">
+        <button class="btn-primary clickable" onclick="goTo('screen-peer-select')">
+          Siguiente compañero
+          <i data-lucide="arrow-right" style="width:20px;height:20px"></i>
+        </button>
+        <span class="hint">Puedes modificar tus respuestas antes de enviar</span>
+      </div>
+    </div>
+
+    <!-- ══════════════ TEACHER RESULTS ══════════════ -->
+    <div class="screen" id="screen-teacher-results">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="nav-bar" style="justify-content:space-between">
+        <button class="back-btn" onclick="goTo('screen-teacher-home')"><i data-lucide="arrow-left"></i></button>
+        <span style="font-size:16px;font-weight:600;color:var(--text-primary);flex:1;text-align:center">Resultados — Sprint Review 3</span>
+        <i data-lucide="download" style="width:22px;height:22px;color:var(--text-secondary);cursor:pointer"></i>
+      </div>
+
+      <div class="activity-info">
+        <div class="course-label">Ingeniería de Software — Grupo 3</div>
+        <div class="completion">30 estudiantes · 100% completado</div>
+      </div>
+
+      <div class="avg-card-container">
+        <div class="avg-inner">
+          <span class="avg-label">Promedio general</span>
+          <span class="avg-number">4.2</span>
+          <span class="avg-total">de 5.0</span>
+          <div class="criteria-scores">
+            <div class="criteria-score-item">
+              <span class="score-val" style="color:var(--positive)">4.5</span>
+              <span class="score-label">Puntualidad</span>
+            </div>
+            <div class="criteria-score-item">
+              <span class="score-val" style="color:var(--accent)">4.0</span>
+              <span class="score-label">Contribución</span>
+            </div>
+            <div class="criteria-score-item">
+              <span class="score-val" style="color:var(--accent)">4.1</span>
+              <span class="score-label">Compromiso</span>
+            </div>
+            <div class="criteria-score-item">
+              <span class="score-val" style="color:var(--positive)">4.3</span>
+              <span class="score-label">Actitud</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="students-section">
+        <div class="section-header">
+          <h2>Estudiantes</h2>
+          <span class="teacher-link">Ordenar ▾</span>
+        </div>
+
+        <div class="cards-stack">
+          <!-- Student 1: María López -->
+          <div class="card student-row clickable">
+            <div class="avatar">ML</div>
+            <div class="student-info">
+              <span class="student-name">María López</span>
+              <span class="student-avg">Promedio recibido: 4.6</span>
+            </div>
+            <span class="student-score" style="color:var(--positive)">4.6</span>
+            <i data-lucide="chevron-right" class="chevron"></i>
+          </div>
+
+          <!-- Student 2: Juan Pérez -->
+          <div class="card student-row clickable">
+            <div class="avatar">JP</div>
+            <div class="student-info">
+              <span class="student-name">Juan Pérez</span>
+              <span class="student-avg">Promedio recibido: 4.1</span>
+            </div>
+            <span class="student-score" style="color:var(--accent)">4.1</span>
+            <i data-lucide="chevron-right" class="chevron"></i>
+          </div>
+
+          <!-- Student 3: Carlos Ramírez -->
+          <div class="card student-row clickable">
+            <div class="avatar">CR</div>
+            <div class="student-info">
+              <span class="student-name">Carlos Ramírez</span>
+              <span class="student-avg">Promedio recibido: 3.8</span>
+            </div>
+            <span class="student-score" style="color:var(--warning)">3.8</span>
+            <i data-lucide="chevron-right" class="chevron"></i>
+          </div>
+
+          <!-- Student 4: Ana Sánchez -->
+          <div class="card student-row clickable">
+            <div class="avatar">AS</div>
+            <div class="student-info">
+              <span class="student-name">Ana Sánchez</span>
+              <span class="student-avg">Promedio recibido: 2.9</span>
+            </div>
+            <span class="student-score" style="color:var(--negative)">2.9</span>
+            <i data-lucide="chevron-right" class="chevron"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ REGISTER ══════════════ -->
+    <div class="screen register-screen" id="screen-register">
+      <div style="height:40px"></div>
+      <div class="logo-area">
+        <div class="logo-bg"><span>P</span></div>
+        <div class="app-name">Crear cuenta</div>
+        <div class="app-subtitle">Únete a PeerUn</div>
+      </div>
+
+      <div class="form-area">
+        <span class="field-label">Nombre completo</span>
+        <div class="input-field">
+          <i data-lucide="user"></i>
+          <span>Tu nombre completo</span>
+        </div>
+        <span class="field-label">Correo electrónico</span>
+        <div class="input-field">
+          <i data-lucide="mail"></i>
+          <span>tu@uninorte.edu.co</span>
+        </div>
+        <span class="field-label">Contraseña</span>
+        <div class="input-field password-field">
+          <div class="left-group">
+            <i data-lucide="lock"></i>
+            <span>••••••••</span>
+          </div>
+          <i data-lucide="eye-off"></i>
+        </div>
+        <span class="field-label">Confirmar contraseña</span>
+        <div class="input-field password-field">
+          <div class="left-group">
+            <i data-lucide="shield-check"></i>
+            <span>••••••••</span>
+          </div>
+          <i data-lucide="eye-off"></i>
+        </div>
+
+        <span class="field-label">Rol</span>
+        <div class="role-selector">
+          <button class="role-btn active clickable">Estudiante</button>
+          <button class="role-btn clickable">Profesor</button>
+        </div>
+      </div>
+
+      <div style="height:24px"></div>
+
+      <button class="btn-primary clickable" onclick="navigateToHome()" style="width:calc(100% - 48px)">Crear cuenta</button>
+
+      <div class="login-link">¿Ya tienes cuenta? <a onclick="goTo('screen-login')">Iniciar sesión</a></div>
+
+      <div class="flex-spacer"></div>
+      <div class="footer-text">Powered by Roble · Uninorte</div>
+    </div>
+
+    <!-- ══════════════ STUDENT PROFILE ══════════════ -->
+    <div class="screen" id="screen-student-profile">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="profile-header">
+        <h1>Mi perfil</h1>
+        <button class="settings-btn clickable"><i data-lucide="settings"></i></button>
+      </div>
+
+      <div class="profile-avatar-section">
+        <div class="avatar-large">CG</div>
+        <span class="profile-name">Cristian García</span>
+        <span class="profile-email">cgarcia@uninorte.edu.co</span>
+        <span class="profile-badge">Estudiante</span>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <span class="stat-number" style="color:var(--accent)">3</span>
+          <span class="stat-label">Cursos</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number" style="color:var(--positive)">12</span>
+          <span class="stat-label">Evaluaciones</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number" style="color:var(--warning)">4.3</span>
+          <span class="stat-label">Promedio</span>
+        </div>
+      </div>
+
+      <div class="config-section">
+        <span class="config-label">Configuración</span>
+        <div class="menu-item clickable">
+          <i data-lucide="bell"></i>
+          <span>Notificaciones</span>
+          <i data-lucide="chevron-right" class="menu-chevron"></i>
+        </div>
+        <div class="menu-item">
+          <i data-lucide="moon"></i>
+          <span>Tema oscuro</span>
+          <div class="toggle-switch"></div>
+        </div>
+        <div class="menu-item clickable">
+          <i data-lucide="shield"></i>
+          <span>Seguridad</span>
+          <i data-lucide="chevron-right" class="menu-chevron"></i>
+        </div>
+        <div class="menu-item clickable">
+          <i data-lucide="life-buoy"></i>
+          <span>Ayuda y soporte</span>
+          <i data-lucide="chevron-right" class="menu-chevron"></i>
+        </div>
+      </div>
+
+      <div class="spacer"></div>
+
+      <div style="padding:0 24px;width:100%">
+        <button class="btn-logout clickable" onclick="goTo('screen-login')">
+          <i data-lucide="log-out" style="width:18px;height:18px"></i>
+          Cerrar sesión
+        </button>
+      </div>
+
+      <div class="flex-spacer"></div>
+
+      <div class="tab-bar">
+        <button class="tab-item" onclick="goTo('screen-student-home')">
+          <i data-lucide="house"></i>
+          <span>Inicio</span>
+        </button>
+        <button class="tab-item" onclick="goTo('screen-student-courses')">
+          <i data-lucide="book-open"></i>
+          <span>Cursos</span>
+        </button>
+        <button class="tab-item active" onclick="goTo('screen-student-profile')">
+          <i data-lucide="user"></i>
+          <span>Perfil</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════════ STUDENT COURSES ══════════════ -->
+    <div class="screen" id="screen-student-courses">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="home-header">
+        <h1>Mis Cursos</h1>
+        <p>3 cursos activos</p>
+      </div>
+
+      <div class="search-bar">
+        <i data-lucide="search"></i>
+        <span>Buscar cursos...</span>
+      </div>
+
+      <div class="section">
+        <div class="cards-stack">
+          <div class="card course-card clickable" onclick="goTo('screen-peer-select')">
+            <div class="icon-box"><i data-lucide="code"></i></div>
+            <div class="course-info">
+              <span class="course-name">Ingeniería de Software</span>
+              <span class="course-meta">Prof. García · 28 estudiantes</span>
+              <div class="course-badges">
+                <span class="course-badge course-badge-red">1 evaluación activa</span>
+                <span class="course-badge course-badge-subtle">Grupo 3</span>
+              </div>
+            </div>
+            <i data-lucide="chevron-right" class="chevron"></i>
+          </div>
+
+          <div class="card course-card clickable" onclick="goTo('screen-peer-select')">
+            <div class="icon-box"><i data-lucide="palette"></i></div>
+            <div class="course-info">
+              <span class="course-name">Diseño de Interfaces</span>
+              <span class="course-meta">Prof. Martínez · 22 estudiantes</span>
+              <div class="course-badges">
+                <span class="course-badge course-badge-subtle">Grupo 1</span>
+              </div>
+            </div>
+            <i data-lucide="chevron-right" class="chevron"></i>
+          </div>
+
+          <div class="card course-card clickable" onclick="goTo('screen-peer-select')">
+            <div class="icon-box"><i data-lucide="database"></i></div>
+            <div class="course-info">
+              <span class="course-name">Bases de Datos II</span>
+              <span class="course-meta">Prof. López · 30 estudiantes</span>
+              <div class="course-badges">
+                <span class="course-badge course-badge-subtle">Grupo 2</span>
+              </div>
+            </div>
+            <i data-lucide="chevron-right" class="chevron"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-spacer"></div>
+
+      <div class="tab-bar">
+        <button class="tab-item" onclick="goTo('screen-student-home')">
+          <i data-lucide="house"></i>
+          <span>Inicio</span>
+        </button>
+        <button class="tab-item active" onclick="goTo('screen-student-courses')">
+          <i data-lucide="book-open"></i>
+          <span>Cursos</span>
+        </button>
+        <button class="tab-item" onclick="goTo('screen-student-profile')">
+          <i data-lucide="user"></i>
+          <span>Perfil</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════════ TEACHER COURSES ══════════════ -->
+    <div class="screen" id="screen-teacher-courses">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="teacher-header">
+        <div class="h-text">
+          <h1>Mis cursos</h1>
+        </div>
+        <button class="notif-btn clickable">
+          <i data-lucide="plus"></i>
+        </button>
+      </div>
+
+      <div class="search-bar">
+        <i data-lucide="search"></i>
+        <span>Buscar curso...</span>
+      </div>
+
+      <div class="section">
+        <div class="cards-stack">
+          <div class="card course-card clickable" onclick="goTo('screen-course-detail')">
+            <div class="icon-box"><i data-lucide="code"></i></div>
+            <div class="course-info">
+              <span class="course-name">Ingeniería de Software</span>
+              <span class="course-meta">2026-10 · 30 estudiantes</span>
+              <div class="course-badges">
+                <span class="course-badge course-badge-subtle"><i data-lucide="users"></i> 3 grupos</span>
+                <span class="course-badge course-badge-subtle"><i data-lucide="clipboard-list"></i> 5 evaluaciones</span>
+              </div>
+            </div>
+            <i data-lucide="chevron-right" class="chevron"></i>
+          </div>
+
+          <div class="card course-card clickable" onclick="goTo('screen-course-detail')">
+            <div class="icon-box"><i data-lucide="palette"></i></div>
+            <div class="course-info">
+              <span class="course-name">Diseño de Interfaces</span>
+              <span class="course-meta">2026-10 · 25 estudiantes</span>
+              <div class="course-badges">
+                <span class="course-badge course-badge-subtle"><i data-lucide="users"></i> 4 grupos</span>
+                <span class="course-badge course-badge-subtle"><i data-lucide="clipboard-list"></i> 3 evaluaciones</span>
+              </div>
+            </div>
+            <i data-lucide="chevron-right" class="chevron"></i>
+          </div>
+
+          <div class="card course-card clickable" onclick="goTo('screen-course-detail')">
+            <div class="icon-box"><i data-lucide="globe"></i></div>
+            <div class="course-info">
+              <span class="course-name">Programación Web</span>
+              <span class="course-meta">2026-10 · 20 estudiantes</span>
+              <div class="course-badges">
+                <span class="course-badge course-badge-subtle"><i data-lucide="users"></i> 5 grupos</span>
+                <span class="course-badge course-badge-subtle"><i data-lucide="clipboard-list"></i> 2 evaluaciones</span>
+              </div>
+            </div>
+            <i data-lucide="chevron-right" class="chevron"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-spacer"></div>
+
+      <div class="tab-bar">
+        <button class="tab-item" onclick="goTo('screen-teacher-home')">
+          <i data-lucide="house"></i>
+          <span>Inicio</span>
+        </button>
+        <button class="tab-item active" onclick="goTo('screen-teacher-courses')">
+          <i data-lucide="book-open"></i>
+          <span>Cursos</span>
+        </button>
+        <button class="tab-item" onclick="goTo('screen-reports')">
+          <i data-lucide="bar-chart-3"></i>
+          <span>Reportes</span>
+        </button>
+        <button class="tab-item" onclick="goTo('screen-teacher-profile')">
+          <i data-lucide="user"></i>
+          <span>Perfil</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════════ COURSE DETAIL ══════════════ -->
+    <div class="screen" id="screen-course-detail">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="nav-bar">
+        <button class="back-btn" onclick="goTo('screen-teacher-courses')"><i data-lucide="arrow-left"></i></button>
+        <span style="font-size:16px;font-weight:600;color:var(--text-primary);flex:1">Ingeniería de Software</span>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <span class="stat-number" style="color:var(--accent)">30</span>
+          <span class="stat-label">Estudiantes</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number" style="color:var(--positive)">3</span>
+          <span class="stat-label">Grupos</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number" style="color:var(--warning)">5</span>
+          <span class="stat-label">Evaluaciones</span>
+        </div>
+      </div>
+
+      <div class="detail-tabs">
+        <button class="detail-tab active" onclick="switchCourseTab('groups')">Grupos</button>
+        <button class="detail-tab" onclick="switchCourseTab('evals')">Evaluaciones</button>
+      </div>
+
+      <!-- ── Groups tab content ── -->
+      <div class="cd-groups-content active">
+        <div class="import-banner">
+          <div class="import-banner-icon"><i data-lucide="upload"></i></div>
+          <span class="import-title">Importar desde Brightspace</span>
+          <span class="import-desc">CSV o JSON con categorías y grupos</span>
+          <button class="btn-import clickable">Seleccionar archivo</button>
+        </div>
+
+        <div class="category-header">
+          <span class="cat-title">Categoría: Sprint Teams</span>
+          <span class="cat-count">3 grupos</span>
+        </div>
+
+        <div class="section">
+          <div class="cards-stack">
+            <div class="card group-card">
+              <div class="card-row">
+                <span class="group-title">Grupo 1</span>
+                <span class="course-badge course-badge-subtle">5 miembros</span>
+              </div>
+              <div class="member-chips">
+                <div class="member-chip">
+                  <div class="mini-avatar" style="background:var(--accent)">M</div>
+                  María L.
+                </div>
+                <div class="member-chip">
+                  <div class="mini-avatar" style="background:var(--positive)">J</div>
+                  Juan P.
+                </div>
+                <div class="member-chip" style="background:var(--surface);border:1px solid var(--border)">
+                  +2 más
+                </div>
+              </div>
+            </div>
+
+            <div class="card group-card">
+              <div class="card-row">
+                <span class="group-title">Grupo 2</span>
+                <span class="course-badge course-badge-subtle">4 miembros</span>
+              </div>
+              <div class="member-chips">
+                <div class="member-chip">
+                  <div class="mini-avatar" style="background:var(--negative)">A</div>
+                  Ana S.
+                </div>
+                <div class="member-chip">
+                  <div class="mini-avatar" style="background:var(--accent)">P</div>
+                  Pedro M.
+                </div>
+                <div class="member-chip" style="background:var(--surface);border:1px solid var(--border)">
+                  +2 más
+                </div>
+              </div>
+            </div>
+
+            <div class="card group-card">
+              <div class="card-row">
+                <span class="group-title">Grupo 3</span>
+                <span class="course-badge course-badge-subtle">5 miembros</span>
+              </div>
+              <div class="member-chips">
+                <div class="member-chip">
+                  <div class="mini-avatar" style="background:var(--avatar-purple)">L</div>
+                  Laura R.
+                </div>
+                <div class="member-chip">
+                  <div class="mini-avatar" style="background:var(--positive)">D</div>
+                  Diego M.
+                </div>
+                <div class="member-chip" style="background:var(--surface);border:1px solid var(--border)">
+                  +3 más
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Evaluations tab content ── -->
+      <div class="cd-evals-content">
+        <div class="section-header-row">
+          <h2>Evaluaciones del curso</h2>
+          <span class="section-count">5 total</span>
+        </div>
+
+        <div class="assessment-list">
+          <div class="assessment-card ass-active">
+            <div class="ass-header">
+              <span class="ass-title">Sprint Review 4</span>
+              <span class="ass-badge ass-badge-active">Activa</span>
+            </div>
+            <span class="ass-meta">Sprint Teams · Cierra en 2h 15m</span>
+            <div class="ass-progress-row">
+              <div class="ass-progress-bar"><div class="ass-progress-fill" style="width:60%;background:var(--accent)"></div></div>
+              <span class="ass-progress-label">18/30 completaron</span>
+            </div>
+            <div class="ass-footer">
+              <button class="ass-link clickable" onclick="goTo('screen-teacher-results')"><i data-lucide="eye"></i> Ver</button>
+            </div>
+          </div>
+
+          <div class="assessment-card">
+            <div class="ass-header">
+              <span class="ass-title">Sprint Review 3</span>
+              <span class="ass-badge ass-badge-closed">Cerrada</span>
+            </div>
+            <span class="ass-meta">Sprint Teams · 28 feb 2026</span>
+            <div class="ass-progress-row">
+              <div class="ass-progress-bar"><div class="ass-progress-fill" style="width:100%;background:var(--positive)"></div></div>
+              <span class="ass-progress-label">30/30 completaron</span>
+            </div>
+          </div>
+
+          <div class="assessment-card">
+            <div class="ass-header">
+              <span class="ass-title">Sprint Review 2</span>
+              <span class="ass-badge ass-badge-closed">Cerrada</span>
+            </div>
+            <span class="ass-meta">Sprint Teams · 14 feb 2026</span>
+            <div class="ass-progress-row">
+              <div class="ass-progress-bar"><div class="ass-progress-fill" style="width:100%;background:var(--positive)"></div></div>
+              <span class="ass-progress-label">30/30 completaron</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="padding:0 24px;width:100%">
+          <button class="btn-primary clickable" onclick="goTo('screen-create-assessment')">
+            <i data-lucide="plus" style="width:20px;height:20px"></i>
+            Nueva evaluación
+          </button>
+        </div>
+      </div>
+
+      <div class="spacer"></div>
+
+      <div style="padding:0 24px;width:100%">
+        <button class="btn-primary clickable" onclick="goTo('screen-student-invitation')">
+          <i data-lucide="user-plus" style="width:20px;height:20px"></i>
+          Invitar estudiantes
+        </button>
+      </div>
+
+      <div style="height:24px"></div>
+    </div>
+
+    <!-- ══════════════ CREATE ASSESSMENT ══════════════ -->
+    <div class="screen" id="screen-create-assessment">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="nav-bar">
+        <button class="back-btn" onclick="goTo('screen-course-detail')"><i data-lucide="arrow-left"></i></button>
+        <span style="font-size:16px;font-weight:600;color:var(--text-primary)">Nueva Evaluación</span>
+      </div>
+
+      <div class="course-label-inline">
+        <i data-lucide="book-open"></i>
+        <span>Ingeniería de Software</span>
+      </div>
+
+      <div class="scroll-area" style="gap:16px">
+        <div class="form-group">
+          <span class="form-label">Nombre de la evaluación</span>
+          <div class="form-input">
+            <span>Ej: Sprint Review Semana 5</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <span class="form-label">Categoría de grupo</span>
+          <div class="form-select">
+            <span>Proyecto Final</span>
+            <i data-lucide="chevron-down"></i>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <span class="form-label">Fecha límite</span>
+          <div class="form-input">
+            <span style="color:var(--text-primary)">25 feb 2026, 23:59</span>
+            <i data-lucide="calendar-clock"></i>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <span class="form-label">Visibilidad de resultados</span>
+          <div class="visibility-cards">
+            <div class="visibility-card selected clickable">
+              <i data-lucide="eye"></i>
+              <span>Pública</span>
+            </div>
+            <div class="visibility-card clickable">
+              <i data-lucide="eye-off"></i>
+              <span>Privada</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="summary-info-card">
+          <div class="summary-title">
+            <i data-lucide="info"></i>
+            <span>Resumen</span>
+          </div>
+          <ul>
+            <li>6 grupos serán evaluados</li>
+            <li>24 estudiantes recibirán notificación</li>
+            <li>La evaluación expira el 25 feb 2026 a las 23:59</li>
+          </ul>
+        </div>
+
+        <div style="height:16px"></div>
+
+        <button class="btn-primary clickable" onclick="goTo('screen-teacher-home')">
+          <i data-lucide="send" style="width:20px;height:20px"></i>
+          Lanzar Evaluación
+        </button>
+
+        <div style="height:24px"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ PEER SELECT ══════════════ -->
+    <div class="screen" id="screen-peer-select">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="nav-bar">
+        <button class="back-btn" onclick="goTo('screen-student-courses')"><i data-lucide="arrow-left"></i></button>
+        <span style="font-size:16px;font-weight:600;color:var(--text-primary)">Sprint 2 - Evaluación</span>
+      </div>
+
+      <div class="info-box">
+        <div class="timer-badge">
+          <i data-lucide="timer"></i>
+          Faltan 2 días
+        </div>
+        <span class="eval-count">1 de 3 evaluados</span>
+        <div class="progress-mini">
+          <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:33%"></div></div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div style="padding:16px 24px 8px">
+        <span style="font-size:16px;font-weight:600;color:var(--text-primary)">Evalúa a tus compañeros</span>
+      </div>
+
+      <div class="peer-list">
+        <div class="peer-card">
+          <div class="peer-avatar" style="background:var(--positive)">FM</div>
+          <div class="peer-info">
+            <span class="peer-name">Flavio Mendoza</span>
+            <span class="peer-status" style="color:var(--positive)">
+              <i data-lucide="check-circle"></i>
+              Evaluado
+            </span>
+          </div>
+          <button class="btn-eval btn-eval-subtle clickable">Ver</button>
+        </div>
+
+        <div class="peer-card highlight">
+          <div class="peer-avatar" style="background:var(--warning)">JR</div>
+          <div class="peer-info">
+            <span class="peer-name">Jorge Ramírez</span>
+            <span class="peer-status" style="color:var(--text-muted)">
+              <i data-lucide="circle-dashed"></i>
+              Pendiente
+            </span>
+          </div>
+          <button class="btn-eval btn-eval-accent clickable" onclick="goTo('screen-eval-form')">Evaluar</button>
+        </div>
+
+        <div class="peer-card">
+          <div class="peer-avatar" style="background:var(--negative)">SL</div>
+          <div class="peer-info">
+            <span class="peer-name">Sandro López</span>
+            <span class="peer-status" style="color:var(--text-muted)">
+              <i data-lucide="circle-dashed"></i>
+              Pendiente
+            </span>
+          </div>
+          <button class="btn-eval btn-eval-accent clickable" onclick="goTo('screen-eval-form')">Evaluar</button>
+        </div>
+      </div>
+
+      <div class="tip-card">
+        <i data-lucide="info"></i>
+        <div class="tip-content">
+          <span class="tip-title">Las evaluaciones son anónimas</span>
+          <span class="tip-text">Tus compañeros no verán quién los evaluó. Sé honesto y constructivo.</span>
+        </div>
+      </div>
+
+      <div class="flex-spacer"></div>
+
+      <div class="tab-bar">
+        <button class="tab-item" onclick="goTo('screen-student-home')">
+          <i data-lucide="house"></i>
+          <span>Inicio</span>
+        </button>
+        <button class="tab-item active" onclick="goTo('screen-student-courses')">
+          <i data-lucide="book-open"></i>
+          <span>Cursos</span>
+        </button>
+        <button class="tab-item" onclick="goTo('screen-student-profile')">
+          <i data-lucide="user"></i>
+          <span>Perfil</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════════ REPORTS ══════════════ -->
+    <div class="screen" id="screen-reports">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="nav-bar" style="justify-content:space-between">
+        <button class="back-btn" onclick="goTo('screen-teacher-home')"><i data-lucide="arrow-left"></i></button>
+        <span style="font-size:16px;font-weight:600;color:var(--text-primary);flex:1;text-align:center">Reportes</span>
+        <i data-lucide="download" style="width:22px;height:22px;color:var(--text-secondary);cursor:pointer"></i>
+      </div>
+
+      <div class="course-label-inline">
+        <i data-lucide="book-open"></i>
+        <span>Ingeniería de Software</span>
+      </div>
+
+      <div class="summary-cards-row">
+        <div class="summary-card-accent">
+          <span class="sc-label">Promedio general</span>
+          <span class="sc-value">4.1</span>
+          <span class="sc-sub">de 5.0</span>
+        </div>
+        <div class="summary-card-surface">
+          <span class="sc-label">Evaluaciones</span>
+          <span class="sc-value">47</span>
+          <span class="sc-sub">completadas</span>
+        </div>
+      </div>
+
+      <div class="report-tabs">
+        <button class="report-tab active">Actividades</button>
+        <button class="report-tab">Grupos</button>
+        <button class="report-tab">Estudiantes</button>
+      </div>
+
+      <div class="section">
+        <div class="cards-stack">
+          <div class="card activity-report-card">
+            <div class="ar-header">
+              <div>
+                <span class="ar-title">Sprint Review 1</span>
+                <span class="ar-meta">3 grupos · 15 evaluaciones</span>
+              </div>
+              <span class="score-badge score-badge-green">4.3</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">Puntualidad</span>
+              <div class="bar-track"><div class="bar-fill" style="width:86%;background:var(--accent)"></div></div>
+              <span class="bar-val">4.3</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">Aportes</span>
+              <div class="bar-track"><div class="bar-fill" style="width:90%;background:var(--accent)"></div></div>
+              <span class="bar-val">4.5</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">Compromiso</span>
+              <div class="bar-track"><div class="bar-fill" style="width:82%;background:var(--accent)"></div></div>
+              <span class="bar-val">4.1</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">Actitud</span>
+              <div class="bar-track"><div class="bar-fill" style="width:88%;background:var(--accent)"></div></div>
+              <span class="bar-val">4.4</span>
+            </div>
+          </div>
+
+          <div class="card activity-report-card">
+            <div class="ar-header">
+              <div>
+                <span class="ar-title">Sprint Review 2</span>
+                <span class="ar-meta">3 grupos · 14 evaluaciones</span>
+              </div>
+              <span class="score-badge score-badge-yellow">3.8</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">Puntualidad</span>
+              <div class="bar-track"><div class="bar-fill" style="width:76%;background:var(--warning)"></div></div>
+              <span class="bar-val">3.8</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">Aportes</span>
+              <div class="bar-track"><div class="bar-fill" style="width:80%;background:var(--warning)"></div></div>
+              <span class="bar-val">4.0</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">Compromiso</span>
+              <div class="bar-track"><div class="bar-fill" style="width:70%;background:var(--negative)"></div></div>
+              <span class="bar-val">3.5</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">Actitud</span>
+              <div class="bar-track"><div class="bar-fill" style="width:78%;background:var(--warning)"></div></div>
+              <span class="bar-val">3.9</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-spacer"></div>
+
+      <div class="tab-bar">
+        <button class="tab-item" onclick="goTo('screen-teacher-home')">
+          <i data-lucide="house"></i>
+          <span>Inicio</span>
+        </button>
+        <button class="tab-item" onclick="goTo('screen-teacher-courses')">
+          <i data-lucide="book-open"></i>
+          <span>Cursos</span>
+        </button>
+        <button class="tab-item active" onclick="goTo('screen-reports')">
+          <i data-lucide="bar-chart-3"></i>
+          <span>Reportes</span>
+        </button>
+        <button class="tab-item" onclick="goTo('screen-teacher-profile')">
+          <i data-lucide="user"></i>
+          <span>Perfil</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════════ STUDENT RESULTS ══════════════ -->
+    <div class="screen" id="screen-student-results">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="nav-bar">
+        <button class="back-btn" onclick="goTo('screen-student-home')"><i data-lucide="arrow-left"></i></button>
+        <span style="font-size:16px;font-weight:600;color:var(--text-primary)">Mis resultados</span>
+      </div>
+
+      <div class="activity-info">
+        <div style="font-size:17px;font-weight:700;color:var(--text-primary)">Sprint Review 3</div>
+        <div class="course-label">Ingeniería de Software</div>
+      </div>
+
+      <div class="result-avg-card">
+        <span class="ra-label">Mi promedio general</span>
+        <span class="ra-number">4.3</span>
+        <span class="ra-badge">Good</span>
+        <span class="ra-group">Promedio del grupo: 4.1</span>
+      </div>
+
+      <div class="criteria-detail-section">
+        <div class="criteria-detail-header">
+          <h2>Detalle por criterio</h2>
+          <span class="peers-count">Evaluado por 3 pares</span>
+        </div>
+
+        <div class="cards-stack">
+          <div class="criteria-detail-item">
+            <div class="cdi-header">
+              <span class="cdi-name">Puntualidad</span>
+              <span class="cdi-score" style="color:var(--positive)">4.7</span>
+            </div>
+            <div class="cdi-progress"><div class="cdi-progress-fill" style="width:94%;background:var(--positive)"></div></div>
+            <span class="cdi-desc">Excellent — Consistentemente puntual</span>
+          </div>
+
+          <div class="criteria-detail-item">
+            <div class="cdi-header">
+              <span class="cdi-name">Contribuciones</span>
+              <span class="cdi-score" style="color:var(--accent)">4.0</span>
+            </div>
+            <div class="cdi-progress"><div class="cdi-progress-fill" style="width:80%;background:var(--accent)"></div></div>
+            <span class="cdi-desc">Good — Trabajo de buena calidad</span>
+          </div>
+
+          <div class="criteria-detail-item">
+            <div class="cdi-header">
+              <span class="cdi-name">Compromiso</span>
+              <span class="cdi-score" style="color:var(--accent)">4.3</span>
+            </div>
+            <div class="cdi-progress"><div class="cdi-progress-fill" style="width:86%;background:var(--accent)"></div></div>
+            <span class="cdi-desc">Good — Generalmente comprometido</span>
+          </div>
+
+          <div class="criteria-detail-item">
+            <div class="cdi-header">
+              <span class="cdi-name">Actitud</span>
+              <span class="cdi-score" style="color:var(--accent)">4.3</span>
+            </div>
+            <div class="cdi-progress"><div class="cdi-progress-fill" style="width:86%;background:var(--accent)"></div></div>
+            <span class="cdi-desc">Good — Actitud positiva y colaborativa</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-spacer"></div>
+
+      <div class="tab-bar">
+        <button class="tab-item" onclick="goTo('screen-student-home')">
+          <i data-lucide="house"></i>
+          <span>Inicio</span>
+        </button>
+        <button class="tab-item active" onclick="goTo('screen-student-courses')">
+          <i data-lucide="book-open"></i>
+          <span>Cursos</span>
+        </button>
+        <button class="tab-item" onclick="goTo('screen-student-profile')">
+          <i data-lucide="user"></i>
+          <span>Perfil</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════════ TEACHER PROFILE ══════════════ -->
+    <div class="screen" id="screen-teacher-profile">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="profile-header">
+        <h1>Mi perfil</h1>
+        <button class="settings-btn clickable"><i data-lucide="settings"></i></button>
+      </div>
+
+      <div class="profile-avatar-section">
+        <div class="avatar-large">MR</div>
+        <span class="profile-name">María Rodríguez</span>
+        <span class="profile-email">mrodriguez@uninorte.edu.co</span>
+        <span class="profile-badge">Profesor</span>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <span class="stat-number" style="color:var(--accent)">4</span>
+          <span class="stat-label">Cursos</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number" style="color:var(--accent)">18</span>
+          <span class="stat-label">Evaluaciones</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number" style="color:var(--accent)">120</span>
+          <span class="stat-label">Estudiantes</span>
+        </div>
+      </div>
+
+      <div class="config-section">
+        <span class="config-label">Configuración</span>
+        <div class="menu-item clickable">
+          <i data-lucide="bell"></i>
+          <span>Notificaciones</span>
+          <i data-lucide="chevron-right" class="menu-chevron"></i>
+        </div>
+        <div class="menu-item">
+          <i data-lucide="moon"></i>
+          <span>Tema oscuro</span>
+          <div class="toggle-switch"></div>
+        </div>
+        <div class="menu-item clickable">
+          <i data-lucide="shield"></i>
+          <span>Seguridad</span>
+          <i data-lucide="chevron-right" class="menu-chevron"></i>
+        </div>
+        <div class="menu-item clickable">
+          <i data-lucide="circle-help"></i>
+          <span>Ayuda y soporte</span>
+          <i data-lucide="chevron-right" class="menu-chevron"></i>
+        </div>
+      </div>
+
+      <div class="spacer"></div>
+
+      <div style="padding:0 24px;width:100%">
+        <button class="btn-logout clickable" onclick="goTo('screen-login')">
+          <i data-lucide="log-out" style="width:18px;height:18px"></i>
+          Cerrar sesión
+        </button>
+      </div>
+
+      <div class="flex-spacer"></div>
+
+      <div class="tab-bar">
+        <button class="tab-item" onclick="goTo('screen-teacher-home')">
+          <i data-lucide="house"></i>
+          <span>Inicio</span>
+        </button>
+        <button class="tab-item" onclick="goTo('screen-teacher-courses')">
+          <i data-lucide="book-open"></i>
+          <span>Cursos</span>
+        </button>
+        <button class="tab-item active" onclick="goTo('screen-teacher-profile')">
+          <i data-lucide="user"></i>
+          <span>Perfil</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════════ ONBOARDING ══════════════ -->
+    <div class="screen onboard-screen" id="screen-onboarding">
+      <div class="onboard-carousel" id="onboard-carousel">
+        <div class="onboard-slide active" data-slide="0">
+          <div class="onboard-icon-big"><i data-lucide="users"></i></div>
+          <div class="onboard-title">Evalúa a tus compañeros</div>
+          <div class="onboard-desc">Califica el desempeño de tus compañeros de equipo de forma anónima y constructiva.</div>
+        </div>
+        <div class="onboard-slide" data-slide="1">
+          <div class="onboard-icon-big"><i data-lucide="bar-chart-3"></i></div>
+          <div class="onboard-title">Visualiza tu progreso</div>
+          <div class="onboard-desc">Recibe retroalimentación detallada por cada criterio y mejora tu desempeño semestre a semestre.</div>
+        </div>
+        <div class="onboard-slide" data-slide="2">
+          <div class="onboard-icon-big"><i data-lucide="shield-check"></i></div>
+          <div class="onboard-title">100% Anónimo y seguro</div>
+          <div class="onboard-desc">Tu identidad como evaluador siempre estará protegida. Los profesores ven promedios, no nombres.</div>
+        </div>
+      </div>
+      <div class="onboard-bottom">
+        <div class="onboard-dots" id="onboard-dots">
+          <div class="onboard-dot active" data-dot="0"></div>
+          <div class="onboard-dot" data-dot="1"></div>
+          <div class="onboard-dot" data-dot="2"></div>
+        </div>
+        <div class="onboard-actions">
+          <button class="btn-skip" onclick="goTo('screen-login')">Omitir</button>
+          <button class="btn-next" id="onboard-next-btn" onclick="nextOnboardSlide()">Siguiente</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ NOTIFICATIONS ══════════════ -->
+    <div class="screen" id="screen-notifications">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="nav-bar" style="justify-content:space-between">
+        <button class="back-btn" onclick="navigateToHome()"><i data-lucide="arrow-left"></i></button>
+        <span style="font-size:16px;font-weight:600;color:var(--text-primary);flex:1;text-align:center">Notificaciones</span>
+        <span style="font-size:13px;font-weight:500;color:var(--accent);cursor:pointer" onclick="markAllRead()">Leer todo</span>
+      </div>
+
+      <div class="notif-filters" id="notif-filters">
+        <button class="notif-filter-btn active" data-filter="all" onclick="filterNotifs(this)">Todas</button>
+        <button class="notif-filter-btn" data-filter="eval" onclick="filterNotifs(this)">Evaluaciones</button>
+        <button class="notif-filter-btn" data-filter="course" onclick="filterNotifs(this)">Cursos</button>
+        <button class="notif-filter-btn" data-filter="system" onclick="filterNotifs(this)">Sistema</button>
+      </div>
+
+      <div id="notif-list">
+        <div class="notif-item unread" data-type="eval" onclick="this.classList.remove('unread');this.querySelector('.notif-dot')?.remove()">
+          <div class="notif-icon" style="background:#FF453A20">
+            <i data-lucide="alert-circle" style="color:var(--negative)"></i>
+          </div>
+          <div class="notif-body">
+            <span class="notif-title">Evaluación por vencer</span>
+            <span class="notif-text">Sprint Review 3 vence en 2 horas. Tienes 1 compañero pendiente.</span>
+            <span class="notif-time">Hace 15 min</span>
+          </div>
+          <div class="notif-dot"></div>
+        </div>
+
+        <div class="notif-item unread" data-type="eval" onclick="this.classList.remove('unread');this.querySelector('.notif-dot')?.remove()">
+          <div class="notif-icon" style="background:#32D74B20">
+            <i data-lucide="check-circle" style="color:var(--positive)"></i>
+          </div>
+          <div class="notif-body">
+            <span class="notif-title">Resultados disponibles</span>
+            <span class="notif-text">Ya puedes ver los resultados de Sprint Review 2 en Ing. de Software.</span>
+            <span class="notif-time">Hace 1 hora</span>
+          </div>
+          <div class="notif-dot"></div>
+        </div>
+
+        <div class="notif-item" data-type="course" onclick="this.classList.remove('unread')">
+          <div class="notif-icon" style="background:var(--accent-light)">
+            <i data-lucide="book-open" style="color:var(--accent)"></i>
+          </div>
+          <div class="notif-body">
+            <span class="notif-title">Nuevo curso agregado</span>
+            <span class="notif-text">Has sido inscrito en Bases de Datos II — Grupo 2.</span>
+            <span class="notif-time">Ayer</span>
+          </div>
+        </div>
+
+        <div class="notif-item" data-type="eval" onclick="this.classList.remove('unread')">
+          <div class="notif-icon" style="background:#FFD60A20">
+            <i data-lucide="clock" style="color:var(--warning)"></i>
+          </div>
+          <div class="notif-body">
+            <span class="notif-title">Nueva evaluación asignada</span>
+            <span class="notif-text">Evaluación Parcial 2 de Diseño de Interfaces ya está disponible.</span>
+            <span class="notif-time">Ayer</span>
+          </div>
+        </div>
+
+        <div class="notif-item" data-type="system" onclick="this.classList.remove('unread')">
+          <div class="notif-icon" style="background:var(--accent-light)">
+            <i data-lucide="sparkles" style="color:var(--accent)"></i>
+          </div>
+          <div class="notif-body">
+            <span class="notif-title">Actualización de la app</span>
+            <span class="notif-text">PeerUn v2.1 — Ahora puedes ver gráficas de tu progreso.</span>
+            <span class="notif-time">Hace 3 días</span>
+          </div>
+        </div>
+
+        <div class="notif-item" data-type="course" onclick="this.classList.remove('unread')">
+          <div class="notif-icon" style="background:#BF5AF220">
+            <i data-lucide="users" style="color:var(--avatar-purple)"></i>
+          </div>
+          <div class="notif-body">
+            <span class="notif-title">Nuevo integrante</span>
+            <span class="notif-text">Pedro Martínez se unió a tu grupo en Ing. de Software.</span>
+            <span class="notif-time">Hace 5 días</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-spacer"></div>
+    </div>
+
+    <!-- ══════════════ STUDENT DETAIL (teacher view) ══════════════ -->
+    <div class="screen" id="screen-student-detail">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="nav-bar">
+        <button class="back-btn" onclick="goTo('screen-teacher-results')"><i data-lucide="arrow-left"></i></button>
+        <span style="font-size:16px;font-weight:600;color:var(--text-primary)">Detalle del estudiante</span>
+      </div>
+
+      <div class="student-detail-header">
+        <div class="avatar-xl" style="background:var(--accent)">ML</div>
+        <span class="sd-name">María López</span>
+        <span class="sd-email">mlopez@uninorte.edu.co</span>
+        <div style="display:flex;gap:8px">
+          <div class="chip chip-green">Promedio: 4.6</div>
+          <div class="chip" style="background:var(--accent-light);color:var(--accent)">Grupo 1</div>
+        </div>
+      </div>
+
+      <div style="padding:0 24px 8px">
+        <span style="font-size:14px;font-weight:600;color:var(--text-primary)">Puntuaciones por criterio</span>
+      </div>
+
+      <div class="radar-placeholder">
+        <div class="radar-bar-chart" id="student-bar-chart">
+          <div class="radar-bar" style="height:90%;background:var(--positive)"><span>4.5</span></div>
+          <div class="radar-bar" style="height:92%;background:var(--accent)"><span>4.6</span></div>
+          <div class="radar-bar" style="height:88%;background:var(--accent)"><span>4.4</span></div>
+          <div class="radar-bar" style="height:96%;background:var(--positive)"><span>4.8</span></div>
+        </div>
+      </div>
+      <div class="radar-bar-labels">
+        <span>Puntual.</span><span>Aporte</span><span>Comprom.</span><span>Actitud</span>
+      </div>
+
+      <div style="padding:16px 24px 8px">
+        <span style="font-size:14px;font-weight:600;color:var(--text-primary)">Historial de evaluaciones</span>
+      </div>
+
+      <div class="eval-timeline">
+        <div class="timeline-item">
+          <div class="timeline-dot-line">
+            <div class="timeline-dot" style="background:var(--positive)"></div>
+            <div class="timeline-line"></div>
+          </div>
+          <div class="timeline-content">
+            <span class="tl-title">Sprint Review 3</span>
+            <span class="tl-meta">15 feb 2026 · 3 evaluadores</span>
+            <span class="tl-score" style="color:var(--positive)">4.6 / 5.0</span>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot-line">
+            <div class="timeline-dot" style="background:var(--accent)"></div>
+            <div class="timeline-line"></div>
+          </div>
+          <div class="timeline-content">
+            <span class="tl-title">Sprint Review 2</span>
+            <span class="tl-meta">1 feb 2026 · 3 evaluadores</span>
+            <span class="tl-score" style="color:var(--accent)">4.2 / 5.0</span>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot-line">
+            <div class="timeline-dot" style="background:var(--warning)"></div>
+          </div>
+          <div class="timeline-content">
+            <span class="tl-title">Sprint Review 1</span>
+            <span class="tl-meta">18 ene 2026 · 3 evaluadores</span>
+            <span class="tl-score" style="color:var(--warning)">3.8 / 5.0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="spacer"></div>
+    </div>
+
+    <!-- ══════════════ EVAL CONFIRM ══════════════ -->
+    <div class="screen confirm-screen" id="screen-eval-confirm">
+
+      <div class="confirm-icon-big"><i data-lucide="check"></i></div>
+      <div class="confirm-title">¡Evaluación enviada!</div>
+      <div class="confirm-desc">Has evaluado exitosamente a todos tus compañeros en esta actividad.</div>
+
+      <div class="confirm-summary">
+        <div class="cs-row">
+          <span class="cs-label">Actividad</span>
+          <span class="cs-value">Sprint Review 3</span>
+        </div>
+        <div class="cs-row">
+          <span class="cs-label">Compañeros evaluados</span>
+          <span class="cs-value">3 de 3</span>
+        </div>
+        <div class="cs-row">
+          <span class="cs-label">Tiempo total</span>
+          <span class="cs-value">8 min 23 seg</span>
+        </div>
+        <div class="cs-row">
+          <span class="cs-label">Estado</span>
+          <span class="cs-value" style="color:var(--positive)">✓ Completada</span>
+        </div>
+      </div>
+
+      <div style="width:100%;display:flex;flex-direction:column;gap:12px">
+        <button class="btn-primary clickable" onclick="goTo('screen-student-results')">Ver mis resultados</button>
+        <button class="btn-outline clickable" onclick="goTo('screen-student-home')">Volver al inicio</button>
+      </div>
+    </div>
+
+    <!-- ══════════════ EVAL HISTORY ══════════════ -->
+    <div class="screen" id="screen-eval-history">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="nav-bar">
+        <button class="back-btn" onclick="goTo('screen-student-home')"><i data-lucide="arrow-left"></i></button>
+        <span style="font-size:16px;font-weight:600;color:var(--text-primary)">Historial de evaluaciones</span>
+      </div>
+
+      <div class="history-tabs" id="history-tabs">
+        <button class="history-tab active" data-tab="all" onclick="filterHistory(this)">Todas</button>
+        <button class="history-tab" data-tab="completed" onclick="filterHistory(this)">Completadas</button>
+        <button class="history-tab" data-tab="received" onclick="filterHistory(this)">Recibidas</button>
+      </div>
+
+      <div id="history-list">
+        <div class="history-card clickable" data-type="completed" onclick="goTo('screen-student-results')">
+          <div class="hc-top">
+            <div>
+              <span class="hc-title">Sprint Review 3</span>
+              <span class="hc-course">Ingeniería de Software</span>
+            </div>
+            <span class="hc-date">15 feb 2026</span>
+          </div>
+          <div class="hc-bottom">
+            <span class="hc-score-pill" style="background:#32D74B20;color:var(--positive)">4.3</span>
+            <span class="hc-peers">Evaluaste a 3 compañeros</span>
+            <div style="margin-left:auto">
+              <div class="chip chip-green" style="font-size:11px">Completada</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="history-card clickable" data-type="received" onclick="goTo('screen-student-results')">
+          <div class="hc-top">
+            <div>
+              <span class="hc-title">Sprint Review 2</span>
+              <span class="hc-course">Ingeniería de Software</span>
+            </div>
+            <span class="hc-date">1 feb 2026</span>
+          </div>
+          <div class="hc-bottom">
+            <span class="hc-score-pill" style="background:var(--accent-light);color:var(--accent)">4.0</span>
+            <span class="hc-peers">Recibido de 3 pares</span>
+            <div style="margin-left:auto">
+              <div class="chip" style="background:var(--accent-light);color:var(--accent);font-size:11px">Recibida</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="history-card clickable" data-type="completed" onclick="goTo('screen-student-results')">
+          <div class="hc-top">
+            <div>
+              <span class="hc-title">Sprint Review 1</span>
+              <span class="hc-course">Ingeniería de Software</span>
+            </div>
+            <span class="hc-date">18 ene 2026</span>
+          </div>
+          <div class="hc-bottom">
+            <span class="hc-score-pill" style="background:#FFD60A20;color:var(--warning)">3.8</span>
+            <span class="hc-peers">Evaluaste a 3 compañeros</span>
+            <div style="margin-left:auto">
+              <div class="chip chip-green" style="font-size:11px">Completada</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="history-card clickable" data-type="received" onclick="goTo('screen-student-results')">
+          <div class="hc-top">
+            <div>
+              <span class="hc-title">Evaluación Parcial 1</span>
+              <span class="hc-course">Diseño de Interfaces</span>
+            </div>
+            <span class="hc-date">10 ene 2026</span>
+          </div>
+          <div class="hc-bottom">
+            <span class="hc-score-pill" style="background:#32D74B20;color:var(--positive)">4.5</span>
+            <span class="hc-peers">Recibido de 4 pares</span>
+            <div style="margin-left:auto">
+              <div class="chip" style="background:var(--accent-light);color:var(--accent);font-size:11px">Recibida</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="history-card clickable" data-type="completed">
+          <div class="hc-top">
+            <div>
+              <span class="hc-title">Evaluación Parcial 1</span>
+              <span class="hc-course">Diseño de Interfaces</span>
+            </div>
+            <span class="hc-date">10 ene 2026</span>
+          </div>
+          <div class="hc-bottom">
+            <span class="hc-score-pill" style="background:#32D74B20;color:var(--positive)">4.2</span>
+            <span class="hc-peers">Evaluaste a 4 compañeros</span>
+            <div style="margin-left:auto">
+              <div class="chip chip-green" style="font-size:11px">Completada</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-spacer"></div>
+
+      <div class="tab-bar">
+        <button class="tab-item" onclick="goTo('screen-student-home')">
+          <i data-lucide="house"></i>
+          <span>Inicio</span>
+        </button>
+        <button class="tab-item active" onclick="goTo('screen-student-courses')">
+          <i data-lucide="book-open"></i>
+          <span>Cursos</span>
+        </button>
+        <button class="tab-item" onclick="goTo('screen-student-profile')">
+          <i data-lucide="user"></i>
+          <span>Perfil</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════════ GROUP DETAIL ══════════════ -->
+    <div class="screen" id="screen-group-detail">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="nav-bar">
+        <button class="back-btn" onclick="goTo('screen-course-detail')"><i data-lucide="arrow-left"></i></button>
+        <span style="font-size:16px;font-weight:600;color:var(--text-primary)">Detalle del grupo</span>
+      </div>
+
+      <div class="group-avg-banner">
+        <span class="ga-label">Promedio del grupo</span>
+        <span class="ga-number">4.2</span>
+        <span class="ga-sub">de 5.0 · Sprint Review 3</span>
+      </div>
+
+      <div class="group-detail-info">
+        <span class="gd-name">Grupo 1 — Sprint Teams</span>
+        <span class="gd-meta">5 miembros · Ingeniería de Software</span>
+      </div>
+
+      <div style="padding:0 24px 8px">
+        <span style="font-size:14px;font-weight:600;color:var(--text-primary)">Miembros</span>
+      </div>
+
+      <div class="member-list">
+        <div class="member-detail-item clickable" onclick="goTo('screen-student-detail')">
+          <div class="avatar" style="background:var(--accent)">ML</div>
+          <div class="md-info">
+            <span class="md-name">María López</span>
+            <span class="md-role">Líder del equipo</span>
+          </div>
+          <span class="md-score" style="color:var(--positive)">4.6</span>
+        </div>
+        <div class="member-detail-item clickable" onclick="goTo('screen-student-detail')">
+          <div class="avatar" style="background:var(--positive)">JP</div>
+          <div class="md-info">
+            <span class="md-name">Juan Pérez</span>
+            <span class="md-role">Desarrollador</span>
+          </div>
+          <span class="md-score" style="color:var(--accent)">4.1</span>
+        </div>
+        <div class="member-detail-item clickable" onclick="goTo('screen-student-detail')">
+          <div class="avatar" style="background:var(--warning)">CR</div>
+          <div class="md-info">
+            <span class="md-name">Carlos Ramírez</span>
+            <span class="md-role">Diseñador</span>
+          </div>
+          <span class="md-score" style="color:var(--warning)">3.8</span>
+        </div>
+        <div class="member-detail-item clickable" onclick="goTo('screen-student-detail')">
+          <div class="avatar" style="background:var(--negative)">AS</div>
+          <div class="md-info">
+            <span class="md-name">Ana Sánchez</span>
+            <span class="md-role">Tester</span>
+          </div>
+          <span class="md-score" style="color:var(--negative)">2.9</span>
+        </div>
+        <div class="member-detail-item clickable" onclick="goTo('screen-student-detail')">
+          <div class="avatar" style="background:var(--avatar-purple)">PM</div>
+          <div class="md-info">
+            <span class="md-name">Pedro Martínez</span>
+            <span class="md-role">Documentador</span>
+          </div>
+          <span class="md-score" style="color:var(--accent)">4.0</span>
+        </div>
+      </div>
+
+      <div class="spacer"></div>
+
+      <div style="padding:0 24px;width:100%">
+        <button class="btn-primary clickable" onclick="goTo('screen-teacher-results')">
+          <i data-lucide="bar-chart-3" style="width:20px;height:20px"></i>
+          Ver resultados completos
+        </button>
+      </div>
+      <div style="height:24px"></div>
+    </div>
+
+    <!-- ══════════════ IMPORT CSV ══════════════ -->
+    <div class="screen" id="screen-import-csv">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="nav-bar">
+        <button class="back-btn" onclick="goTo('screen-course-detail')"><i data-lucide="arrow-left"></i></button>
+        <span style="font-size:16px;font-weight:600;color:var(--text-primary)">Importar estudiantes</span>
+      </div>
+
+      <div style="padding:8px 24px 16px">
+        <span style="font-size:14px;color:var(--text-secondary);line-height:1.4">
+          Sube un archivo CSV o JSON desde Brightspace con los datos de categorías y grupos de tu curso.
+        </span>
+      </div>
+
+      <div class="import-area" id="import-area" onclick="simulateImport()">
+        <i data-lucide="upload-cloud"></i>
+        <span class="ia-title">Arrastra o toca para subir</span>
+        <span class="ia-desc">CSV, JSON · Máximo 5MB</span>
+      </div>
+
+      <div class="import-preview" id="import-preview">
+        <div class="import-preview-header">
+          <span>Vista previa — grupos.csv</span>
+          <i data-lucide="x" style="width:18px;height:18px;color:var(--text-muted);cursor:pointer" onclick="resetImport()"></i>
+        </div>
+        <table class="import-table">
+          <thead>
+            <tr>
+              <th>Categoría</th>
+              <th>Grupo</th>
+              <th>Estudiante</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Sprint Teams</td><td>Grupo 1</td><td>María López</td></tr>
+            <tr><td>Sprint Teams</td><td>Grupo 1</td><td>Juan Pérez</td></tr>
+            <tr><td>Sprint Teams</td><td>Grupo 2</td><td>Ana Sánchez</td></tr>
+            <tr><td>Sprint Teams</td><td>Grupo 2</td><td>Pedro Martínez</td></tr>
+            <tr><td>Final</td><td>Grupo A</td><td>Carlos Ramírez</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="import-progress-section" id="import-progress">
+        <span class="import-progress-text">Importando datos…</span>
+        <div class="import-progress-bar">
+          <div class="import-progress-fill" id="import-progress-fill"></div>
+        </div>
+        <div class="import-result" id="import-result">
+          <i data-lucide="check-circle" style="width:16px;height:16px;color:var(--positive)"></i>
+          <span>3 grupos y 12 estudiantes importados correctamente</span>
+        </div>
+      </div>
+
+      <div class="flex-spacer"></div>
+
+      <div class="save-bar" id="import-save-bar" style="display:none">
+        <button class="btn-primary clickable" onclick="goTo('screen-course-detail')">
+          <i data-lucide="check" style="width:20px;height:20px"></i>
+          Confirmar importación
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════════ SETTINGS ══════════════ -->
+    <div class="screen" id="screen-settings">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="nav-bar">
+        <button class="back-btn" onclick="goTo(currentMode==='student'?'screen-student-profile':'screen-teacher-profile')"><i data-lucide="arrow-left"></i></button>
+        <span style="font-size:16px;font-weight:600;color:var(--text-primary)">Ajustes</span>
+      </div>
+
+      <span class="settings-section-title">Apariencia</span>
+      <div class="settings-item" onclick="toggleSettingsSwitch(this)">
+        <i data-lucide="moon"></i>
+        <div class="si-content">
+          <span class="si-title">Tema oscuro</span>
+          <span class="si-desc">Cambia entre tema claro y oscuro</span>
+        </div>
+        <div class="toggle-switch active" id="settings-theme-toggle"></div>
+      </div>
+
+      <div class="settings-slider-row">
+        <div class="ssr-top">
+          <span class="ssr-label">Tamaño de texto</span>
+          <span class="ssr-value" id="font-size-val">16px</span>
+        </div>
+        <input type="range" class="range-slider" min="12" max="22" value="16" oninput="document.getElementById('font-size-val').textContent=this.value+'px'">
+      </div>
+
+      <span class="settings-section-title">Notificaciones</span>
+      <div class="settings-item" onclick="toggleSettingsSwitch(this)">
+        <i data-lucide="bell"></i>
+        <div class="si-content">
+          <span class="si-title">Notificaciones push</span>
+          <span class="si-desc">Recibe alertas en tu dispositivo</span>
+        </div>
+        <div class="toggle-switch active"></div>
+      </div>
+      <div class="settings-item" onclick="toggleSettingsSwitch(this)">
+        <i data-lucide="mail"></i>
+        <div class="si-content">
+          <span class="si-title">Notificaciones por email</span>
+          <span class="si-desc">Resumen semanal de evaluaciones</span>
+        </div>
+        <div class="toggle-switch"></div>
+      </div>
+      <div class="settings-item" onclick="toggleSettingsSwitch(this)">
+        <i data-lucide="clock"></i>
+        <div class="si-content">
+          <span class="si-title">Recordatorios de vencimiento</span>
+          <span class="si-desc">24h y 2h antes del cierre</span>
+        </div>
+        <div class="toggle-switch active"></div>
+      </div>
+
+      <div class="settings-slider-row">
+        <div class="ssr-top">
+          <span class="ssr-label">Anticipación del recordatorio</span>
+          <span class="ssr-value" id="reminder-val">24h</span>
+        </div>
+        <input type="range" class="range-slider" min="1" max="48" value="24" oninput="document.getElementById('reminder-val').textContent=this.value+'h'">
+      </div>
+
+      <span class="settings-section-title">Privacidad</span>
+      <div class="settings-item" onclick="toggleSettingsSwitch(this)">
+        <i data-lucide="eye-off"></i>
+        <div class="si-content">
+          <span class="si-title">Ocultar promedio en perfil</span>
+          <span class="si-desc">Solo tú verás tu promedio</span>
+        </div>
+        <div class="toggle-switch"></div>
+      </div>
+
+      <span class="settings-section-title">Cuenta</span>
+      <div class="settings-item clickable" onclick="goTo('screen-edit-profile')">
+        <i data-lucide="user-pen"></i>
+        <div class="si-content">
+          <span class="si-title">Editar perfil</span>
+        </div>
+        <i data-lucide="chevron-right" style="width:18px;height:18px;color:var(--text-muted)"></i>
+      </div>
+      <div class="settings-item clickable" onclick="goTo('screen-help')">
+        <i data-lucide="life-buoy"></i>
+        <div class="si-content">
+          <span class="si-title">Ayuda y soporte</span>
+        </div>
+        <i data-lucide="chevron-right" style="width:18px;height:18px;color:var(--text-muted)"></i>
+      </div>
+
+      <div class="spacer"></div>
+
+      <div style="padding:0 24px 24px;width:100%">
+        <button class="btn-logout clickable" onclick="goTo('screen-login')">
+          <i data-lucide="log-out" style="width:18px;height:18px"></i>
+          Cerrar sesión
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════════ HELP & SUPPORT ══════════════ -->
+    <div class="screen" id="screen-help">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="nav-bar">
+        <button class="back-btn" onclick="goTo('screen-settings')"><i data-lucide="arrow-left"></i></button>
+        <span style="font-size:16px;font-weight:600;color:var(--text-primary)">Ayuda y soporte</span>
+      </div>
+
+      <div class="help-search">
+        <i data-lucide="search"></i>
+        <span>Buscar en preguntas frecuentes...</span>
+      </div>
+
+      <div style="padding:0 24px 12px">
+        <span style="font-size:14px;font-weight:600;color:var(--text-primary)">Preguntas frecuentes</span>
+      </div>
+
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <div class="faq-question">
+          <span>¿Cómo evalúo a mis compañeros?</span>
+          <i data-lucide="chevron-down"></i>
+        </div>
+        <div class="faq-answer">
+          <p>Desde la pantalla de inicio, toca la evaluación pendiente. Selecciona al compañero que deseas evaluar y califica cada criterio usando la escala del 1 al 5.</p>
+        </div>
+      </div>
+
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <div class="faq-question">
+          <span>¿Mi evaluación es realmente anónima?</span>
+          <i data-lucide="chevron-down"></i>
+        </div>
+        <div class="faq-answer">
+          <p>Sí. Ni tus compañeros ni el profesor pueden ver qué calificación diste individualmente. Solo se muestran promedios agregados.</p>
+        </div>
+      </div>
+
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <div class="faq-question">
+          <span>¿Puedo modificar mi evaluación después de enviarla?</span>
+          <i data-lucide="chevron-down"></i>
+        </div>
+        <div class="faq-answer">
+          <p>Puedes modificar tus respuestas mientras la evaluación esté abierta. Una vez vencido el plazo, las respuestas se bloquean automáticamente.</p>
+        </div>
+      </div>
+
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <div class="faq-question">
+          <span>¿Cómo importo grupos desde Brightspace?</span>
+          <i data-lucide="chevron-down"></i>
+        </div>
+        <div class="faq-answer">
+          <p>En la vista del curso, toca «Importar desde Brightspace», selecciona un archivo CSV con las columnas Categoría, Grupo y Estudiante. Los grupos se crearán automáticamente.</p>
+        </div>
+      </div>
+
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <div class="faq-question">
+          <span>¿Qué significan los criterios de evaluación?</span>
+          <i data-lucide="chevron-down"></i>
+        </div>
+        <div class="faq-answer">
+          <p>Cada criterio mide un aspecto diferente del trabajo en equipo: Puntualidad, Contribuciones, Compromiso y Actitud. El profesor puede personalizar estos criterios.</p>
+        </div>
+      </div>
+
+      <div class="help-contact-card">
+        <i data-lucide="headphones"></i>
+        <span class="hc-title">¿Necesitas más ayuda?</span>
+        <span class="hc-desc">Nuestro equipo de soporte está disponible de lunes a viernes, 8am a 6pm.</span>
+        <button class="hc-btn clickable">Contactar soporte</button>
+      </div>
+
+      <div style="height:24px"></div>
+    </div>
+
+    <!-- ══════════════ EDIT PROFILE ══════════════ -->
+    <div class="screen" id="screen-edit-profile">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="nav-bar" style="justify-content:space-between">
+        <button class="back-btn" onclick="goTo('screen-settings')"><i data-lucide="arrow-left"></i></button>
+        <span style="font-size:16px;font-weight:600;color:var(--text-primary)">Editar perfil</span>
+        <div style="width:24px"></div>
+      </div>
+
+      <div class="edit-avatar-section">
+        <div class="avatar-edit-wrap">
+          <div class="avatar-large">CG</div>
+          <div class="avatar-edit-btn clickable"><i data-lucide="camera"></i></div>
+        </div>
+      </div>
+
+      <div class="edit-form-group">
+        <label>Nombre completo</label>
+        <input type="text" class="edit-input" value="Cristian García" placeholder="Tu nombre">
+      </div>
+
+      <div class="edit-form-group">
+        <label>Correo electrónico</label>
+        <input type="email" class="edit-input" value="cgarcia@uninorte.edu.co" placeholder="tu@uninorte.edu.co" disabled style="opacity:0.5">
+      </div>
+
+      <div class="edit-form-group">
+        <label>Teléfono</label>
+        <input type="tel" class="edit-input" value="+57 300 123 4567" placeholder="+57 300 000 0000">
+      </div>
+
+      <div class="edit-form-group">
+        <label>Programa académico</label>
+        <input type="text" class="edit-input" value="Ingeniería de Sistemas" placeholder="Tu programa">
+      </div>
+
+      <div class="edit-form-group">
+        <label>Semestre</label>
+        <input type="number" class="edit-input" value="7" min="1" max="12" placeholder="Semestre actual">
+      </div>
+
+      <div class="flex-spacer"></div>
+
+      <div class="save-bar">
+        <button class="btn-primary clickable" onclick="goTo('screen-settings')">
+          <i data-lucide="save" style="width:20px;height:20px"></i>
+          Guardar cambios
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════════ TEACHER ASSESSMENTS ══════════════ -->
+    <div class="screen" id="screen-teacher-assessments">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="nav-bar">
+        <button class="back-btn" onclick="goTo('screen-course-detail')"><i data-lucide="arrow-left"></i></button>
+        <span style="font-size:16px;font-weight:600;color:var(--text-primary);flex:1">Evaluaciones</span>
+      </div>
+
+      <div class="section-header-row">
+        <h2>Evaluaciones del curso</h2>
+        <span class="section-count">5 total</span>
+      </div>
+
+      <div class="assessment-list">
+        <div class="assessment-card ass-active">
+          <div class="ass-header">
+            <span class="ass-title">Sprint Review 4</span>
+            <span class="ass-badge ass-badge-active">Activa</span>
+          </div>
+          <span class="ass-meta">Sprint Teams · Cierra en 2h 15m</span>
+          <div class="ass-progress-row">
+            <div class="ass-progress-bar"><div class="ass-progress-fill" style="width:60%;background:var(--accent)"></div></div>
+            <span class="ass-progress-label">18/30 completaron</span>
+          </div>
+          <div class="ass-footer">
+            <button class="ass-link clickable" onclick="goTo('screen-teacher-results')"><i data-lucide="eye"></i> Ver</button>
+          </div>
+        </div>
+
+        <div class="assessment-card">
+          <div class="ass-header">
+            <span class="ass-title">Sprint Review 3</span>
+            <span class="ass-badge ass-badge-closed">Cerrada</span>
+          </div>
+          <span class="ass-meta">Sprint Teams · 28 feb 2026</span>
+          <div class="ass-progress-row">
+            <div class="ass-progress-bar"><div class="ass-progress-fill" style="width:100%;background:var(--positive)"></div></div>
+            <span class="ass-progress-label">30/30 completaron</span>
+          </div>
+        </div>
+
+        <div class="assessment-card">
+          <div class="ass-header">
+            <span class="ass-title">Sprint Review 2</span>
+            <span class="ass-badge ass-badge-closed">Cerrada</span>
+          </div>
+          <span class="ass-meta">Sprint Teams · 14 feb 2026</span>
+          <div class="ass-progress-row">
+            <div class="ass-progress-bar"><div class="ass-progress-fill" style="width:100%;background:var(--positive)"></div></div>
+            <span class="ass-progress-label">30/30 completaron</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="spacer"></div>
+
+      <div style="padding:0 24px;width:100%">
+        <button class="btn-primary clickable" onclick="goTo('screen-create-assessment')">
+          <i data-lucide="plus" style="width:20px;height:20px"></i>
+          Nueva evaluación
+        </button>
+      </div>
+
+      <div style="height:24px"></div>
+    </div>
+
+    <!-- ══════════════ STUDENT INVITATION ══════════════ -->
+    <div class="screen" id="screen-student-invitation">
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="sb-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery-full" class="battery"></i>
+        </div>
+      </div>
+
+      <div class="nav-bar">
+        <button class="back-btn" onclick="goTo('screen-course-detail')"><i data-lucide="arrow-left"></i></button>
+        <span style="font-size:16px;font-weight:600;color:var(--text-primary);flex:1">Invitar Estudiantes</span>
+      </div>
+
+      <div class="invite-info-label">Ingeniería de Software — Grupo 1</div>
+
+      <div class="invite-link-card">
+        <div class="invite-link-row">
+          <span class="invite-url" id="invite-url">https://peerun.app/invite/a...</span>
+          <button class="invite-copy-btn clickable" onclick="copyInviteLink()"><i data-lucide="copy"></i></button>
+        </div>
+        <span class="invite-valid-badge"><i data-lucide="clock"></i> Válido por 48h</span>
+      </div>
+
+      <div class="share-options-row">
+        <div class="share-option-card clickable">
+          <i data-lucide="mail"></i>
+          <span>Email</span>
+        </div>
+        <div class="share-option-card clickable">
+          <i data-lucide="qr-code"></i>
+          <span>QR Code</span>
+        </div>
+        <div class="share-option-card clickable">
+          <i data-lucide="share-2"></i>
+          <span>Compartir</span>
+        </div>
+      </div>
+
+      <div class="invite-divider"></div>
+
+      <div class="pending-header">
+        <h3>Invitaciones pendientes</h3>
+        <span class="pending-badge">3</span>
+      </div>
+
+      <div class="pending-list">
+        <div class="pending-item">
+          <div class="pending-avatar">ML</div>
+          <div class="pending-info">
+            <span class="pending-email">maria.lopez@uni.edu</span>
+            <span class="pending-time">Enviado hace 2 horas</span>
+          </div>
+          <span class="pending-status pending-status-pending">Pendiente</span>
+        </div>
+        <div class="pending-item">
+          <div class="pending-avatar">CR</div>
+          <div class="pending-info">
+            <span class="pending-email">carlos.ruiz@uni.edu</span>
+            <span class="pending-time">Enviado hace 5 horas</span>
+          </div>
+          <span class="pending-status pending-status-pending">Pendiente</span>
+        </div>
+        <div class="pending-item">
+          <div class="pending-avatar">AT</div>
+          <div class="pending-info">
+            <span class="pending-email">ana.torres@uni.edu</span>
+            <span class="pending-time">Aceptado hace 1 día</span>
+          </div>
+          <span class="pending-status pending-status-accepted">Aceptado</span>
+        </div>
+      </div>
+
+      <div class="spacer"></div>
+
+      <div style="padding:0 24px;width:100%">
+        <button class="btn-primary clickable" onclick="openGenerateLinkModal()">
+          <i data-lucide="refresh-cw" style="width:20px;height:20px"></i>
+          Generar nuevo enlace
+        </button>
+      </div>
+
+      <div style="height:24px"></div>
+    </div>
+
+    <!-- ══════════════ GENERATE LINK MODAL ══════════════ -->
+    <div class="screen" id="screen-generate-link">
+      <div class="modal-overlay" onclick="closeGenerateLinkModal()">
+        <div class="modal-sheet" onclick="event.stopPropagation()">
+          <div class="modal-handle"></div>
+          <div class="modal-header">
+            <h2>Generar nuevo enlace</h2>
+            <button class="modal-close-btn clickable" onclick="closeGenerateLinkModal()"><i data-lucide="x"></i></button>
+          </div>
+          <p class="modal-desc">Se generará un nuevo enlace de invitación. El enlace anterior dejará de funcionar.</p>
+          <div>
+            <div class="exp-label">Expiración del enlace</div>
+            <div class="exp-options">
+              <button class="exp-option active" onclick="selectExpOption(this)">24h</button>
+              <button class="exp-option" onclick="selectExpOption(this)">48h</button>
+              <button class="exp-option" onclick="selectExpOption(this)">72h</button>
+            </div>
+          </div>
+          <div class="modal-warning">
+            <i data-lucide="triangle-alert"></i>
+            <span>Los estudiantes con el enlace anterior necesitarán el nuevo enlace</span>
+          </div>
+          <div class="spacer"></div>
+          <button class="btn-primary clickable" onclick="closeGenerateLinkModal()">
+            <i data-lucide="refresh-cw" style="width:20px;height:20px"></i>
+            Generar enlace
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /phone-screen -->
+</div><!-- /phone-container -->
+
+<script>
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+let currentMode = 'student'; // 'student' | 'teacher'
+let currentScreen = 'screen-student-home';
+let onboardSlide = 0;
+
+// ═══════════════════════════════════════════
+//  THEME TOGGLE
+// ═══════════════════════════════════════════
+document.getElementById('theme-toggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  const theme = btn.dataset.theme;
+  document.documentElement.setAttribute('data-theme', theme);
+  document.querySelectorAll('#theme-toggle button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  // Sync settings toggle
+  const st = document.getElementById('settings-theme-toggle');
+  if (st) { theme === 'dark' ? st.classList.add('active') : st.classList.remove('active'); }
+});
+
+// ═══════════════════════════════════════════
+//  MODE TOGGLE
+// ═══════════════════════════════════════════
+document.getElementById('mode-toggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  currentMode = btn.dataset.mode;
+  document.querySelectorAll('#mode-toggle button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  const studentScreens = ['screen-student-home','screen-student-courses','screen-student-profile','screen-eval-form','screen-peer-select','screen-student-results','screen-eval-confirm','screen-eval-history'];
+  const teacherScreens = ['screen-teacher-home','screen-teacher-courses','screen-teacher-profile','screen-teacher-results','screen-course-detail','screen-create-assessment','screen-reports','screen-student-detail','screen-group-detail','screen-import-csv','screen-teacher-assessments','screen-student-invitation','screen-generate-link'];
+
+  if (currentMode === 'teacher' && studentScreens.includes(currentScreen)) {
+    goTo('screen-teacher-home');
+  } else if (currentMode === 'student' && teacherScreens.includes(currentScreen)) {
+    goTo('screen-student-home');
+  }
+});
+
+// ═══════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════
+function safeLucide() {
+  try { if (typeof lucide !== 'undefined') lucide.createIcons(); } catch(e) { console.warn('lucide:', e); }
+}
+
+function goTo(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const target = document.getElementById(screenId);
+  if (target) {
+    target.classList.add('active');
+    target.scrollTop = 0;
+    currentScreen = screenId;
+  }
+  // Re-initialize icons for newly visible screen
+  setTimeout(safeLucide, 50);
+}
+
+function navigateToHome() {
+  const target = currentMode === 'student' ? 'screen-student-home' : 'screen-teacher-home';
+  goTo(target);
+}
+
+// ═══════════════════════════════════════════
+//  RADIO SELECTION
+// ═══════════════════════════════════════════
+function selectOption(el) {
+  const list = el.closest('.options-list');
+  list.querySelectorAll('.option-item').forEach(item => item.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+// ═══════════════════════════════════════════
+//  TOGGLE SWITCHES (clickable)
+// ═══════════════════════════════════════════
+document.addEventListener('click', (e) => {
+  const toggle = e.target.closest('.toggle-switch');
+  if (!toggle) return;
+  e.stopPropagation();
+  toggle.classList.toggle('active');
+  // If it's the theme toggle in profile/settings, sync global theme
+  const item = toggle.closest('.menu-item, .settings-item');
+  if (item) {
+    const label = item.querySelector('span');
+    if (label && label.textContent.includes('Tema oscuro')) {
+      const theme = toggle.classList.contains('active') ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+      document.querySelectorAll('#theme-toggle button').forEach(b => b.classList.remove('active'));
+      document.querySelector(`#theme-toggle button[data-theme="${theme}"]`)?.classList.add('active');
+    }
+  }
+});
+
+function toggleSettingsSwitch(el) {
+  const toggle = el.querySelector('.toggle-switch');
+  if (toggle) {
+    toggle.classList.toggle('active');
+    // Theme sync
+    const titleEl = el.querySelector('.si-title');
+    if (titleEl && titleEl.textContent.includes('Tema oscuro')) {
+      const theme = toggle.classList.contains('active') ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+      document.querySelectorAll('#theme-toggle button').forEach(b => b.classList.remove('active'));
+      document.querySelector(`#theme-toggle button[data-theme="${theme}"]`)?.classList.add('active');
+    }
+  }
+}
+
+// ═══════════════════════════════════════════
+//  ONBOARDING CAROUSEL
+// ═══════════════════════════════════════════
+function nextOnboardSlide() {
+  const slides = document.querySelectorAll('.onboard-slide');
+  const dots = document.querySelectorAll('.onboard-dot');
+  const btn = document.getElementById('onboard-next-btn');
+
+  if (onboardSlide >= slides.length - 1) {
+    navigateToHome();
+    onboardSlide = 0;
+    updateOnboard();
+    return;
+  }
+
+  slides[onboardSlide].classList.remove('active');
+  slides[onboardSlide].classList.add('exit');
+  setTimeout(() => slides[onboardSlide - 1 >= 0 ? onboardSlide - 1 : 0].classList.remove('exit'), 500);
+
+  onboardSlide++;
+  updateOnboard();
+}
+
+function updateOnboard() {
+  const slides = document.querySelectorAll('.onboard-slide');
+  const dots = document.querySelectorAll('.onboard-dot');
+  const btn = document.getElementById('onboard-next-btn');
+
+  slides.forEach((s, i) => {
+    s.classList.remove('active', 'exit');
+    if (i === onboardSlide) s.classList.add('active');
+  });
+  dots.forEach((d, i) => {
+    d.classList.toggle('active', i === onboardSlide);
+  });
+  btn.textContent = onboardSlide === slides.length - 1 ? 'Comenzar' : 'Siguiente';
+}
+
+// ═══════════════════════════════════════════
+//  NOTIFICATION FILTERS
+// ═══════════════════════════════════════════
+function filterNotifs(btn) {
+  document.querySelectorAll('#notif-filters .notif-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const filter = btn.dataset.filter;
+  document.querySelectorAll('#notif-list .notif-item').forEach(item => {
+    if (filter === 'all') {
+      item.style.display = 'flex';
+    } else {
+      item.style.display = item.dataset.type === filter ? 'flex' : 'none';
+    }
+  });
+}
+
+function markAllRead() {
+  document.querySelectorAll('#notif-list .notif-item').forEach(item => {
+    item.classList.remove('unread');
+    const dot = item.querySelector('.notif-dot');
+    if (dot) dot.remove();
+  });
+}
+
+// ═══════════════════════════════════════════
+//  HISTORY TABS
+// ═══════════════════════════════════════════
+function filterHistory(btn) {
+  document.querySelectorAll('#history-tabs .history-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const tab = btn.dataset.tab;
+  document.querySelectorAll('#history-list .history-card').forEach(card => {
+    if (tab === 'all') {
+      card.style.display = 'flex';
+    } else {
+      card.style.display = card.dataset.type === tab ? 'flex' : 'none';
+    }
+  });
+}
+
+// ═══════════════════════════════════════════
+//  FAQ ACCORDION
+// ═══════════════════════════════════════════
+function toggleFaq(el) {
+  const wasOpen = el.classList.contains('open');
+  // Close all
+  document.querySelectorAll('.faq-item').forEach(f => f.classList.remove('open'));
+  // Open clicked if it was closed
+  if (!wasOpen) el.classList.add('open');
+  setTimeout(safeLucide, 50);
+}
+
+// ═══════════════════════════════════════════
+//  IMPORT CSV SIMULATION
+// ═══════════════════════════════════════════
+function simulateImport() {
+  const area = document.getElementById('import-area');
+  const preview = document.getElementById('import-preview');
+  const progress = document.getElementById('import-progress');
+  const fill = document.getElementById('import-progress-fill');
+  const result = document.getElementById('import-result');
+  const saveBar = document.getElementById('import-save-bar');
+
+  // Show preview
+  area.style.display = 'none';
+  preview.classList.add('show');
+  progress.classList.add('show');
+
+  // Animate progress bar
+  let pct = 0;
+  const interval = setInterval(() => {
+    pct += 5;
+    fill.style.width = pct + '%';
+    if (pct >= 100) {
+      clearInterval(interval);
+      result.classList.add('show');
+      saveBar.style.display = 'block';
+      setTimeout(safeLucide, 50);
+    }
+  }, 80);
+}
+
+function resetImport() {
+  document.getElementById('import-area').style.display = 'flex';
+  document.getElementById('import-preview').classList.remove('show');
+  document.getElementById('import-progress').classList.remove('show');
+  document.getElementById('import-progress-fill').style.width = '0%';
+  document.getElementById('import-result').classList.remove('show');
+  document.getElementById('import-save-bar').style.display = 'none';
+}
+
+
+
+// ═══════════════════════════════════════════
+//  DETAIL TABS (Course Detail)
+// ═══════════════════════════════════════════
+function switchCourseTab(tab) {
+  const detail = document.getElementById('screen-course-detail');
+  detail.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
+  detail.querySelector('.cd-groups-content').classList.remove('active');
+  detail.querySelector('.cd-evals-content').classList.remove('active');
+  if (tab === 'groups') {
+    detail.querySelectorAll('.detail-tab')[0].classList.add('active');
+    detail.querySelector('.cd-groups-content').classList.add('active');
+  } else {
+    detail.querySelectorAll('.detail-tab')[1].classList.add('active');
+    detail.querySelector('.cd-evals-content').classList.add('active');
+  }
+  setTimeout(safeLucide, 50);
+}
+
+// ═══════════════════════════════════════════
+//  INVITE LINK HELPERS
+// ═══════════════════════════════════════════
+function copyInviteLink() {
+  const url = document.getElementById('invite-url');
+  if (url) {
+    navigator.clipboard.writeText('https://peerun.app/invite/abc123').catch(() => {});
+    url.textContent = '¡Copiado!';
+    setTimeout(() => { url.textContent = 'https://peerun.app/invite/a...'; }, 1500);
+  }
+}
+
+function selectExpOption(el) {
+  el.parentElement.querySelectorAll('.exp-option').forEach(o => o.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function openGenerateLinkModal() {
+  goTo('screen-generate-link');
+}
+
+function closeGenerateLinkModal() {
+  goTo('screen-student-invitation');
+}
+
+// ═══════════════════════════════════════════
+//  REPORT TABS
+// ═══════════════════════════════════════════
+document.addEventListener('click', (e) => {
+  const tab = e.target.closest('.report-tab');
+  if (!tab) return;
+  const parent = tab.parentElement;
+  parent.querySelectorAll('.report-tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+});
+
+// ═══════════════════════════════════════════
+//  ROLE SELECTOR (Register)
+// ═══════════════════════════════════════════
+document.addEventListener('click', (e) => {
+  const roleBtn = e.target.closest('.role-btn');
+  if (!roleBtn) return;
+  const parent = roleBtn.parentElement;
+  parent.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+  roleBtn.classList.add('active');
+  // Update mode based on role
+  if (roleBtn.textContent.trim() === 'Profesor') {
+    currentMode = 'teacher';
+  } else {
+    currentMode = 'student';
+  }
+  // Sync mode toggle
+  document.querySelectorAll('#mode-toggle button').forEach(b => b.classList.remove('active'));
+  document.querySelector(`#mode-toggle button[data-mode="${currentMode}"]`)?.classList.add('active');
+});
+
+// ═══════════════════════════════════════════
+//  VISIBILITY CARD SELECTION
+// ═══════════════════════════════════════════
+document.addEventListener('click', (e) => {
+  const card = e.target.closest('.visibility-card');
+  if (!card) return;
+  const parent = card.parentElement;
+  parent.querySelectorAll('.visibility-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+});
+
+// ═══════════════════════════════════════════
+//  WIRE EXISTING SCREENS — Enhanced Navigation
+// ═══════════════════════════════════════════
+// From Teacher Results — student rows → student detail
+document.querySelectorAll('#screen-teacher-results .student-row').forEach(row => {
+  row.onclick = () => goTo('screen-student-detail');
+});
+
+// From notification bell → notifications
+document.querySelectorAll('.notif-btn').forEach(btn => {
+  const original = btn.onclick;
+  btn.onclick = (e) => {
+    // Only navigate to notifications if it's the bell icon (not the + icon)
+    const icon = btn.querySelector('i');
+    if (icon && icon.getAttribute('data-lucide') === 'bell') {
+      goTo('screen-notifications');
+    }
+  };
+});
+
+// Settings button in profiles → settings
+document.querySelectorAll('.settings-btn').forEach(btn => {
+  btn.onclick = () => goTo('screen-settings');
+});
+
+// From course detail import banner → import CSV
+document.querySelector('#screen-course-detail .btn-import')?.addEventListener('click', () => goTo('screen-import-csv'));
+
+// From course detail group cards → group detail
+document.querySelectorAll('#screen-course-detail .group-card').forEach(card => {
+  card.classList.add('clickable');
+  card.onclick = () => goTo('screen-group-detail');
+});
+
+// From course detail assessment cards → teacher results
+document.querySelectorAll('#screen-course-detail .assessment-card, #screen-teacher-assessments .assessment-card').forEach(card => {
+  card.classList.add('clickable');
+});
+
+// Eval form → eval confirm (change last step)
+const evalFormBtn = document.querySelector('#screen-eval-form .btn-primary');
+if (evalFormBtn) evalFormBtn.onclick = () => goTo('screen-eval-confirm');
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+function initApp() {
+  safeLucide();
+  // Start directly on the home screen of the current mode
+  navigateToHome();
+}
+
+// Run init immediately (script is at end of body, DOM is ready)
+// Also register DOMContentLoaded as fallback
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
+</script>
+
+</body>
+</html>
