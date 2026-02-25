@@ -1,0 +1,64 @@
+sequenceDiagram
+    title Flujo 3.2 - Estudiante
+    autonumber
+
+    actor Estudiante
+    participant App as App Flutter (StudentShell)
+    participant API as Backend PeerUn
+    participant DB as Roble DB
+
+    Estudiante->>App: Abrir enlace mágico
+    App->>API: GET /magic-link/{token}
+    API->>DB: Buscar invitación por token
+    DB-->>API: Invitación válida/expirada/usada
+
+    alt Token válido
+        API->>DB: Crear usuario/matrícula en curso
+        DB-->>API: Usuario inscrito
+        API->>DB: Marcar token como usado
+        DB-->>API: Token consumido
+        API-->>App: Acceso concedido
+    else Token inválido o expirado
+        API-->>App: Error de acceso
+    end
+
+    Estudiante->>App: Ver mis cursos y mi grupo
+    App->>API: GET /student/courses
+    API->>DB: Consultar curso_estudiantes y grupo_miembros
+    DB-->>API: Cursos + grupo actual
+    API-->>App: Datos de inicio
+
+    Estudiante->>App: Abrir evaluación activa
+    App->>API: GET /actividades/{id}
+    API->>DB: Obtener compañeros del grupo (sin sí mismo)
+    DB-->>API: Lista de evaluados
+    API-->>App: Formulario por compañero
+
+    loop Por cada compañero
+        Estudiante->>App: Calificar 4 criterios (2.0 a 5.0)
+        App->>API: POST /respuestas
+        API->>DB: Validar evaluador != evaluado
+        alt Válido
+            API->>DB: INSERT respuesta + criterios
+            DB-->>API: Guardado OK
+            API-->>App: Confirmación parcial
+        else No válido o duplicado
+            API-->>App: Error de validación
+        end
+    end
+
+    Estudiante->>App: Enviar evaluación final
+    App->>API: POST /actividades/{id}/submit
+    API->>DB: Marcar evaluación del estudiante como completada
+    DB-->>API: Estado actualizado
+    API-->>App: Entrega confirmada
+
+    Estudiante->>App: Ver resultados
+    App->>API: GET /actividades/{id}/my-results
+    API->>DB: Revisar visibilidad de actividad
+    alt Visibilidad pública
+        DB-->>API: Puntajes por criterio + promedio
+        API-->>App: Resultados visibles
+    else Visibilidad privada
+        API-->>App: Resultados ocultos al estudiante
+    end
