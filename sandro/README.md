@@ -3,6 +3,9 @@
 |---------------|------------------|
 | **Proyecto**  | Aplicación móvil de evaluación entre pares |
 | **Fecha**     | 25 de febrero de 2026 |
+
+---
+
 ![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)
 ![GetX](https://img.shields.io/badge/GetX-8A2BE2?style=for-the-badge)
 ![Clean Architecture](https://img.shields.io/badge/Clean%20Architecture-4CAF50?style=for-the-badge)
@@ -16,107 +19,216 @@
 Evalia es una aplicación móvil diseñada para facilitar y optimizar los procesos de evaluación entre pares en actividades colaborativas académicas. La plataforma permite a docentes activar evaluaciones estructuradas por criterios y a los estudiantes valorar el desempeño de sus compañeros de manera organizada, clara y objetiva.
 
 La propuesta se enfoca en ofrecer una experiencia minimalista y fácil de usar, priorizando la claridad en la interacción y la visualización de resultados. A diferencia de los sistemas tradicionales integrados en plataformas LMS, Evalia busca mejorar la experiencia móvil mediante una interfaz simplificada y una estructura funcional centrada exclusivamente en el proceso de evaluación colaborativa.
+
 ---
 
 ## Referentes Analizados
 
-### 1️⃣ Moodle
-
-![Moodle](https://img.shields.io/badge/Moodle-LMS-orange?style=flat-square&logo=moodle&logoColor=white)
-
-![Moodle Mobile](https://img.shields.io/badge/Enfoque-Rúbricas-blue?style=flat-square)
-![Rol](https://img.shields.io/badge/Roles-Docente%20%2F%20Estudiante-green?style=flat-square)
-
-<img src="https://upload.wikimedia.org/wikipedia/commons/6/6a/Moodle-logo.svg" width="200"/>
+### 1️⃣ Peergrade
 
 #### Descripción
 
-Moodle es un sistema de gestión de aprendizaje (LMS) ampliamente utilizado en educación superior. Permite la creación de actividades evaluativas estructuradas mediante rúbricas y ofrece visualización de calificaciones tanto para docentes como para estudiantes.
+Peergrade es una plataforma especializada en evaluación entre pares en contextos educativos formales. Permite a los estudiantes evaluar el trabajo de sus compañeros mediante rúbricas estructuradas definidas por el docente. El sistema asigna evaluadores automáticamente y gestiona la entrega, revisión y publicación de resultados dentro de un flujo claramente definido.
+
+Está orientada principalmente a educación superior y se integra con diversos LMS mediante estándar LTI.
 
 #### Aportes relevantes al proyecto
 
-- Implementación formal de rúbricas con criterios definidos.
-- Configuración de evaluaciones con parámetros de visibilidad.
-- Acceso diferenciado según rol (docente / estudiante).
-- Gestión estructurada de cursos y actividades.
+- Evaluación estructurada basada en criterios.
+- Asignación automática de evaluaciones.
+- Configuración de anonimato entre evaluadores.
+- Promedios automáticos por criterio.
+- Integración con LMS institucionales.
 
 #### Limitaciones 
 
-- Experiencia móvil poco optimizada.
-- Interfaz densa y sobrecargada visualmente.
-- Analítica limitada en términos de visualización clara y sintética.
+- Interfaz más optimizada para escritorio que para móvil.
+- Flujo de evaluación con múltiples pasos que puede resultar extenso.
+- Visualización de resultados poco simplificada.
+- Modelo de licencia institucional paga.
 
-#### Incidencia en esta propuesta
+#### Incidencia en Evalia
 
-Evalia toma la estructura formal de criterios de Moodle, pero simplifica radicalmente la experiencia móvil, priorizando claridad, navegación reducida y visualización minimalista de métricas.
+Evalia adopta la estructura formal de rúbricas y la asignación automática de evaluaciones, pero propone una experiencia mobile-first simplificada, concentrando la evaluación en una sola vista clara y reduciendo fricción en el proceso.
 
 ---
 
-### 2️⃣ Peergrade
-
-![Peergrade](https://img.shields.io/badge/Peergrade-Peer%20Assessment-purple?style=flat-square)
+### 2️⃣ FeedbackFruits (Peer Review Module)
 
 #### Descripción
 
-Peergrade es una plataforma especializada en evaluación entre pares. Permite a los estudiantes evaluar trabajos de sus compañeros mediante rúbricas estructuradas y proporciona retroalimentación detallada.
+FeedbackFruits es una plataforma de aprendizaje colaborativo que incluye un módulo especializado en evaluación entre pares. Está diseñada para integrarse profundamente con LMS institucionales y ofrece herramientas avanzadas de seguimiento de participación, calidad del feedback y métricas de interacción.
+
+Su enfoque es robusto y analíticamente detallado, orientado a instituciones que buscan trazabilidad avanzada en procesos evaluativos.
 
 #### Aportes relevantes al proyecto
 
-- Evaluación estructurada entre pares.
-- Exclusión de autoevaluación.
-- Promedios por criterio.
-- Resultados visibles según configuración del docente.
+- Métricas detalladas de participación.
+- Seguimiento de calidad del feedback.
+- Comparación entre autoevaluación y evaluación de pares.
+- Integración fuerte con LMS como Brightspace.
+- Paneles analíticos para docentes.
 
 #### Limitaciones 
 
-- Interfaz más orientada a escritorio que a experiencia móvil nativa.
-- Visualización analítica poco simplificada.
-- Flujo de evaluación con múltiples pasos que pueden generar fricción.
+- Complejidad alta en configuración.
+- Interfaz visualmente densa.
+- Sobrecarga de métricas que puede dificultar interpretación rápida.
+- Solución completamente institucional y de alto costo.
 
-#### Incidencia en esta propuesta
+#### Incidencia en Evalia
 
-Evalia adopta el enfoque específico de evaluación entre pares de Peergrade, pero lo rediseña bajo un principio de reducción cognitiva, concentrando la evaluación en una sola pantalla clara y directa.
+Evalia retoma la idea de incorporar métricas comparativas y visualización de resultados, pero propone un enfoque minimalista, priorizando indicadores claros y comprensibles en pantalla móvil, evitando la saturación informativa.
 
 ---
 
-### 3️⃣ Google Classroom
-
-![Google Classroom](https://img.shields.io/badge/Google%20Classroom-Education-green?style=flat-square&logo=googleclassroom&logoColor=white)
+### 3️⃣ Eduflow
 
 #### Descripción
 
-Google Classroom es una plataforma educativa ampliamente adoptada para la gestión de cursos, tareas y calificaciones en entornos académicos.
+Eduflow es una plataforma digital orientada al aprendizaje activo que integra evaluación entre pares dentro de flujos de trabajo estructurados. Permite la creación de actividades colaborativas donde los estudiantes entregan trabajos, evalúan a otros participantes y reciben retroalimentación de manera organizada y progresiva.
+
+Se caracteriza por una interfaz moderna y una experiencia de usuario más visual y simplificada en comparación con otras plataformas tradicionales.
 
 #### Aportes relevantes al proyecto
 
-- Experiencia móvil limpia y estructurada por cursos.
-- Navegación clara mediante tarjetas (cards).
-- Diferenciación visual entre actividades activas y cerradas.
-- Simplicidad en interacción docente-estudiante.
+- Flujo progresivo claro (entrega → evaluación → resultados).
+- Interfaz limpia y visualmente ordenada.
+- Integración con LMS mediante LTI.
+- Gestión estructurada de rúbricas.
+- Experiencia más intuitiva para estudiantes.
 
 #### Limitaciones 
 
-- No integra evaluación estructurada entre pares como núcleo funcional.
-- Carece de métricas colaborativas comparativas.
-- No ofrece analítica detallada por criterio.
+- Orientación más amplia hacia aprendizaje activo general, no exclusivamente peer assessment.
+- Enfoque principalmente web.
+- Licencia institucional paga.
+- Métricas colaborativas menos profundas que otras soluciones más técnicas.
 
-#### Incidencia en esta propuesta
+#### Incidencia en Evalia
 
-Evalia adopta la claridad visual y la navegación estructurada por cursos de Google Classroom, pero incorpora un módulo especializado de evaluación entre pares con métricas comparativas.
+Evalia adopta de Eduflow el enfoque visual minimalista y el flujo progresivo claramente segmentado, pero lo adapta específicamente al contexto de evaluación entre pares universitaria, optimizando la experiencia para dispositivos móviles y simplificando aún más la interacción.
 
 ---
 
-### 🧩 Conclusión Comparativa
+### 🧩 Análisis Comparativo y Posicionamiento
 
-En conjunto, los referentes analizados demuestran que si bien existen soluciones robustas para la gestión de cursos y evaluación académica, ninguna combina de manera optimizada la evaluación estructurada entre pares con una experiencia móvil minimalista y centrada exclusivamente en métricas colaborativas.
+El análisis de los referentes demuestra que las soluciones actuales priorizan robustez institucional, integración con LMS y modelos evaluativos estructurados. Sin embargo, presentan en común una experiencia poco optimizada para entornos móviles y una tendencia hacia interfaces densas y complejas.
 
-El objetivo de evalia es posicionarse como una propuesta que de la mejor manera posible integra las fortalezas de estas plataformas, reduciendo su complejidad y adaptando el proceso evaluativo a una experiencia móvil clara, directa y analíticamente sólida.
+Evalia se posiciona como una propuesta que:
+
+- Mantiene la estructura formal de rúbricas.
+- Integra métricas comparativas relevantes.
+- Reduce complejidad visual y operativa.
+- Prioriza experiencia móvil minimalista.
+- Se orienta específicamente al contexto universitario con integración a Brightspace.
+
+De esta manera, la propuesta no compite en robustez institucional avanzada, sino en claridad, accesibilidad y experiencia de usuario.
 
 ---
 
 ## Arquitectura
 
-Texto...
+## 🏗️ Composición y Diseño de la Solución
+
+### Enfoque Arquitectónico General
+
+Evalia se diseña bajo **Clean Architecture**, separando claramente responsabilidades en distintas capas, garantizando independencia de la interfaz de usuario, independencia del framework, independencia de la base de datos, alta testabilidad y escalabilidad futura.
+
+La aplicación se concibe como una solución *mobile-first*, estructurada en arquitectura cliente-servidor, con integración a Brightspace como LMS para la obtencion de los grupos correspondientes a cada curso, de los cuales los profesores podrán crear evaluaciones para los estudiantes.
+
+---
+
+## 🧱 Arquitectura en Capas (Clean Architecture)
+
+La aplicación se divide en cuatro capas principales:
+
+### 1️⃣ Capa de Presentación (Presentation Layer)
+
+Responsable de la interfaz móvil.
+
+- Pantallas (Cursos, Actividades, Evaluación, Resultados).
+- Gestión de estado.
+- Navegación.
+- Validaciones básicas de entrada.
+
+Esta capa no contiene lógica de negocio, únicamente se comunica con los casos de uso.
+
+---
+
+### 2️⃣ Capa de Aplicación (Use Cases / Application Layer)
+
+Contiene la lógica de negocio específica del sistema:
+
+- Crear actividad de evaluación.
+- Asignar evaluadores automáticamente.
+- Calcular promedios por criterio.
+- Calcular métricas colaborativas.
+- Determinar visibilidad de resultados.
+
+Los casos de uso son independientes del framework móvil y de la base de datos.
+
+---
+
+### 3️⃣ Capa de Dominio (Domain Layer)
+
+Núcleo del sistema.
+
+Incluye:
+
+- Entidades principales (Usuario, Curso, grupo, Rúbrica, Evaluación).
+- Reglas de negocio puras.
+- Modelos independientes de infraestructura.
+- Interfaces de repositorios.
+
+Esta capa no depende de ninguna otra.
+
+---
+
+### 4️⃣ Capa de Infraestructura (Infrastructure Layer)
+
+Encargada de:
+
+- Implementación de repositorios.
+- Conexión a base de datos.
+- Integración con Brightspace (API o LTI, no sé cuál sea el medio por el que se puede hacer esto con BS, así que ambas opciones estan especificadas, una cosa que es posible justamente gracias a clean arch ya que se podrían incluso hacer ambas implementaciones sin afectar la lógica de negocio).
+- Autenticación institucional.
+- Servicios externos.
+
+Aquí se implementan los detalles técnicos sin afectar la lógica central.
+
+---
+
+## 👥 Gestión de Roles
+
+Se propone una única aplicación con diferenciación por rol (Docente / Estudiante).
+
+La separación se realiza mediante:
+
+- Control de acceso basado en rol.
+- Autorización gestionada desde el backend (nutriendose de las capacidades de la plataforma "roble").
+- Interfaces dinámicas según permisos.
+
+Esta decisión reduce mantenimiento y asegura coherencia visual.
+
+---
+
+## 🗄️ Modelo de Datos Conceptual
+
+Entidades principales:
+
+- Usuario
+- Curso
+- Grupo
+- Actividad
+- Rúbrica
+- Criterio
+- Evaluación
+- Resultado
+
+Las relaciones siguen principios de bajo acoplamiento y alta cohesión.
+
+---
 
 ---
 
@@ -133,4 +245,5 @@ Texto...
 1. Login
 2. Evaluar
 3. Ver resultados
+
 
