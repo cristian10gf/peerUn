@@ -1,6 +1,9 @@
 # PeerUn — Propuesta Funcional y Técnica (Jorge)
 
-> **Estudiante:** Jorge Sanchez  
+> **Estudiante:** Jorge Sanchez
+
+> **Figma:** https://www.figma.com/design/DDNofweJTAejsv44DZ1akb/Untitled?node-id=1-801&t=LxzPnaJQcuQtXxtO-1
+
 > **Proyecto:** Plataforma móvil de evaluación entre compañeros para trabajo colaborativo universitario  
 > **Fecha:** 25 de febrero de 2026  
 > **Tecnologías objetivo:** Flutter · GetX · Clean Architecture · Roble (Auth/DB) · n8n · Brightspace  
