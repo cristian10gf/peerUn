@@ -131,6 +131,10 @@ De esta manera, la propuesta no compite en robustez institucional avanzada, sino
 
 ## 🏗️ Composición y Diseño de la Solución
 
+### 🧭 Decisión de Configuración General del Sistema
+
+Para el diseño de Evalia se analizaron distintas configuraciones posibles, como el desarrollo de aplicaciones independientes para docentes y estudiantes. Sin embargo, se optó por una única aplicación móvil con diferenciación por roles, gestionada mediante autenticación institucional y control de permisos. Esta decisión responde a la necesidad de mantener una experiencia unificada, reducir complejidad técnica y evitar duplicación de lógica e infraestructura. Además, en el contexto universitario es común que un mismo usuario pueda desempeñar distintos roles académicos, por lo que una solución integrada resulta más coherente y flexible. Desde el enfoque minimalista que queremos seguir tanto para el diseño visual como para la modularización de la arquitectura, fragmentar la aplicación habría incrementado fricción y mantenimiento innecesario, mientras que una arquitectura unificada permite escalabilidad, coherencia visual y mayor facilidad de adopción institucional.
+
 ### Enfoque Arquitectónico General
 
 Evalia se diseña bajo **Clean Architecture**, separando claramente responsabilidades en distintas capas, garantizando independencia de la interfaz de usuario, independencia del framework, independencia de la base de datos, alta testabilidad y escalabilidad futura.
@@ -234,16 +238,170 @@ Las relaciones siguen principios de bajo acoplamiento y alta cohesión.
 
 ## 🔄 Flujo Funcional
 
-### 👨‍🏫 Profesor
+### 👩‍🏫 Flujo del Profesor
 
-1. Login
-2. Crear evaluación
-3. Ver resultados
+#### P1 — Inicio de Sesión
 
-### 👨‍🎓 Estudiante
+El docente accede mediante autenticación institucional (mediante Roble).  
+El sistema valida credenciales y carga automáticamente los cursos asociados desde Brightspace.
 
-1. Login
-2. Evaluar
-3. Ver resultados
+---
 
+#### P2 — Mis Cursos
 
+Se muestran los cursos activos en formato de tarjetas con:
+
+- Nombre del curso
+- Número de grupos
+- Estado (Activo / Cerrado)
+
+El docente selecciona el curso en el que desea crear o gestionar una evaluación.
+
+---
+
+####  P3 — Importación de Grupos (Brightspace)
+
+Desde el curso seleccionado, el docente visualiza los grupos existentes en Brightspace.
+
+Puede:
+
+- Seleccionar uno o varios grupos
+- Importarlos a Evalia
+- Confirmar sincronización
+
+Este paso evita la creación manual de grupos y mantiene un orden y cohesion con el resto de herramientas utilizadas por la universidad
+
+---
+
+#### P4 — Crear Evaluación
+
+El docente configura la nueva evaluación de compañeros para un grupo:
+
+- Nombre de la evaluación
+- Categoría de grupo
+- Ventana de tiempo (horas)
+- Visibilidad de resultados (Pública / Privada)
+- Criterios incluidos (originalmente está planeado que sean fijos basado en lo expuesto en el documento pero ante la duda dejamos abierta la posibilidad de que sean escogidos)
+- Escala de calificación (también en caso de que no se use exclusivamente la escala expuesta en las especificaciones iniciales del programa)
+
+Al finalizar, presiona **"Crear y activar"**, lo que:
+
+- Registra la actividad
+- Inicia la ventana evaluativa
+- Notifica a los estudiantes
+
+---
+
+#### P5 — Monitoreo de Evaluación
+
+Durante el período activo, el docente puede visualizar:
+
+- Estado: Evaluación activada
+- Progreso de respuestas por grupo
+- Número de evaluaciones completadas
+- Opción de enviar recordatorios
+
+Esta pantalla funciona como panel de control en tiempo real.
+
+---
+
+#### P6 — Resultados y Analítica
+
+Al cerrar la evaluación, el sistema:
+
+- Calcula promedios por estudiante
+- Calcula promedio general de la actividad
+- Desglosa resultados por grupo
+- Presenta promedio por criterio
+
+---
+
+### 👩‍🎓 Flujo del Estudiante
+
+#### E1 — Inicio de Sesión
+
+El estudiante accede mediante autenticación institucional.
+
+---
+
+#### E2 — Cursos Inscritos
+
+Se muestran los cursos en los que participa, con indicador de estado:
+
+- Pendiente
+- Sin actividad
+- Evaluación activa
+
+Selecciona el curso correspondiente.
+
+---
+
+#### E3 — Acceso a Evaluación
+
+El estudiante visualiza:
+
+- Nombre de la actividad
+- Fecha de cierre
+- Estado del grupo
+- Criterios de evaluación
+
+Al presionar **"Comenzar evaluación"**, inicia el proceso.
+
+---
+
+#### E4 — Evaluar Compañero
+
+Pantalla principal de evaluación:
+
+- Nombre del compañero
+- Barra de progreso
+- Criterios con escala numérica (2.0 – 5.0)
+- Botón "Siguiente"
+
+La evaluación se realiza en una vista clara y estructurada para minimizar distracciones.
+
+---
+
+#### E5 — Confirmación Final
+
+Se muestra un resumen de:
+
+- Compañeros evaluados
+- Calificaciones asignadas
+
+El estudiante confirma y envía la evaluación, la cuál una vez enviada no puede editarse.
+
+---
+
+#### E6 — Visualización de Resultados
+
+En caso de ser una evaluación de visualización pública de resultados, el estudiante puede consultar:
+
+- Promedio individual recibido
+- Desempeño por criterio
+- Comparación con promedio del grupo
+- Indicadores visuales de rendimiento
+
+---
+
+## 🧾 Justificación de la Propuesta
+
+La propuesta de Evalia surge a partir del análisis de plataformas existentes de evaluación entre pares y de la reflexión sobre problemáticas reales observadas en el contexto académico universitario. Para fortalecer la fundamentación de la solución, se tomó como referencia la experiencia del profesor Daniel Romero, con quien he trabajado como monitor académico en la asignatura de estructuras de datos I, la cuál incluye proyectos colaborativos, así como las otras asignaturas que el profesor dicta y las cuáles yo mismo he cursado con él.
+
+Durante esta experiencia fue posible rememorar múltiples situaciones en las que surgían dificultades asociadas al trabajo en equipo, especialmente en etapas finales de los proyectos. Con el fin de profundizar en esta problemática, se planteó la siguiente pregunta:
+
+**¿Qué ocurre usualmente con respecto a los equipos de trabajo en los proyectos de las asignaturas que usted dicta?**
+
+El profesor explicó que con frecuencia los estudiantes manifiestan inconformidades sobre el bajo aporte de algún integrante únicamente cuando el proyecto ya ha sido entregado y evaluado. En muchos casos, la queja aparece después de recibir una calificación baja, momento en el cual los plazos institucionales para modificación de notas ya se encuentran próximos a cerrar o hacen difícil intervenir oportunamente. Según su experiencia, esta situación es constante a lo largo de los semestres y genera frustración tanto en estudiantes como en el docente, quien carece de herramientas formales para monitorear la dinámica interna de los equipos durante el proceso.
+
+A partir de esta conversación surgió una segunda pregunta clave:
+
+**¿Cuenta actualmente con algún mecanismo estructurado que le permita detectar de manera anticipada desequilibrios en la participación dentro de los equipos?**
+
+La respuesta evidenció que, aunque existen espacios informales de retroalimentación, no se dispone de una herramienta sistemática que permita obtener métricas objetivas y periódicas sobre el desempeño individual dentro del grupo antes de la entrega final.
+
+Este escenario justifica la necesidad de una aplicación como Evalia, que permita activar evaluaciones estructuradas en momentos estratégicos del proyecto (por ejemplo, hitos intermedios), generando métricas claras sobre puntualidad, compromiso, aportes y actitud. De esta manera, el docente podría identificar patrones de bajo desempeño con anticipación y tomar decisiones pedagógicas oportunas, reduciendo conflictos posteriores y mejorando la equidad en la evaluación.
+
+La elección del profesor Daniel Romero como referente para esta justificación no es casual. Al haber sido su monitor académico, fue posible observar de primera mano la recurrencia de esta problemática y comprender su impacto en la dinámica de los cursos. Esto permitió fundamentar la propuesta no solo desde el análisis teórico de plataformas existentes, sino desde una necesidad práctica y reiterada en el contexto real.
+
+En consecuencia, Evalia no se plantea únicamente como una herramienta tecnológica, sino como un mecanismo de prevención y acompañamiento en procesos colaborativos, orientado a generar transparencia, trazabilidad y retroalimentación estructurada dentro del trabajo en equipo universitario.
