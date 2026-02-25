@@ -384,7 +384,7 @@ En caso de ser una evaluación de visualización pública de resultados, el estu
 
 ---
 
-## 🧾 Justificación de la Propuesta
+## Justificación de la Propuesta
 
 La propuesta de Evalia surge a partir del análisis de plataformas existentes de evaluación entre pares y de la reflexión sobre problemáticas reales observadas en el contexto académico universitario. Para fortalecer la fundamentación de la solución, se tomó como referencia la experiencia del profesor Daniel Romero, con quien he trabajado como monitor académico en la asignatura de estructuras de datos I, la cuál incluye proyectos colaborativos, así como las otras asignaturas que el profesor dicta y las cuáles yo mismo he cursado con él.
 
@@ -405,3 +405,9 @@ Este escenario justifica la necesidad de una aplicación como Evalia, que permit
 La elección del profesor Daniel Romero como referente para esta justificación no es casual. Al haber sido su monitor académico, fue posible observar de primera mano la recurrencia de esta problemática y comprender su impacto en la dinámica de los cursos. Esto permitió fundamentar la propuesta no solo desde el análisis teórico de plataformas existentes, sino desde una necesidad práctica y reiterada en el contexto real.
 
 En consecuencia, Evalia no se plantea únicamente como una herramienta tecnológica, sino como un mecanismo de prevención y acompañamiento en procesos colaborativos, orientado a generar transparencia, trazabilidad y retroalimentación estructurada dentro del trabajo en equipo universitario.
+
+##Vistas y enlace a Figma:
+![Flujo profesores](./profesores-flujo.png)
+![Flujo estudiantes](./estudiantes-flujo.png)
+
+Link a figma:https://www.figma.com/design/Fg6gFmRqxWChHEaiA3MCE9/Figma---del-proyecto?node-id=1-3427&t=EbLa5K9wPBL1S0ev-1
