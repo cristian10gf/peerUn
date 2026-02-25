@@ -430,19 +430,24 @@ StudentShell
 
 **Brecha cubierta por PeerUn:** los tres referentes son aplicaciones web sin app móvil nativa y sin soporte en español. En el contexto colombiano universitario, donde los estudiantes acceden principalmente desde celular, una app Flutter nativa garantiza: notificaciones push para ventanas de evaluación cortas, experiencia offline parcial (ver mi grupo sin red), y UX adaptada a cada rol sin la fricción de un navegador.
 
+
 ---
 
-### 4.2 Basada en entrevistas a docentes *(pendiente — hipótesis a validar)*
+### 4.2 Basada en entrevista a docente
 
-> Esta sección se actualizará con los hallazgos de entrevistas a docentes de Uninorte que implementen trabajo colaborativo. Las siguientes hipótesis guían las preguntas diseñadas para esas entrevistas:
+> Entrevista realizada a **Margarita Coronell Camargo**, docente de la Materia **GESTIÓN INTEGRADA EN T.I** en Uninorte.  
+> Fecha: [24/02/2026]
 
-| Hipótesis | Pregunta de entrevista |
-|---|---|
-| Los profesores no tienen un método sistemático actual | "¿Cómo evalúas hoy el desempeño individual de los miembros dentro de cada grupo?" |
-| Las evaluaciones se hacen al final del semestre (una sola vez) | "¿Con qué frecuencia evalúas el trabajo en equipo? ¿Al final del sprint, del proyecto o del semestre?" |
-| Los estudiantes evitan dar malas notas por miedo a represalias | "¿Has notado que los estudiantes se cuidan de no calificar bajo a sus compañeros? ¿El modo privado de resultados ayudaría?" |
-| Los grupos cambian durante el semestre | "¿Con qué frecuencia cambia la composición de los grupos después de formados en Brightspace?" |
-| La integración de la nota de evaluación entre pares en la final es un punto de dolor | "¿Cómo incluyes la evaluación entre pares en la nota final? ¿Qué peso le das?" |
+| Hipótesis validada | Pregunta formulada | Respuesta / Hallazgo |
+|---|---|---|
+| Los profesores no tienen un método sistemático actual | "¿Cómo evalúas hoy el desempeño individual de los miembros dentro de cada grupo?" | Se suele colocar la misma nota a todos los integrantes del grupo sin importar dsiparidades en la carga de trabajo |
+| Los estudiantes evitan dar malas notas por miedo a represalias | "¿Has notado que los estudiantes se cuidan de no calificar bajo a sus compañeros? ¿El modo privado de resultados ayudaría?" | podria a ayudar a generar resultados talvez mas genuinos pero al esconder esos resultados no se esta promocionando la integridad y transparencia que estos espacios de participacion en equipo generan |
+| Los grupos cambian durante el semestre | "¿Con qué frecuencia cambia la composición de los grupos después de formados en Brightspace?" | Casi nada, solamente en casos extremos de mucho desacuerdo en el equipo |
+| La integración de la nota de evaluación entre pares en la final es un punto de dolor | "¿Cómo incluyes la evaluación entre pares en la nota final? ¿Qué peso le das?" | Se basa principalmente en una valoracion personal que tiene su cierta demora en la integracion de notas entre varias plataformas |
+
+**Conclusión general del entrevistado:**  
+La entrevista revela que la evaluación del trabajo colaborativo es hoy un proceso mayormente subjetivo e informal: las notas grupales se asignan de manera uniforme sin considerar disparidades reales en la carga de trabajo, y la integración de la evaluación entre pares en la nota final depende de una valoración personal del docente con fricciones entre plataformas. Aunque el modo privado de resultados podría incentivar calificaciones más honestas, el docente señala que ocultar esa información va en contra del principio de transparencia que debe caracterizar los espacios de trabajo en equipo. Esto define tres focos de diseño para la UI: primero, visibilidad clara y honesta de los datos individuales dentro del grupo, priorizando la información que le aporta valor real al docente (disparidades de carga, patrones de participación) por encima del dato agregado; segundo, transparencia como principio de interacción, evitando ocultar resultados y en su lugar contextualizarlos para fomentar la responsabilidad entre pares; y tercero, coherencia visual y de flujo que reduzca la fricción actual de integrar notas entre plataformas, usando jerarquía de color y resaltados de forma consistente para guiar al docente hacia las acciones de mayor impacto sin generar ambigüedad en la experiencia.
+
 
 ---
 
