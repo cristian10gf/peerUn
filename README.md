@@ -1,502 +1,527 @@
-# PeerUn — Propuesta de Solución
+# Evalia — Propuesta Funcional y Técnica Unificada
 
-> **Estudiante:** Cristian Gonzalez, Flavio Arregoces, Jorge Sanchez, Sandro Torres
-> **Proyecto:** Aplicación móvil de evaluación entre pares para trabajo colaborativo universitario  
-> **Fecha:** 25 de febrero de 2026  
-> **Tecnologías definidas:** Flutter · GetX · Roble (auth + DB) · Brightspace (fuente de grupos)  
-> **Prototipo interactivo:** [Ver prototipo](docs/prototipo.html)
+> **Equipo:** Cristian · Sandro · Jorge · Flavio
+>
+> **Figma:** https://www.figma.com/design/DDNofweJTAejsv44DZ1akb/Untitled?node-id=1-801&t=LxzPnaJQcuQtXxtO-1
+>
+> **Proyecto:** Plataforma móvil de evaluación entre compañeros para trabajo colaborativo universitario
+> **Fecha:** 25 de febrero de 2026
+> **Tecnologías objetivo:** Flutter · GetX · Clean Architecture · Roble (Auth/DB) · n8n · Brightspace
 
 ---
 
 ## Tabla de Contenidos
 
-1. [Referentes Analizados](#1-referentes-analizados)
-2. [Composición y Diseño de la Solución](#2-composición-y-diseño-de-la-solución)
-3. [Flujo Funcional Detallado](#3-flujo-funcional-detallado)
-4. [Justificación de la Propuesta](#4-justificación-de-la-propuesta)
-5. [Capturas de UI — PeerUn](#5-capturas-de-ui--peerun)
+1. [Descripción de la propuesta](#1-descripción-de-la-propuesta)
+2. [Análisis de competencia](#2-análisis-de-competencia)
+3. [Objetivo del sistema](#3-objetivo-del-sistema)
+4. [Alcance y supuestos](#4-alcance-y-supuestos)
+5. [Experiencia de usuario (UX)](#5-experiencia-de-usuario-ux)
+   - 5.1 [Flujo del Profesor](#51-flujo-del-profesor)
+   - 5.2 [Flujo del Estudiante](#52-flujo-del-estudiante)
+6. [Funcionalidades principales](#6-funcionalidades-principales)
+7. [Flujo de evaluación detallado](#7-flujo-de-evaluación-detallado)
+8. [Autenticación y registro](#8-autenticación-y-registro)
+9. [Arquitectura del sistema](#9-arquitectura-del-sistema)
+10. [Integración con n8n y Brightspace](#10-integración-con-n8n-y-brightspace)
+11. [Decisiones de diseño](#11-decisiones-de-diseño)
+12. [Modelo de datos](#12-modelo-de-datos)
+13. [KPIs y métricas de éxito](#13-kpis-y-métricas-de-éxito)
+14. [Limitaciones y evolución](#14-limitaciones-y-evolución)
+15. [Referencias visuales](#15-referencias-visuales)
 
 ---
 
-## 1. Referentes Analizados
+## 1. Descripción de la propuesta
 
-### 1.1 Buddycheck
+**Evalia** es una plataforma móvil centrada en la evaluación entre compañeros dentro de cursos universitarios con trabajo colaborativo. El nombre refleja la combinación de *evaluación* e *IA*, evocando un proceso reflexivo, moderno y orientado al aprendizaje.
 
-<p align="center">
-  <img src="images/buddycheck/buddycheck-logo.png" alt="Logo Buddycheck" height="60">
-</p>
+El sistema define dos actores principales con interfaces completamente separadas pero que comparten componentes reutilizables:
 
-**Descripción general**
+- **Profesor:** crea y gestiona evaluaciones, importa grupos desde Brightspace, monitorea el progreso y consulta resultados analíticos.
+- **Estudiante:** evalúa a sus compañeros de equipo de forma anónima, consulta sus resultados y accede a recursos de mejora colaborativa.
 
-Buddycheck es una herramienta SaaS neerlandesa (Shareworks B.V.) diseñada exclusivamente para la evaluación de la colaboración dentro de equipos universitarios. Su valor diferencial es la integración nativa con cualquier LMS mediante el estándar **LTI (Learning Tools Interoperability)**, lo que permite que los grupos existentes en el LMS se importen automáticamente sin intervención manual.
+La propuesta se rige por tres principios de diseño:
 
-**Gestión de grupos**
-
-Los grupos no se crean en Buddycheck; se sincronizan directamente desde el LMS (Canvas, Brightspace/D2L, Moodle, Blackboard). Las actualizaciones de composición de equipo se reflejan en la herramienta sin pasos adicionales del profesor.
-
-**Proceso de evaluación**
-
-1. El profesor configura una evaluación: selecciona preguntas, define la ventana de tiempo y decide si los resultados serán visibles para los estudiantes.
-2. Los estudiantes reciben un **enlace por correo** para completar la evaluación solo hacia sus compañeros de equipo (no hay autoevaluación por defecto).
-3. Tras el cierre, el profesor decide si "libera" los resultados.
-
-**Criterios de evaluación**
-
-El profesor puede usar preguntas predefinidas (tipo Likert) o crear criterios personalizados (escala numérica, texto libre). No impone rúbrica fija.
-
-**Visualización de resultados**
-
-- *Profesor:* puntuación individual, comparación entre grupos, historial de actividades.
-- *Estudiante:* puntuaciones recibidas por criterio y promedio general (si la evaluación es pública).
-
-**Limitaciones relevantes**
-
-- No tiene app móvil nativa; funciona a través del navegador del LMS.
-- Es de pago; no disponible para estudiantes de Uninorte sin licencia institucional.
-- No existe versión en español.
-
-**Capturas de la interfaz de Buddycheck**
-
-| Configuración de evaluación | Biblioteca de preguntas |
-|:---:|:---:|
-| ![Buddycheck - Configuración](images/buddycheck/buddycheck-evaluation-form.png) | ![Buddycheck - Preguntas](images/buddycheck/buddycheck-question-library.png) |
-
-| Progreso de la actividad | Reportes por estudiante y grupo |
-|:---:|:---:|
-| ![Buddycheck - Progreso](images/buddycheck/buddycheck-activity-overview.png) | ![Buddycheck - Reportes](images/buddycheck/buddycheck-student-reports.png) |
-
-> *Fuente: VU Collaborate Help — Victoria University*
+- **Claridad:** cada usuario entiende rápidamente qué hacer, cómo y por qué es importante.
+- **Rapidez:** flujos minimalistas que reducen fricción mediante scroll guiado y acciones rápidas.
+- **Responsabilidad:** trazabilidad de señales críticas sin afectar el cálculo académico de nota válida.
 
 ---
 
-### 1.2 CATME SMARTER Teamwork
+## 2. Análisis de competencia
 
-**Descripción general**
+Evalia se posiciona en un nicho específico: evaluación entre pares integrada al LMS universitario, con experiencia nativa móvil y automatización sin intervención técnica del docente.
 
-CATME (Comprehensive Assessment of Team Member Effectiveness) es una plataforma desarrollada por la Universidad de Purdue con financiamiento de la NSF. Es uno de los sistemas de evaluación entre pares con mayor respaldo académico; sus criterios de evaluación son la base de numerosas investigaciones sobre trabajo colaborativo en ingeniería. Es utilizado en más de 1.000 instituciones de 100 países, incluyendo la Universidad del Norte (Colombia).
+| Plataforma | Tipo | Evaluación entre pares | Integración LMS | App móvil nativa | Automatización |
+|---|---|---|---|---|---|
+| **Evalia** | Universitaria | ✅ Estructurada | ✅ Brightspace | ✅ Flutter | ✅ n8n |
+| Buddycheck | SaaS universitario | ✅ Sí | ✅ Parcial | ❌ Web | ❌ Manual |
+| CATME | Investigación | ✅ Sí | ❌ No | ❌ Web | ❌ Manual |
+| Peergrade | Educativa general | ✅ Sí | ⚠️ Limitada | ❌ Web | ❌ Manual |
+| Canvas Peer Review | LMS integrado | ⚠️ Básica | ✅ Canvas | ❌ Web | ⚠️ Parcial |
+| Google Forms + Sheets | Genérico | ⚠️ Manual | ❌ No | ❌ Web | ❌ Manual |
 
-**Gestión de grupos**
+### Ventajas diferenciales de Evalia
 
-CATME sí ofrece una herramienta de formación de equipos basada en algoritmos (Team-Maker), pero también permite importar grupos externamente vía CSV. Las actualizaciones son manuales.
-
-**Proceso de evaluación**
-
-Cada estudiante evalúa a sus compañeros usando una rúbrica BARS (Behaviorally Anchored Rating Scale) de 5 niveles con descriptores conductuales concretos. El sistema detecta automáticamente anomalías:
-- **Inflador:** da puntuaciones altas a todos para buscar reciprocidad.
-- **Castigador:** da puntuaciones bajas sistemáticamente.
-- **Clique:** un subgrupo se puntúa mutuamente alto.
-
-**Criterios de evaluación**
-
-Usa el modelo de cuatro criterios con descriptores de nivel que el enunciado del proyecto adopta directamente: la escala "Needs Improvement / Adequate / Good / Excellent" con descriptores conductuales por nivel proviene de este modelo BARS, validado académicamente en *Academy of Management Learning & Education* (2012).
-
-**Visualización de resultados**
-
-- *Profesor:* dashboard con alertas de anomalías, gráficos por equipo, exportación a Excel/CSV.
-- *Estudiante:* retroalimentación anonimizada por criterio.
-
-**Limitaciones relevantes**
-
-- Interfaz desactualizada; no hay app móvil.
-- Sin integración LTI nativa con Brightspace; importación manual vía CSV.
-- La detección de anomalías requiere un umbral mínimo de respuestas.
-
-**Capturas de la interfaz de CATME**
-
-| Tabla de evaluación BARS | Categorías de rating (Contributing) |
-|:---:|:---:|
-| ![CATME - Tabla](images/catme/catme-peer-evaluation-table.png) | ![CATME - Categorías](images/catme/catme-rating-categories.png) |
-
-| Resultados por estudiante (alertas) | Wizard de configuración de clase |
-|:---:|:---:|
-| ![CATME - Resultados](images/catme/catme-activity-results.png) | ![CATME - Wizard](images/catme/catme-class-setup.png) |
-
-> *Fuente: info.catme.org — Purdue University*
+1. **Integración nativa con Brightspace** como fuente de verdad de cursos, grupos y ventanas académicas.
+2. **Orquestación automática via n8n**: sincronización, activación y cierre de evaluaciones sin intervención docente.
+3. **Experiencia móvil first**: diseñada para el contexto real del estudiante universitario.
+4. **Señales de alerta (0/1)** separadas del cálculo académico, para detección temprana de conflictos de equipo.
+5. **Perfil dinámico** con retroalimentación emocional y recursos formativos integrados.
 
 ---
 
-### 1.3 TEAMMATES (National University of Singapore)
+## 3. Objetivo del sistema
 
-<p align="center">
-  <img src="images/teammates/teammates-logo.png" alt="Logo TEAMMATES" height="60">
-</p>
+Construir una solución móvil que permita evaluar el desempeño colaborativo entre pares de forma estructurada, transparente y accionable, completamente alineada con la operación académica existente en Brightspace.
 
-**Descripción general**
+### Objetivos específicos
 
-TEAMMATES es una plataforma open-source (GPL-2.0) desarrollada y mantenida por la NUS desde 2010. Ha procesado más de 50 millones de respuestas de más de 200.000 estudiantes en más de 1.100 universidades. Su código fuente es completamente inspectable en GitHub (`TEAMMATES/teammates`). Ganó el Grand Prize en los OSS Awards World Challenge 2014.
-
-**Gestión de grupos**
-
-Los grupos se crean importando estudiantes desde archivos CSV. No tiene integración LMS nativa, pero es fácil de extender por su arquitectura abierta.
-
-**Proceso de evaluación**
-
-1. El instructor crea una "feedback session" con fechas de apertura/cierre.
-2. Control granular de visibilidad por pregunta: quién ve el texto de respuesta, quién ve la identidad del evaluador, quién ve la identidad del receptor.
-3. Acceso mediante enlace único sin necesidad de crear cuenta.
-
-**Criterios de evaluación**
-
-No impone criterios fijos; el instructor crea preguntas desde cero (MCQ, escala numérica, distribución de puntos entre compañeros, texto libre). La flexibilidad es total pero requiere configuración.
-
-**Visualización de resultados**
-
-- *Instructor:* reportes agrupados por equipo/evaluador/receptor/pregunta, descarga CSV.
-- *Estudiante:* retroalimentación recibida con control de anonimato del evaluador.
-
-**Limitaciones relevantes**
-
-- Sin integración LMS nativa ni app móvil.
-- Configuración compleja para instructores sin experiencia.
-- Sin alertas automáticas sobre patrones de evaluación.
-
-**Capturas de la interfaz de TEAMMATES**
-
-| Vista general | Evaluación entre pares |
-|:---:|:---:|
-| ![TEAMMATES - Overview](images/teammates/teammates-overview.png) | ![TEAMMATES - Peer Eval](images/teammates/teammates-peer-evaluations.png) |
-
-| Control de visibilidad | Reportes y estadísticas |
-|:---:|:---:|
-| ![TEAMMATES - Visibilidad](images/teammates/teammates-visibility-control.png) | ![TEAMMATES - Reportes](images/teammates/teammates-reports-stats.png) |
-
-| Tipos de preguntas |
-|:---:|
-| ![TEAMMATES - Preguntas](images/teammates/teammates-question-types.png) |
-
-> *Fuente: teammatesv4.appspot.com — National University of Singapore*
+1. Incrementar la participación estudiantil en procesos de evaluación entre pares.
+2. Reducir la carga operativa docente mediante automatización vía n8n.
+3. Mostrar resultados con promedio ponderado y detalle por compañero, con reglas de visibilidad pública o privada.
+4. Reforzar competencias blandas mediante contenido de apoyo integrado en la app.
+5. Proveer al profesor analítica útil: por semestre, por curso, por evaluación, por grupo y por estudiante.
 
 ---
 
-### Tabla comparativa de referentes
+## 4. Alcance y supuestos
 
-| Característica | Buddycheck | CATME | TEAMMATES |
-|---|:---:|:---:|:---:|
-| App móvil nativa | ❌ | ❌ | ❌ |
-| Integración con Brightspace/LMS | ✅ LTI | ⚠️ CSV manual | ❌ manual |
-| Sin autoevaluación por defecto | ✅ | ✅ | Configurable |
-| Criterios con descriptores BARS | ⚠️ Flexible | ✅ | ❌ Flexible |
-| Visibilidad pública/privada | ✅ | ✅ | ✅ Granular |
-| Ventana de tiempo configurable | ✅ | ✅ | ✅ |
-| Dashboard promedios multi-nivel | ✅ | ✅ | ✅ |
-| Alertas de anomalías | ⚠️ Básico | ✅ 6 tipos | ❌ |
-| Open source | ❌ | ❌ | ✅ |
-| Disponible en español | ❌ | ❌ | ❌ |
-| Costo | 💰 Pago | 💰 Pago | 🆓 Gratuito |
+### En alcance
 
-> **Oportunidad identificada:** ninguno de los tres referentes tiene app móvil nativa ni está disponible en español. PeerUn cubre ambas brechas, con integración directa al contexto Uninorte (Roble + Brightspace).
+- App móvil con dos interfaces separadas: **profesor** y **estudiante**.
+- Componentes UI reutilizables compartidos entre ambas interfaces.
+- Consulta y gestión de cursos del semestre activo.
+- Importación de grupos desde Brightspace (CSV o API).
+- Motor de evaluación entre pares sin autoevaluación.
+- Visualización de resultados con múltiples niveles de agregación.
+- Perfil dinámico del estudiante con retroalimentación adaptada.
+- Integración operativa con Brightspace y orquestación automática via n8n.
 
----
+### Fuera de alcance (v1)
 
-## 2. Composición y Diseño de la Solución
+- Módulo de creación manual de grupos dentro de la app.
+- Analítica avanzada de sesgo y outliers (planificada en v2).
+- Microcontenidos adaptativos por perfil de desempeño.
 
-### 2.1 Decisión de arquitectura: Una sola app con roles
+### Supuestos operativos
 
-**Se propone una única aplicación Flutter** que sirve tanto a profesores como a estudiantes, con experiencias de navegación completamente separadas activadas según el rol del usuario autenticado en Roble.
-
-**Alternativas descartadas:**
-
-| Alternativa | Razón de descarte |
-|---|---|
-| Dos apps separadas | Duplica CI/CD, dos publicaciones en tienda, dos bases de código. Excesivo para el scope del proyecto. |
-| Una app con visibilidad condicional (mismas pantallas) | Lógica condicional dispersa en widgets, violando el principio de responsabilidad única. Dificulta mantenimiento. |
-
-**Justificación:**
-- Buddycheck y TEAMMATES sirven a ambos roles desde una sola instalación; la separación es a nivel de vista, no de producto.
-- Un solo APK reduce fricciones de distribución en clases donde el profesor instala la app junto con sus estudiantes.
-- GetX permite definir shells de navegación completamente distintos por rol con `Bindings` por módulo sin cruzar lógica de presentación.
+- Brightspace es la fuente de verdad para cursos, categorías y composición de grupos.
+- n8n orquesta sincronizaciones, activaciones y cierre de evaluaciones.
+- Roble provee autenticación institucional (SSO) y persistencia de resultados.
+- Los profesores usan Brightspace activamente para la gestión académica del curso.
 
 ---
 
-### 2.2 Arquitectura técnica (Clean Architecture + GetX)
+## 5. Experiencia de usuario (UX)
 
-```
-┌────────────────────────────────────────────────────────────────┐
-│                         Flutter App                            │
-├─────────────────────────┬──────────────────────────────────────┤
-│   TeacherShell (GetX)   │         StudentShell (GetX)          │
-│  ┌──────┬──────┬──────┐ │  ┌──────────────┬───────────────┐   │
-│  │Cursos│Grupos│Stats │ │  │  MisCursos   │ Evaluaciones  │   │
-│  └──────┴──────┴──────┘ │  └──────────────┴───────────────┘   │
-├─────────────────────────┴──────────────────────────────────────┤
-│              Domain Layer (casos de uso — Dart puro)           │
-│  AuthUseCase · CourseUseCase · AssessmentUseCase · GroupUseCase│
-├────────────────────────────────────────────────────────────────┤
-│              Data Layer (repositorios + modelos JSON)          │
-│  RobleAuthRepository · RobleDbRepository · LocalCacheRepo      │
-├────────────────────────────────────────────────────────────────┤
-│                    Infraestructura externa                      │
-│          Roble API (auth JWT + DB)    ·    FCM (push)          │
-└────────────────────────────────────────────────────────────────┘
-```
+La arquitectura de navegación separa completamente las experiencias de **profesor** y **estudiante**, mientras comparte un sistema de componentes comunes (botones, tarjetas de curso, modales de confirmación, estados vacíos, loaders, etc.).
 
-**Capas:**
+---
 
-| Capa | Responsabilidad | Tecnología |
+### 5.1 Flujo del Profesor
+
+#### P1 · Login
+- Pantalla de acceso con correo institucional y contraseña.
+- Opción de autenticación via SSO con Roble.
+- Opción alternativa: flujo de registro manual para profesores nuevos.
+
+#### P2 · Mis Cursos
+- Lista de cursos activos del semestre (ej. "Mobile Dev", "Bases de Datos II", "Redes").
+- Estado visual por curso: activo, cerrado, sin actividad.
+- Indicador de grupos y estudiantes por curso.
+- Acceso rápido a invitar usuarios al curso.
+
+#### P3 · Importar Grupos desde Brightspace
+- Vista de categorías importables desde Brightspace (ej. "Proyecto Final", "Talleres", "Exposiciones").
+- Selección múltiple de categorías con checkbox.
+- Confirmación con resumen: cantidad de grupos y estudiantes por categoría.
+- Nota informativa: "Las actualizaciones en Brightspace se sincronizan automáticamente."
+
+#### P4 · Crear Evaluación
+- Nombre de la evaluación (ej. "Evaluación Sprint 2").
+- Selección de categoría de grupos objetivo.
+- Ventana de tiempo configurable (en horas).
+- Visibilidad de resultados: **Pública** o **Privada**.
+- Criterios incluidos: Puntualidad · Aportes · Compromiso · Actitud.
+- Escala: 2.0 · 3.0 · 4.0 · 5.0 por criterio.
+- Botón "Crear y activar" con confirmación.
+
+#### P5 · Monitoreo
+- Vista en tiempo real del progreso de respuestas por grupo.
+- Indicador numérico: respuestas recibidas / total esperado por grupo.
+- Badge de confirmación "Evaluación activada" y "Estudiantes notificados".
+- Botón "Enviar recordatorio" para grupos con baja participación.
+- Contador de evaluaciones pendientes de cerrar.
+
+#### P6 · Resultados
+- Promedio general de actividad destacado visualmente (ej. 4.1).
+- Pestañas de vista: **General · Grupo · Estudiante · Criterio**.
+- Resultados por grupo con barra de progreso comparativa.
+- Resultados por criterio: Puntualidad, Aportes, Compromiso, Actitud.
+- Niveles de agregación disponibles: por semestre → por curso → por evaluación → por grupo → por estudiante.
+
+---
+
+### 5.2 Flujo del Estudiante
+
+#### E1 · Login
+- Acceso con correo institucional y contraseña.
+- Autenticación SSO con Roble.
+- La cuenta se crea cuando el profesor carga el grupo o vía CSV; se envía correo de confirmación para activarla.
+
+#### E2 · Cursos Inscritos
+- Lista de cursos del semestre con grupo y profesor asignado.
+- Badge de evaluación pendiente cuando hay actividad activa.
+- Estado por curso: evaluación pendiente, sin actividad.
+- Sección inferior de **Recursos para ser mejor compañero** (lecturas, juegos, material interactivo).
+
+#### E3 · Acceso a Evaluación
+- Detalle de la evaluación activa: nombre, tiempo restante, grupo.
+- Mensaje contextual: "Evalúa a cada compañero de tu grupo. No hay autoevaluación. Tus respuestas son anónimas."
+- Criterios listados: Puntualidad · Aportes al equipo · Compromiso · Actitud.
+- Escala visible: 2 · 3 · 4 · 5.
+- Botón "Comenzar evaluación".
+
+#### E4 · Evaluar Compañero
+- Encabezado con nombre y avatar del compañero (ej. "Carlos Ruiz — Compañero 1 de 7").
+- Barra de progreso del flujo de evaluación.
+- Por cada criterio: selector de escala con etiquetas contextuales (Insuf. / Niv. / Bien / Exc.).
+- Opacidad reducida en preguntas no activas para foco visual.
+- Scroll automático al responder cada criterio.
+- Escala extendida: 0 y 1 para señales de alerta (no calculan nota).
+- Atajo "Fue un excelente compañero" → asigna 5 a todos los criterios.
+- Botón "Siguiente →" al completar cada compañero.
+
+#### E5 · Resumen Final y Confirmación
+- Lista de todos los compañeros evaluados con promedio asignado y checkmark de completado.
+- Recordatorio: "Tu evaluación es anónima. Sin autoevaluación incluida."
+- Botón "Enviar evaluación".
+
+#### E6 · Mis Resultados
+- Confirmación de envío con ícono de éxito y mensaje "¡Evaluación enviada!".
+- Promedio obtenido en la evaluación (ej. 4.3).
+- Desempeño por criterio con barras comparativas.
+- Promedio del grupo como referencia contextual.
+- Indicación de disponibilidad de resultados públicos (según visibilidad configurada por profesor).
+
+---
+
+## 6. Funcionalidades principales
+
+### Para el Profesor
+
+1. **Autenticación** institucional (SSO Roble) o manual con confirmación por correo.
+2. **Registro de profesor** con validación institucional.
+3. **Gestión de cursos**: listado, detalle, e invitación de usuarios.
+4. **Importación de grupos** desde Brightspace por categorías seleccionables.
+5. **Creación de evaluaciones** con criterios, escala, ventana de tiempo y visibilidad.
+6. **Monitoreo en tiempo real** del progreso de respuestas con recordatorios.
+7. **Analítica de resultados** multi-nivel: semestre, curso, evaluación, grupo, estudiante, criterio.
+
+### Para el Estudiante
+
+1. **Autenticación** SSO Roble o activación por correo (cuenta creada por el profesor).
+2. **Consulta de cursos** con estados de evaluación claros.
+3. **Motor de evaluación entre pares** sin autoevaluación, con anonimato garantizado.
+4. **Escala extendida con señales 0/1**: separadas del cálculo académico, registradas para análisis institucional.
+5. **Atajo de excelencia**: asigna 5 a todos los criterios del compañero actual.
+6. **Resultados personales** con promedio ponderado y detalle por criterio.
+7. **Recursos de aprendizaje colaborativo** integrados en la sección de cursos.
+8. **Perfil dinámico** con retroalimentación visual adaptada al rendimiento.
+9. **Sección de ayuda** accesible desde ajustes.
+
+### Componentes Compartidos (Profesor + Estudiante)
+
+- Sistema de autenticación y sesión.
+- Tarjetas de curso reutilizables.
+- Modales de confirmación y estados vacíos.
+- Sistema de notificaciones push (apertura, cierre, recordatorios).
+- Navegación por pestañas con estructura adaptada por rol.
+- Componente de escala de evaluación.
+
+---
+
+## 7. Flujo de evaluación detallado
+
+### Regla de cálculo
+
+- El promedio ponderado considera únicamente calificaciones válidas (2–5).
+- Los valores 0 y 1 se registran como señales de alerta para análisis institucional y seguimiento del docente.
+- No hay autoevaluación en ningún caso.
+
+### Paso a paso
+
+1. El estudiante accede al curso y selecciona la evaluación activa.
+2. Se muestra el primer compañero elegible con su nombre y avatar.
+3. Las preguntas se presentan con opacidad reducida; solo la pregunta activa tiene foco visual completo.
+4. Al responder, el sistema hace scroll automático hacia el siguiente criterio.
+5. El usuario puede:
+   - Asignar valores de 2 a 5 para nota académica válida.
+   - Usar 0 o 1 para reportar una señal o denuncia (sin impacto en nota).
+   - Activar "Fue un excelente compañero" para completar con 5 de forma masiva.
+6. Al finalizar cada compañero, se confirma el bloque y se avanza al siguiente.
+7. Al completar todos los compañeros, se muestra resumen final antes del envío.
+8. Al enviar, se registra la trazabilidad de entrega y se muestran resultados inmediatos.
+
+---
+
+## 8. Autenticación y registro
+
+El sistema contempla dos modalidades de acceso, adaptadas al rol del usuario.
+
+### Opción A: Autenticación institucional via SSO (Roble)
+
+- Login directo con credenciales institucionales (correo + contraseña Roble).
+- No requiere registro previo en Evalia.
+- Disponible para profesores y estudiantes con cuenta activa en Roble.
+- Flujo: `App Evalia → Redirect a Roble SSO → Token de sesión → App Evalia`.
+
+### Opción B: Registro y activación manual (orquestado por n8n)
+
+**Flujo del Profesor:**
+1. El profesor se registra con correo institucional y contraseña en Evalia.
+2. n8n intercepta el evento de registro y envía un correo de confirmación.
+3. El profesor confirma su correo → cuenta activada → acceso completo.
+
+**Flujo del Estudiante:**
+1. El profesor carga el grupo (CSV o importación desde Brightspace).
+2. n8n detecta los nuevos usuarios y crea sus cuentas automáticamente en Roble.
+3. Cada estudiante recibe un correo con enlace de activación y credenciales temporales.
+4. El estudiante activa su cuenta → acceso al flujo de evaluación.
+
+### Resumen comparativo
+
+| Característica | SSO Roble | Manual + n8n |
 |---|---|---|
-| Presentación | Widgets, controllers GetX, navegación | Flutter + GetX |
-| Dominio | Casos de uso, entidades, interfaces de repositorio | Dart puro |
-| Datos | Implementación de repositorios, modelos JSON | Roble API + caché local |
-
-- **Estado, navegación e inyección de dependencias:** GetX (`GetxController`, `GetMaterialApp`, `Bindings`)
-- **Autenticación y base de datos:** Roble (JWT + Bearer token con refresh automático)
-- **Notificaciones push:** Firebase Cloud Messaging (FCM)
-- **Permisos en primer lanzamiento:** localización y trabajo en segundo plano
+| Fricción de acceso | Mínima | Media (1 paso de activación) |
+| Dependencia técnica | Alta (Roble disponible) | Baja (n8n gestiona) |
+| Control institucional | Total | Delegado a n8n |
+| Escalabilidad | Alta | Alta |
+| Ideal para | Institución con Roble activo | Piloto / rollout gradual |
 
 ---
 
-### 2.3 Modelo de datos (entidades principales)
+## 9. Arquitectura del sistema
 
-![Diagrama de base de datos](images/db.png)
-
-```
-Usuario          Curso                  CategoriaGrupo
-────────         ─────────────          ──────────────────
-id               id                     id
-nombre           nombre                 nombre
-email            profesorId             cursoId
-rol              estudiantesIds[]       grupos[]
-(teacher|        categoriasIds[]
- student)
-
-Grupo            Actividad (Evaluación)    Respuesta
-────────         ──────────────────────    ──────────────
-id               id                        id
-nombre           cursoId                   actividadId
-categoriaId      categoriaId               evaluadorId
-miembrosIds[]    nombre                    evaluadoId
-                 ventanaMinutos            criterios {
-                 visibilidad                 puntualidad,
-                 (publica|privada)           contribuciones,
-                 estado                      compromiso,
-                 (activa|cerrada)            actitud
-                 creadaAt                  }
-```
-
----
-
-## 3. Flujo Funcional Detallado
-
-### 3.1 Flujo del Profesor
+Se adopta **Clean Architecture** para separar claramente UI, dominio y datos, con módulos independientes por actor y una capa de componentes compartidos.
 
 ```
-ONBOARDING
-    │
-    ▼
-[Registro/Login vía Roble]
-    │  email + contraseña → JWT devuelve rol = "teacher"
-    │  GetX redirige automáticamente a TeacherShell
-    ▼
-[Crear Curso]
-    │  Ingresa nombre del curso → se crea en Roble DB
-    ▼
-[Invitar Estudiantes]
-    │  El sistema genera un enlace mágico (token único, válido 48 h)
-    │  El profesor comparte el enlace por email o chat de clase
-    │  Cada estudiante que abre el enlace → se registra y une al curso
-    ▼
-[Importar Grupos desde Brightspace]
-    │  El profesor exporta los grupos desde Brightspace (CSV/JSON)
-    │  Sube el archivo en la pantalla "Grupos del curso"
-    │  La app parsea y crea: categorías de grupo → grupos → miembros
-    │  Si los grupos cambian durante el semestre → re-importar
-    ▼
-[Disparar una Evaluación]
-    │  1. Selecciona la categoría de grupo a evaluar
-    │  2. Asigna nombre a la actividad
-    │  3. Define duración (ej. 30 min, 2 h, 24 h)
-    │  4. Elige visibilidad: Pública o Privada
-    │  5. Confirma → todos los estudiantes de esa categoría
-    │               reciben notificación push automática
-    ▼
-[Monitorear]
-    │  Ve cuántos estudiantes completaron vs. pendientes por grupo
-    ▼
-[Ver Resultados] — siempre disponibles para el profesor
-    │
-    ├── Promedio por actividad (todos los grupos del curso)
-    ├── Promedio por grupo (entre actividades)
-    ├── Promedio por estudiante (entre actividades)
-    └── Detalle: grupo → estudiante → puntuación por criterio
+┌─────────────────────────────────────────────────────────────────────┐
+│                         Aplicación Flutter                          │
+│                                                                     │
+│  ┌──────────────────────┐      ┌──────────────────────────────────┐ │
+│  │   UI / Profesor       │      │   UI / Estudiante                │ │
+│  │  P1 Login · P2 Cursos │      │  E1 Login · E2 Cursos            │ │
+│  │  P3 Grupos · P4 Eval  │      │  E3 Acceso · E4 Evaluar          │ │
+│  │  P5 Monitor · P6 Res  │      │  E5 Resumen · E6 Resultados      │ │
+│  └──────────┬───────────┘      └────────────────┬─────────────────┘ │
+│             │                                   │                   │
+│  ┌──────────┴───────────────────────────────────┴─────────────────┐ │
+│  │              Componentes Compartidos                            │ │
+│  │  TarjetaCurso · EscalaEvaluacion · ModalConfirmacion           │ │
+│  │  NotificacionPush · NavegacionPorPestanas · EstadoVacio        │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+├─────────────────────────────────────────────────────────────────────┤
+│  Presentación (GetX)                                                │
+│  Controllers · Estado reactivo · Rutas · Bindings                   │
+├─────────────────────────────────────────────────────────────────────┤
+│  Dominio                                                            │
+│  Casos de uso: iniciar evaluación, calificar, calcular promedios    │
+│  Reglas: visibilidad pública/privada · exclusión 0/1 · anonimato    │
+├─────────────────────────────────────────────────────────────────────┤
+│  Datos                                                              │
+│  Repositorios · Mappers · Fuentes remotas / locales                 │
+├─────────────────────────────────────────────────────────────────────┤
+│  Infraestructura externa                                            │
+│  Roble (Auth + DB) · Brightspace (LMS) · n8n (automatización)       │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-**Mockups del flujo del profesor:**
+### Módulos lógicos
 
-| Gestión de cursos | Promedios y analíticas |
-|:---:|:---:|
-| ![Profesor - Cursos](images/profesor_course_mgmt.png) | ![Profesor - Resultados](images/grade_averages_analytics.png) |
-
----
-
-### 3.2 Flujo del Estudiante
-
-```
-ONBOARDING
-    │
-    ▼
-[Abrir enlace mágico]
-    │  La app detecta el token, registra al usuario en Roble
-    │  y lo une al curso automáticamente
-    ▼
-[Ver mis cursos y mi grupo]
-    │  El estudiante ve en qué grupo está dentro de cada curso
-    ▼
-[Recibir notificación push]
-    │  "Nueva evaluación activa: [nombre] — Tienes [X] horas"
-    ▼
-[Realizar la evaluación]
-    │
-    │  Para cada compañero de grupo (sin autoevaluación):
-    │  ┌────────────────────────────────────────────────────┐
-    │  │  PUNTUALIDAD                                        │
-    │  │  ○ 2.0 Needs Improvement                           │
-    │  │      "Llegó tarde o faltó en la mayoría..."        │
-    │  │  ○ 3.0 Adequate                                    │
-    │  │      "Frecuentemente llegó tarde..."               │
-    │  │  ○ 4.0 Good                                        │
-    │  │      "Generalmente puntual en la mayoría..."       │
-    │  │  ● 5.0 Excellent ← descriptor visible en pantalla  │
-    │  │      "Consistentemente puntual en todas..."        │
-    │  │                                                     │
-    │  │  [CONTRIBUCIONES]  [COMPROMISO]  [ACTITUD]         │
-    │  └────────────────────────────────────────────────────┘
-    │  Navega compañero a compañero → Confirmar al final
-    ▼
-[Ver resultados propios — solo si evaluación es Pública]
-    │  Puntuación recibida por criterio (promedio de pares)
-    └── Promedio general del grupo
-```
-
-**Mockup del formulario de evaluación:**
-
-<p align="center">
-  <img src="images/student_peer_evaluation.png" alt="Evaluación entre pares - Estudiante" width="360">
-</p>
-
----
-
-### 3.3 Fórmula de cálculo del puntaje individual
-
-Dado un grupo de $n$ integrantes, el puntaje del estudiante $i$ en la actividad $a$ es:
-
-$$\text{Score}_{i,a} = \frac{1}{n-1} \sum_{\substack{j=1 \\ j \neq i}}^{n} \overline{C}_{j \to i}$$
-
-Donde $\overline{C}_{j \to i}$ es el promedio de los 4 criterios que el evaluador $j$ asignó al evaluado $i$.
-
-El **promedio del estudiante $i$** a través de todas las actividades $A$:
-
-$$\overline{\text{Score}}_i = \frac{1}{|A|} \sum_{a \in A} \text{Score}_{i,a}$$
-
----
-
-### 3.4 Mapa de navegación (pantallas)
-
-```
-Auth
-├── /login
-├── /register
-└── /magic-link/:token     → procesa invitación, redirige al shell correcto
-
-TeacherShell (GetX BottomNav)
-├── /teacher/home          → dashboard resumen del profesor
-├── /teacher/courses       → lista de cursos creados
-│   └── /teacher/courses/:id
-│       ├── /groups        → importar / ver categorías y grupos
-│       ├── /assessments   → lista de evaluaciones del curso
-│       │   └── /:assId/results  → resultados detallados
-│       └── /invite        → generar enlace mágico de invitación
-└── /teacher/profile
-
-StudentShell
-├── /student/home          → mis cursos y evaluaciones activas
-├── /student/courses/:id
-│   ├── /my-group          → mi equipo y compañeros
-│   └── /assessments
-│       └── /:assId/evaluate → formulario de evaluación peer-to-peer
-└── /student/profile
-```
-
----
-
-## 4. Justificación de la Propuesta
-
-### 4.1 Basada en referentes
-
-**Buddycheck** valida el principio más importante del diseño: los grupos se importan desde el LMS, no se crean en la app. Esto elimina duplicación de datos y el error de transcripción manual. PeerUn replica este patrón adaptándolo a la realidad técnica de Uninorte: importación manual de CSV/JSON en lugar de LTI, dado que no existe integración institucional disponible actualmente.
-
-**CATME** justifica los criterios de evaluación y sus descriptores de nivel. La escala "Needs Improvement 2.0 / Adequate 3.0 / Good 4.0 / Excellent 5.0" con descriptores conductuales es la implementación directa del modelo BARS que CATME popularizó y que tiene respaldo empírico en publicaciones revisadas por pares. La fijación de criterios (en lugar de criterios flexibles como TEAMMATES) reduce la carga cognitiva del profesor, que no necesita diseñar la rúbrica, y garantiza la comparabilidad entre cohortes del mismo curso.
-
-**TEAMMATES** confirma que el control de visibilidad público/privado es una funcionalidad no negociable: los profesores necesitan poder ver resultados sin que los estudiantes los vean (evitar influencias en grupos en conflicto). La opción binaria (pública o privada total) adoptada en PeerUn es más simple y suficiente para el contexto, sin la complejidad granular de TEAMMATES.
-
-**Brecha cubierta por PeerUn:** los tres referentes son aplicaciones web sin app móvil nativa y sin soporte en español. En el contexto colombiano universitario, donde los estudiantes acceden principalmente desde celular, una app Flutter nativa garantiza: notificaciones push para ventanas de evaluación cortas, experiencia offline parcial (ver mi grupo sin red), y UX adaptada a cada rol sin la fricción de un navegador.
-
-
----
-
-### 4.2 Basada en entrevista a docente
-
-> Entrevista realizada a **Margarita Coronell Camargo**, docente de la Materia **GESTIÓN INTEGRADA EN T.I** en Uninorte.  
-> Fecha: [24/02/2026]
-
-| Hipótesis validada | Pregunta formulada | Respuesta / Hallazgo |
+| Módulo | Responsabilidad | Actor |
 |---|---|---|
-| Los profesores no tienen un método sistemático actual | "¿Cómo evalúas hoy el desempeño individual de los miembros dentro de cada grupo?" | Se suele colocar la misma nota a todos los integrantes del grupo sin importar dsiparidades en la carga de trabajo |
-| Los estudiantes evitan dar malas notas por miedo a represalias | "¿Has notado que los estudiantes se cuidan de no calificar bajo a sus compañeros? ¿El modo privado de resultados ayudaría?" | podria a ayudar a generar resultados talvez mas genuinos pero al esconder esos resultados no se esta promocionando la integridad y transparencia que estos espacios de participacion en equipo generan |
-| Los grupos cambian durante el semestre | "¿Con qué frecuencia cambia la composición de los grupos después de formados en Brightspace?" | Casi nada, solamente en casos extremos de mucho desacuerdo en el equipo |
-| La integración de la nota de evaluación entre pares en la final es un punto de dolor | "¿Cómo incluyes la evaluación entre pares en la nota final? ¿Qué peso le das?" | Se basa principalmente en una valoracion personal que tiene su cierta demora en la integracion de notas entre varias plataformas |
-
-**Conclusión general del entrevistado:**  
-La entrevista revela que la evaluación del trabajo colaborativo es hoy un proceso mayormente subjetivo e informal: las notas grupales se asignan de manera uniforme sin considerar disparidades reales en la carga de trabajo, y la integración de la evaluación entre pares en la nota final depende de una valoración personal del docente con fricciones entre plataformas. Aunque el modo privado de resultados podría incentivar calificaciones más honestas, el docente señala que ocultar esa información va en contra del principio de transparencia que debe caracterizar los espacios de trabajo en equipo. Esto define tres focos de diseño para la UI: primero, visibilidad clara y honesta de los datos individuales dentro del grupo, priorizando la información que le aporta valor real al docente (disparidades de carga, patrones de participación) por encima del dato agregado; segundo, transparencia como principio de interacción, evitando ocultar resultados y en su lugar contextualizarlos para fomentar la responsabilidad entre pares; y tercero, coherencia visual y de flujo que reduzca la fricción actual de integrar notas entre plataformas, usando jerarquía de color y resaltados de forma consistente para guiar al docente hacia las acciones de mayor impacto sin generar ambigüedad en la experiencia.
-
+| `AuthModule` | Login, sesión, registro, activación | Compartido |
+| `CourseModule` | Listado y detalle de cursos | Compartido |
+| `GroupModule` | Importación y gestión de grupos | Profesor |
+| `EvaluationModule` | Creación, cuestionario, validaciones, envío | Compartido |
+| `MonitoringModule` | Progreso en tiempo real, recordatorios | Profesor |
+| `ResultsModule` | Promedios ponderados y analítica multi-nivel | Compartido |
+| `ProfileModule` | Visuales dinámicas por rendimiento | Estudiante |
+| `ResourcesModule` | Contenido para fortalecer trabajo en equipo | Estudiante |
+| `NotificationModule` | Push, recordatorios, confirmaciones | Compartido |
 
 ---
 
-### 4.3 Tabla resumen de decisiones justificadas
+## 10. Integración con n8n y Brightspace
 
-| Decisión de diseño | Justificación |
+### 10.1 Rol de Brightspace
+
+- Fuente oficial de cursos, grupos y membresías estudiantiles.
+- Punto de referencia para ventanas académicas y estructura de actividades.
+- Provee datos de categorías de grupos importables (Proyecto Final, Talleres, Exposiciones, etc.).
+
+### 10.2 Rol de n8n
+
+n8n actúa como capa de orquestación sin exponer complejidad al usuario final:
+
+| Workflow | Disparador | Acción |
+|---|---|---|
+| Sincronización de cursos | Programado (diario) | Actualiza cursos y grupos desde Brightspace en Roble |
+| Activación de evaluación | Evento: profesor activa | Notifica a todos los estudiantes del grupo |
+| Recordatorio de participación | Programado (cada N horas) | Envía push a estudiantes sin completar |
+| Cierre automático de ventana | Fecha/hora configurada | Cierra evaluación y calcula promedios finales |
+| Publicación de visibilidad | Post-cierre | Publica resultados según configuración pública/privada |
+| Registro de estudiante | Evento: nuevo usuario en CSV | Crea cuenta en Roble y envía correo de activación |
+| Registro de profesor | Evento: nuevo registro | Envía correo de confirmación institucional |
+
+### 10.3 Beneficios
+
+- Cero carga manual operativa para docentes.
+- Desalineación mínima entre app y LMS.
+- Escalabilidad para múltiples cursos y cohortes sin panel admin adicional.
+- Separación de responsabilidades: el profesor diseña la evaluación, n8n la gestiona operativamente.
+
+---
+
+## 11. Decisiones de diseño
+
+1. **Enfoque mobile-first**: diseñada para el contexto estudiantil universitario móvil.
+2. **Dos interfaces separadas, un codebase**: profesor y estudiante con UX propia pero componentes Flutter reutilizables.
+3. **Foco visual por opacidad**: aumenta precisión de respuesta pregunta a pregunta, reduce sesgo de atención.
+4. **Atajo de excelencia**: acelera evaluaciones homogéneas positivas sin sacrificar granularidad.
+5. **Señales 0/1 como eventos separados**: preserva integridad del cálculo académico y habilita seguimiento institucional.
+6. **Perfil emocionalmente inteligente**: feedback visual motivador para mejorar, no para castigar.
+7. **Recursos integrados en cursos**: la app es herramienta formativa, no solo calificadora.
+8. **Sin app admin docente frontend**: la operación se delega a automatizaciones n8n + Brightspace.
+9. **Anonimato garantizado en evaluación**: el estudiante evalúa con seguridad; el nombre del evaluador no se expone.
+10. **Nombre "Evalia"**: evoca evaluación + IA, claro, memorizable y diferenciador en contexto universitario.
+
+---
+
+## 12. Modelo de datos
+
+```
+Usuario
+├── id
+├── nombre
+├── email
+├── rol (student | professor)
+├── promedioGeneral         // solo estudiante
+└── cuentaActivada
+
+Curso
+├── id
+├── nombre
+├── periodo
+├── profesorId
+└── promedioPonderado
+
+Grupo
+├── id
+├── cursoId
+├── nombre
+├── categoria               // importada desde Brightspace
+└── miembros[]              // lista de estudianteIds
+
+Evaluacion
+├── id
+├── cursoId
+├── nombre
+├── visibilidad             // publica | privada
+├── criterios[]             // lista de nombres de criterio
+├── escala                  // [2, 3, 4, 5]
+├── fechaApertura
+├── fechaCierre
+└── estado                  // activa | cerrada | pendiente
+
+Respuesta
+├── id
+├── evaluacionId
+├── evaluadorId
+├── evaluadoId
+├── criterio
+├── valor                   // 0..5
+└── esSenal                 // true si valor 0 o 1
+
+ResultadoAgregado
+├── id
+├── evaluacionId
+├── estudianteId
+├── promedioPonderado
+├── detallesPorCriterio{}
+└── nivelAgregacion         // evaluacion | curso | semestre
+```
+
+---
+
+## 13. KPIs y métricas de éxito
+
+| KPI | Descripción | Meta v1 |
+|---|---|---|
+| Tasa de participación | % de estudiantes que completan la evaluación dentro de la ventana | > 85% |
+| Tiempo de finalización | Duración media por evaluación completa | < 8 min |
+| Adopción docente | % de profesores que crean al menos 1 evaluación por semestre | > 70% |
+| Cobertura de recursos | % de usuarios que acceden al contenido formativo | > 40% |
+| Distribución de señales | Trazabilidad de alertas 0/1 por curso y equipo | Registro completo |
+| Consistencia de evaluación | Variación de calificaciones entre miembros de un mismo grupo | Monitoreable |
+| NPS interno | Net Promoter Score de profesores y estudiantes al final del semestre | > 40 |
+
+---
+
+## 14. Limitaciones y evolución
+
+### Limitaciones actuales (v1)
+
+- Sin panel de administración docente en frontend (delegado a n8n).
+- Dependencia de la calidad y frecuencia de sincronización con el LMS.
+- La interpretación de señales 0/1 requiere protocolo institucional de seguimiento.
+- Sin módulo de autoevaluación (fuera de alcance por decisión de diseño).
+
+### Evolución sugerida (v2 y v3)
+
+| Versión | Funcionalidad |
 |---|---|
-| Una sola app con roles | Simplicidad de distribución; alineada con práctica estándar de Buddycheck y TEAMMATES |
-| Grupos importados (no creados en la app) | Buddycheck demuestra que esta decisión elimina desincronización con el LMS institucional |
-| Enlace mágico por email para invitaciones | Método privado y sin contraseña adicional; reduce barrera de entrada para estudiantes |
-| Criterios fijos BARS × 4 | Respaldo académico (CATME); coherencia entre evaluaciones; cero configuración para el profesor |
-| Visibilidad pública/privada por evaluación | TEAMMATES y Buddycheck demuestran que es un requisito no negociable en contexto educativo |
-| Ventana de tiempo configurable | Flexibilidad para diferentes dinámicas pedagógicas (sprint vs. fin de semestre) |
-| Sin autoevaluación | Simplifica el formulario y reduce el sesgo de autocomplacencia; diferenciador explícito del enunciado |
+| v2 | Analítica avanzada de sesgo y outliers por grupo |
+| v2 | Módulo de recomendaciones automáticas por criterio de bajo rendimiento |
+| v2 | Panel docente simplificado en frontend |
+| v3 | Microcontenidos adaptativos según perfil de desempeño |
+| v3 | Integración con otros LMS (Canvas, Moodle) |
+| v3 | Módulo de autoevaluación opcional configurable por el profesor |
+| v3 | Dashboard institucional para coordinadores y decanos |
+
 ---
 
-## 5. Capturas de UI — PeerUn
+## 15. Referencias visuales
 
-> Esta sección presenta las pantallas de la aplicación PeerUn organizadas por flujo. Cada placeholder indica qué pantalla debe ir en ese espacio.
+### Flujo del Profesor
 
-### 5.1 Autenticación
+| Pantalla | Descripción |
+|---|---|
+| P1 · Login | Acceso institucional o SSO Roble |
+| P2 · Mis Cursos | Lista de cursos activos del semestre |
+| P3 · Importar Grupos | Selección de categorías desde Brightspace |
+| P4 · Crear Evaluación | Configuración de criterios, escala, tiempo y visibilidad |
+| P5 · Monitoreo | Progreso en tiempo real, recordatorios por grupo |
+| P6 · Resultados | Analítica multi-nivel: general, grupo, estudiante, criterio |
 
-| Pantalla | Captura |
-|---|:---:|
-| **Login** — Formulario de inicio de sesión con email y contraseña (Roble) | ![Login](images/peerun/login.png) | 
-| **Registro** — Formulario de registro de nuevo usuario | ![Registro](images/peerun/register.png) |
-| **Magic Link** — Pantalla de procesamiento del enlace mágico de invitación | ![Magic Link](images/peerun/magic-link.png) |
+### Flujo del Estudiante
 
-### 5.2 Flujo del Profesor (TeacherShell)
+| Pantalla | Descripción |
+|---|---|
+| E1 · Login | Acceso institucional o activación por correo |
+| E2 · Cursos Inscritos | Cursos activos, estados de evaluación, recursos formativos |
+| E3 · Acceso a Evaluación | Detalle de evaluación activa, reglas de anonimato |
+| E4 · Evaluar Compañero | Escala por criterio, foco visual, atajo de excelencia |
+| E5 · Resumen Final | Confirmación de respuestas antes del envío |
+| E6 · Mis Resultados | Promedio personal, desempeño por criterio, comparativa grupal |
 
-| Pantalla | Captura |
-|---|:---:|
-| **Dashboard del Profesor** (`/teacher/home`) — Resumen general: cursos activos, evaluaciones en progreso, estadísticas rápidas | ![Teacher Home](images/peerun/teacher-home.png) |
-| **Lista de Cursos** (`/teacher/courses`) — Todos los cursos creados por el profesor con acceso rápido | ![Teacher Courses](images/peerun/teacher-courses.png) |
-| **Detalle del Curso — Grupos** (`/teacher/courses/:id/groups`) — Importar CSV/JSON de Brightspace, ver categorías y grupos con sus miembros | ![Teacher Groups](images/peerun/teacher-groups.png) |
-| **Detalle del Curso — Evaluaciones** (`/teacher/courses/:id/assessments`) — Lista de evaluaciones del curso con estado (activa/cerrada) y progreso | ![Teacher Assessments](images/peerun/teacher-assessments.png) |
-| **Crear/Disparar Evaluación** — Modal o pantalla para configurar nueva evaluación: nombre, categoría, duración, visibilidad | ![Teacher Create Assessment](images/peerun/teacher-create-assessment.png) |
-| **Resultados de Evaluación** (`/teacher/courses/:id/assessments/:assId/results`) — Dashboard de resultados: promedios por grupo, por estudiante, detalle por criterio | ![Teacher Results](images/peerun/teacher-results.png) |
-| **Generar Enlace de Invitación** (`/teacher/courses/:id/invite`) — Pantalla para generar y compartir el enlace mágico del curso | ![Teacher Invite](images/peerun/teacher-invite.png) |
-| **Perfil del Profesor** (`/teacher/profile`) — Información personal, configuraciones de cuenta | ![Teacher Profile](images/peerun/teacher-profile.png) |
-
-### 5.3 Flujo del Estudiante (StudentShell)
-
-| Pantalla | Captura |
-|---|:---:|
-| **Home del Estudiante** (`/student/home`) — Mis cursos y evaluaciones activas pendientes con countdown | ![Student Home](images/peerun/student-home.png) |
-| **Mi Grupo** (`/student/courses/:id/my-group`) — Ver equipo asignado y compañeros dentro del curso | ![Student My Group](images/peerun/student-my-group.png) |
-| **Formulario de Evaluación** (`/student/courses/:id/assessments/:assId/evaluate`) — Evaluación peer-to-peer: 4 criterios BARS por cada compañero, navegación entre compañeros | ![Student Evaluate](images/peerun/student-evaluate.png) |
-| **Resultados Propios** (solo en evaluaciones públicas) — Puntuación recibida por criterio y promedio general del grupo | ![Student Results](images/peerun/student-results.png) |
-| **Perfil del Estudiante** (`/student/profile`) — Información personal del estudiante | ![Student Profile](images/peerun/student-profile.png) |
 ---
 
+## Conclusión
+
+Evalia unifica los aportes del equipo en una propuesta técnica y funcional coherente: la base de arquitectura limpia de **Cristian**, la identidad visual y el nombre propuestos por **Sandro**, las funcionalidades de n8n y el motor de evaluación de **Jorge**, y el análisis diferencial de competencia de **Flavio**.
+
+El resultado es una plataforma móvil que cubre el ciclo completo de la evaluación entre pares — **motivación → configuración → evaluación → resultado → reflexión** — con una arquitectura que escala, una integración que reduce fricción operativa, y una experiencia que prioriza la participación y la percepción de justicia del proceso académico.
