@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PeerEval Dúo — Propuesta 2</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0F172A; font-family: 'Outfit', 'Segoe UI', sans-serif; }
+    #root { min-height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    // ========================
+    // TEACHER APP COLORS
+    // ========================
+    const TC = {
+      primary: "#1E3A5F",
+      primaryLight: "#2E5080",
+      accent: "#C9A84C",
+      accentLight: "#E8C96A",
+      success: "#22C55E",
+      warning: "#F59E0B",
+      danger: "#EF4444",
+      bg: "#F0F4F8",
+      surface: "#FFFFFF",
+      surfaceAlt: "#EAF0F7",
+      text: "#0F2138",
+      textMid: "#4A6080",
+      textLight: "#94A3B8",
+      border: "#D0DCE8",
+    };
+
+    // ========================
+    // STUDENT APP COLORS
+    // ========================
+    const SC = {
+      primary: "#059669",
+      primaryLight: "#10B981",
+      accent: "#6366F1",
+      accentLight: "#818CF8",
+      success: "#22C55E",
+      warning: "#F59E0B",
+      danger: "#EF4444",
+      bg: "#F0FDF8",
+      surface: "#FFFFFF",
+      surfaceAlt: "#ECFDF5",
+      text: "#064E3B",
+      textMid: "#065F46",
+      textLight: "#6EE7B7",
+      border: "#A7F3D0",
+    };
+
+    // ========================
+    // SHARED MICRO-COMPONENTS
+    // ========================
+    const StatusBar = ({ dark, bg }) => (
+      <div style={{
+        height: 44, display: "flex", alignItems: "center",
+        justifyContent: "space-between", padding: "0 24px",
+        background: bg || "transparent",
+        color: dark ? "#fff" : TC.text, flexShrink: 0,
+      }}>
+        <span style={{ fontSize: 13, fontWeight: 700 }}>9:41</span>
+        <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+          <span style={{ fontSize: 12 }}>●●●</span>
+          <span style={{ fontSize: 11, fontWeight: 700 }}>100%</span>
+        </div>
+      </div>
+    );
+
+    const TCard = ({ children, style, onClick }) => (
+      <div onClick={onClick} style={{
+        background: TC.surface, borderRadius: 18, padding: 16,
+        boxShadow: "0 2px 14px rgba(30,58,95,0.08)",
+        border: `1px solid ${TC.border}`, ...style,
+        cursor: onClick ? "pointer" : "default",
+      }}>{children}</div>
+    );
+
+    const SCard = ({ children, style, onClick }) => (
+      <div onClick={onClick} style={{
+        background: SC.surface, borderRadius: 18, padding: 16,
+        boxShadow: "0 2px 14px rgba(5,150,105,0.08)",
+        border: `1px solid ${SC.border}`, ...style,
+        cursor: onClick ? "pointer" : "default",
+      }}>{children}</div>
+    );
+
+    const TBtn = ({ label, onClick, full, outline, small }) => (
+      <button onClick={onClick} style={{
+        background: outline ? "transparent" : `linear-gradient(135deg, ${TC.primary}, ${TC.primaryLight})`,
+        color: outline ? TC.primary : "#fff",
+        border: outline ? `2px solid ${TC.primary}` : "none",
+        borderRadius: 14, padding: small ? "9px 16px" : "14px 20px",
+        fontSize: small ? 12 : 14, fontWeight: 700, cursor: "pointer",
+        width: full ? "100%" : "auto",
+        boxShadow: outline ? "none" : "0 4px 16px rgba(30,58,95,0.3)",
+      }}>{label}</button>
+    );
+
+    const SBtn = ({ label, onClick, full, outline, small }) => (
+      <button onClick={onClick} style={{
+        background: outline ? "transparent" : `linear-gradient(135deg, ${SC.primary}, ${SC.primaryLight})`,
+        color: outline ? SC.primary : "#fff",
+        border: outline ? `2px solid ${SC.primary}` : "none",
+        borderRadius: 14, padding: small ? "9px 16px" : "14px 20px",
+        fontSize: small ? 12 : 14, fontWeight: 700, cursor: "pointer",
+        width: full ? "100%" : "auto",
+        boxShadow: outline ? "none" : "0 4px 16px rgba(5,150,105,0.3)",
+      }}>{label}</button>
+    );
+
+    const CriterionBar = ({ label, value, color }) => (
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: TC.textMid }}>{label}</span>
+          <span style={{ fontSize: 12, fontWeight: 800, color }}>{value}</span>
+        </div>
+        <div style={{ background: TC.border, borderRadius: 99, height: 6 }}>
+          <div style={{ height: 6, borderRadius: 99, background: color, width: `${((value - 2) / 3) * 100}%`, transition: "width 0.6s" }} />
+        </div>
+      </div>
+    );
+
+    const phoneStyle = (colors) => ({
+      width: 360,
+      height: 740,
+      background: colors.bg,
+      borderRadius: 40,
+      overflow: "hidden",
+      display: "flex",
+      flexDirection: "column",
+      fontFamily: "'Outfit', 'Segoe UI', sans-serif",
+      position: "relative",
+      flexShrink: 0,
+    });
+
+    const scrollable = { flex: 1, overflowY: "auto", scrollbarWidth: "none" };
+
+    // ============================================================
+    // TEACHER APP SCREENS
+    // ============================================================
+
+    const TLoginScreen = ({ navigate }) => (
+      <div style={{ ...phoneStyle(TC), background: `linear-gradient(165deg, ${TC.primary} 0%, #0D2540 100%)` }}>
+        <StatusBar dark />
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 28px 40px" }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+            <div style={{
+              width: 90, height: 90, borderRadius: 28,
+              background: `linear-gradient(135deg, ${TC.accent}, ${TC.accentLight})`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 42, marginBottom: 20,
+              boxShadow: `0 12px 40px ${TC.accent}60`,
+            }}>👨‍🏫</div>
+            <div style={{ fontSize: 30, fontWeight: 900, color: "#fff", letterSpacing: -0.5 }}>PeerEval</div>
+            <div style={{
+              background: TC.accent, color: TC.primary, borderRadius: 8,
+              padding: "3px 12px", fontSize: 11, fontWeight: 900, letterSpacing: 1.5,
+              marginTop: 6, marginBottom: 4,
+            }}>TEACHER</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Panel de docente</div>
+          </div>
+
+          <div style={{
+            background: "rgba(255,255,255,0.08)", backdropFilter: "blur(20px)",
+            borderRadius: 24, padding: 24, border: "1px solid rgba(255,255,255,0.15)",
+          }}>
+            <div style={{ color: "#fff", fontWeight: 800, fontSize: 18, marginBottom: 18 }}>Acceso docente — Roble</div>
+            {["Usuario institucional", "Contraseña"].map(label => (
+              <div key={label} style={{ marginBottom: 14 }}>
+                <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, marginBottom: 6, fontWeight: 600 }}>{label}</div>
+                <div style={{
+                  padding: "12px 14px", borderRadius: 12,
+                  background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)",
+                  color: label === "Contraseña" ? "rgba(255,255,255,0.5)" : "#fff", fontSize: 14,
+                }}>
+                  {label === "Contraseña" ? "••••••••" : "amartinez@universidad.edu"}
+                </div>
+              </div>
+            ))}
+            <div style={{
+              background: `linear-gradient(135deg, ${TC.accent}, ${TC.accentLight})`,
+              color: TC.primary, border: "none", borderRadius: 14,
+              padding: "14px 0", fontSize: 14, fontWeight: 800, cursor: "pointer",
+              width: "100%", textAlign: "center", marginTop: 4,
+              boxShadow: `0 6px 20px ${TC.accent}50`,
+            }} onClick={() => navigate("tDashboard")}>Iniciar sesión →</div>
+            <div style={{ textAlign: "center", color: "rgba(255,255,255,0.35)", fontSize: 10, marginTop: 12 }}>
+              Verificado como DOCENTE por Roble SSO
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+
+    const TDashboardScreen = ({ navigate }) => (
+      <div style={{ ...phoneStyle(TC) }}>
+        <div style={{ background: `linear-gradient(135deg, ${TC.primary}, ${TC.primaryLight})` }}>
+          <StatusBar dark />
+          <div style={{ padding: "8px 20px 20px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 12 }}>Panel docente</div>
+                <div style={{ color: "#fff", fontSize: 21, fontWeight: 900 }}>Prof. Andrés M. 👋</div>
+              </div>
+              <div style={{
+                width: 42, height: 42, borderRadius: 14,
+                background: TC.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20,
+              }}>🏆</div>
+            </div>
+            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+              {[["2", "Cursos"], ["1", "Activa"], ["20", "Grupos"]].map(([v, l]) => (
+                <div key={l} style={{
+                  flex: 1, background: "rgba(255,255,255,0.12)", borderRadius: 14,
+                  padding: "10px 0", textAlign: "center", border: "1px solid rgba(255,255,255,0.18)",
+                }}>
+                  <div style={{ color: "#fff", fontWeight: 900, fontSize: 20 }}>{v}</div>
+                  <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 10 }}>{l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ ...scrollable, padding: "14px 16px" }}>
+          <div style={{
+            background: `linear-gradient(135deg, ${TC.accent}22, ${TC.accent}11)`,
+            border: `1.5px solid ${TC.accent}50`, borderRadius: 18,
+            padding: 16, marginBottom: 16, cursor: "pointer",
+          }} onClick={() => navigate("tResults")}>
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <span style={{ fontSize: 26 }}>⏳</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 800, fontSize: 13, color: TC.text }}>Evaluación Semana 6 — Activa</div>
+                <div style={{ fontSize: 11, color: TC.textMid }}>18/40 completadas · Cierra en 14h</div>
+              </div>
+              <span style={{ fontSize: 18 }}>→</span>
+            </div>
+            <div style={{ background: TC.border, borderRadius: 99, height: 5, marginTop: 10 }}>
+              <div style={{ height: 5, borderRadius: 99, background: TC.accent, width: "45%" }} />
+            </div>
+          </div>
+
+          <div style={{ fontWeight: 800, fontSize: 15, color: TC.text, marginBottom: 12 }}>Mis cursos</div>
+          {[
+            { name: "Gestión de Proyectos 2026-10", groups: 10, code: "GP2610" },
+            { name: "Desarrollo de Software", groups: 8, code: "DS2610" },
+          ].map(c => (
+            <TCard key={c.code} style={{ marginBottom: 12 }}>
+              <div style={{ fontWeight: 800, fontSize: 14, color: TC.text }}>{c.name}</div>
+              <div style={{ fontSize: 12, color: TC.textMid, marginTop: 3 }}>{c.groups} grupos · {c.code}</div>
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <button onClick={() => navigate("tGroupImport")} style={{
+                  flex: 1, background: TC.surfaceAlt, color: TC.primary,
+                  border: `1px solid ${TC.border}`, borderRadius: 12, padding: "9px 0",
+                  fontSize: 11, fontWeight: 700, cursor: "pointer",
+                }}>🔗 Grupos</button>
+                <button onClick={() => navigate("tNewAssessment")} style={{
+                  flex: 1, background: TC.primary, color: "#fff",
+                  border: "none", borderRadius: 12, padding: "9px 0",
+                  fontSize: 11, fontWeight: 700, cursor: "pointer",
+                }}>+ Evaluación</button>
+                <button onClick={() => navigate("tResults")} style={{
+                  flex: 1, background: `${TC.accent}20`, color: TC.accent,
+                  border: `1px solid ${TC.accent}40`, borderRadius: 12, padding: "9px 0",
+                  fontSize: 11, fontWeight: 700, cursor: "pointer",
+                }}>📊 Ver</button>
+              </div>
+            </TCard>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", background: TC.surface, borderTop: `1px solid ${TC.border}`, padding: "8px 0 18px" }}>
+          {[["🏠", "Inicio", true], ["📝", "Evaluar", false, "tNewAssessment"], ["📊", "Resultados", false, "tResults"], ["⚙️", "Ajustes", false]].map(([icon, label, active, screen]) => (
+            <button key={label} onClick={() => screen && navigate(screen)} style={{
+              flex: 1, flexDirection: "column", display: "flex", alignItems: "center",
+              gap: 2, background: "none", border: "none", cursor: "pointer",
+              color: active ? TC.primary : TC.textLight,
+            }}>
+              <span style={{ fontSize: 20 }}>{icon}</span>
+              <span style={{ fontSize: 10, fontWeight: active ? 800 : 500 }}>{label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+
+    const TGroupImportScreen = ({ navigate }) => {
+      const [sel, setSel] = useState([0]);
+      const cats = [
+        { name: "Equipos Proyecto Final", n: 10, m: 40, sync: "Nunca" },
+        { name: "Grupos de Estudio", n: 5, m: 20, sync: "Hace 3 días" },
+        { name: "Laboratorio DevOps", n: 4, m: 16, sync: "Hace 1 semana" },
+      ];
+      return (
+        <div style={{ ...phoneStyle(TC) }}>
+          <div style={{ background: TC.primary }}>
+            <StatusBar dark />
+            <div style={{ padding: "8px 20px 20px", color: "#fff" }}>
+              <button onClick={() => navigate("tDashboard")} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 10, padding: "6px 12px", color: "#fff", cursor: "pointer", marginBottom: 10, fontSize: 13 }}>← Volver</button>
+              <div style={{ fontSize: 20, fontWeight: 900 }}>Importar desde Brightspace</div>
+              <div style={{ fontSize: 12, opacity: 0.65, marginTop: 3 }}>Gestión de Proyectos 2026-10</div>
+            </div>
+          </div>
+          <div style={{ ...scrollable, padding: 16 }}>
+            <TCard style={{ marginBottom: 16, background: `${TC.surfaceAlt}` }}>
+              <div style={{ fontSize: 12, color: TC.textMid }}>🔵 Conectado a Brightspace · 3 categorías disponibles</div>
+            </TCard>
+            {cats.map((c, i) => (
+              <TCard key={i} style={{ marginBottom: 12, border: sel.includes(i) ? `2px solid ${TC.primary}` : `1px solid ${TC.border}`, cursor: "pointer" }}
+                onClick={() => setSel(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i])}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{
+                    width: 22, height: 22, borderRadius: 7,
+                    background: sel.includes(i) ? TC.primary : TC.border,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    flexShrink: 0,
+                  }}>{sel.includes(i) && <span style={{ color: "#fff", fontSize: 13 }}>✓</span>}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 800, fontSize: 14, color: TC.text }}>{c.name}</div>
+                    <div style={{ fontSize: 11, color: TC.textMid }}>{c.n} grupos · {c.m} estudiantes</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, color: TC.textLight }}>Última sync</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: c.sync === "Nunca" ? TC.danger : TC.success }}>{c.sync}</div>
+                  </div>
+                </div>
+              </TCard>
+            ))}
+            <div style={{ marginTop: 8 }}>
+              <TBtn label={`Importar ${sel.length} categoría${sel.length !== 1 ? "s" : ""} →`} full onClick={() => navigate("tDashboard")} />
+            </div>
+            <div style={{ fontSize: 11, color: TC.textLight, textAlign: "center", marginTop: 10 }}>
+              Los datos se sincronizarán con Roble
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const TNewAssessmentScreen = ({ navigate }) => {
+      const [vis, setVis] = useState("public");
+      const [hours, setHours] = useState("72");
+      return (
+        <div style={{ ...phoneStyle(TC) }}>
+          <div style={{ background: TC.primary }}>
+            <StatusBar dark />
+            <div style={{ padding: "8px 20px 20px", color: "#fff" }}>
+              <button onClick={() => navigate("tDashboard")} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 10, padding: "6px 12px", color: "#fff", cursor: "pointer", marginBottom: 10, fontSize: 13 }}>← Volver</button>
+              <div style={{ fontSize: 20, fontWeight: 900 }}>Nueva Evaluación</div>
+            </div>
+          </div>
+          <div style={{ ...scrollable, padding: 16 }}>
+            <TCard style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: TC.textMid, marginBottom: 8 }}>NOMBRE</div>
+              <div style={{ padding: "11px 14px", borderRadius: 12, border: `1.5px solid ${TC.primary}`, fontSize: 14, fontWeight: 700, color: TC.text }}>
+                Evaluación Semana 6
+              </div>
+            </TCard>
+            <TCard style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: TC.textMid, marginBottom: 8 }}>CATEGORÍA DE GRUPOS</div>
+              <div style={{ padding: "11px 14px", borderRadius: 12, border: `1px solid ${TC.border}`, fontSize: 14, color: TC.text, background: TC.surfaceAlt }}>
+                Equipos Proyecto Final ▼
+              </div>
+            </TCard>
+            <TCard style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: TC.textMid, marginBottom: 8 }}>VENTANA DE TIEMPO</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                {["24", "48", "72", "168"].map(h => (
+                  <button key={h} onClick={() => setHours(h)} style={{
+                    flex: 1, padding: "9px 0", borderRadius: 11,
+                    background: hours === h ? TC.primary : TC.surfaceAlt,
+                    color: hours === h ? "#fff" : TC.textMid,
+                    border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12,
+                  }}>{h}h</button>
+                ))}
+              </div>
+            </TCard>
+            <TCard style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: TC.textMid, marginBottom: 8 }}>VISIBILIDAD</div>
+              {[
+                { val: "public", icon: "👥", label: "Pública", desc: "Estudiantes ven sus promedios" },
+                { val: "private", icon: "🔒", label: "Privada", desc: "Solo el docente ve resultados" },
+              ].map(opt => (
+                <div key={opt.val} onClick={() => setVis(opt.val)} style={{
+                  display: "flex", alignItems: "center", gap: 12,
+                  padding: "12px", borderRadius: 14, cursor: "pointer", marginBottom: 8,
+                  background: vis === opt.val ? `${TC.primary}12` : TC.surfaceAlt,
+                  border: `1.5px solid ${vis === opt.val ? TC.primary : TC.border}`,
+                }}>
+                  <span style={{ fontSize: 22 }}>{opt.icon}</span>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: TC.text }}>{opt.label}</div>
+                    <div style={{ fontSize: 11, color: TC.textMid }}>{opt.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </TCard>
+            <TBtn label="🚀 Lanzar evaluación" full onClick={() => navigate("tDashboard")} />
+          </div>
+        </div>
+      );
+    };
+
+    const TResultsScreen = ({ navigate }) => {
+      const [drill, setDrill] = useState(null);
+      const groups = [
+        { name: "Equipo DevOps 1", avg: 4.3, punct: 4.5, contrib: 4.2, commit: 4.4, attitude: 4.1 },
+        { name: "Equipo DevOps 2", avg: 3.5, punct: 3.0, contrib: 3.8, commit: 3.4, attitude: 3.8 },
+        { name: "Equipo DevOps 3", avg: 4.7, punct: 4.8, contrib: 4.6, commit: 4.7, attitude: 4.7 },
+      ];
+      const g = drill !== null ? groups[drill] : null;
+      return (
+        <div style={{ ...phoneStyle(TC) }}>
+          <div style={{ background: TC.primary }}>
+            <StatusBar dark />
+            <div style={{ padding: "8px 20px 20px", color: "#fff" }}>
+              <button onClick={() => drill !== null ? setDrill(null) : navigate("tDashboard")} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 10, padding: "6px 12px", color: "#fff", cursor: "pointer", marginBottom: 10, fontSize: 13 }}>← Volver</button>
+              <div style={{ fontSize: 20, fontWeight: 900 }}>{g ? g.name : "Resultados Globales"}</div>
+              <div style={{ fontSize: 11, opacity: 0.65 }}>Evaluación Semana 6 · {g ? "Desglose por criterio" : "Todos los grupos"}</div>
+            </div>
+          </div>
+          <div style={{ ...scrollable, padding: 16 }}>
+            {!g ? (
+              <>
+                <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+                  {[["4.2", "Promedio", TC.accent], ["75%", "Completitud", TC.success]].map(([v, l, c]) => (
+                    <TCard key={l} style={{ flex: 1, textAlign: "center" }}>
+                      <div style={{ fontSize: 26, fontWeight: 900, color: c }}>{v}</div>
+                      <div style={{ fontSize: 11, color: TC.textMid }}>{l}</div>
+                    </TCard>
+                  ))}
+                </div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: TC.textMid, marginBottom: 10 }}>GRUPOS — toca para detalle</div>
+                {groups.map((grp, i) => (
+                  <TCard key={i} style={{ marginBottom: 12, cursor: "pointer" }} onClick={() => setDrill(i)}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                      <div style={{ fontWeight: 800, fontSize: 14, color: TC.text }}>{grp.name}</div>
+                      <div style={{
+                        background: grp.avg >= 4 ? `${TC.success}20` : `${TC.warning}20`,
+                        color: grp.avg >= 4 ? TC.success : TC.warning,
+                        borderRadius: 10, padding: "4px 12px", fontWeight: 900, fontSize: 16,
+                      }}>{grp.avg}</div>
+                    </div>
+                    <CriterionBar label="Puntualidad" value={grp.punct} color={TC.accent} />
+                    <CriterionBar label="Compromiso" value={grp.commit} color={TC.primary} />
+                  </TCard>
+                ))}
+              </>
+            ) : (
+              <>
+                <TCard style={{ textAlign: "center", marginBottom: 14 }}>
+                  <div style={{ fontSize: 42, fontWeight: 900, color: TC.primary }}>{g.avg}</div>
+                  <div style={{ fontSize: 13, color: TC.textMid }}>Promedio del grupo</div>
+                </TCard>
+                <TCard style={{ marginBottom: 14 }}>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: TC.text, marginBottom: 14 }}>Criterios</div>
+                  <CriterionBar label="Puntualidad" value={g.punct} color="#06B6D4" />
+                  <CriterionBar label="Contribuciones" value={g.contrib} color={TC.primaryLight} />
+                  <CriterionBar label="Compromiso" value={g.commit} color="#22C55E" />
+                  <CriterionBar label="Actitud" value={g.attitude} color={TC.accent} />
+                </TCard>
+                <div style={{ fontWeight: 700, fontSize: 13, color: TC.textMid, marginBottom: 10 }}>ESTUDIANTES</div>
+                {["L. Pérez", "R. Sánchez", "M. Díaz", "C. Ruíz"].map((s, i) => (
+                  <TCard key={s} style={{ marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{
+                        width: 34, height: 34, borderRadius: 10,
+                        background: `hsl(${210 + i * 40}, 60%, 88%)`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontWeight: 800, color: `hsl(${210 + i * 40}, 60%, 35%)`, fontSize: 12,
+                      }}>{s[0]}</div>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: TC.text }}>{s}</span>
+                    </div>
+                    <div style={{ fontWeight: 900, fontSize: 18, color: [4.5, 3.8, 4.2, 4.0][i] >= 4 ? TC.success : TC.warning }}>
+                      {[4.5, 3.8, 4.2, 4.0][i]}
+                    </div>
+                  </TCard>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    // ============================================================
+    // STUDENT APP SCREENS
+    // ============================================================
+
+    const SLoginScreen = ({ navigate }) => (
+      <div style={{ ...phoneStyle(SC), background: `linear-gradient(160deg, ${SC.primary} 0%, #034732 100%)` }}>
+        <StatusBar dark />
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 28px 40px" }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+            <div style={{
+              width: 90, height: 90, borderRadius: 28,
+              background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 44, marginBottom: 20, border: "1.5px solid rgba(255,255,255,0.3)",
+            }}>🎓</div>
+            <div style={{ fontSize: 30, fontWeight: 900, color: "#fff" }}>PeerEval</div>
+            <div style={{
+              background: "rgba(255,255,255,0.2)", color: "#fff", borderRadius: 8,
+              padding: "3px 12px", fontSize: 11, fontWeight: 900, letterSpacing: 1.5,
+              marginTop: 6, marginBottom: 4,
+            }}>STUDENT</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Para estudiantes universitarios</div>
+          </div>
+
+          <div style={{
+            background: "rgba(255,255,255,0.1)", backdropFilter: "blur(20px)",
+            borderRadius: 24, padding: 24, border: "1px solid rgba(255,255,255,0.2)",
+          }}>
+            <div style={{ color: "#fff", fontWeight: 800, fontSize: 18, marginBottom: 16 }}>Ingresa con Roble</div>
+            {["Usuario institucional", "Contraseña"].map(label => (
+              <div key={label} style={{ marginBottom: 12 }}>
+                <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, marginBottom: 5, fontWeight: 600 }}>{label}</div>
+                <div style={{
+                  padding: "12px 14px", borderRadius: 12,
+                  background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)",
+                  color: label === "Contraseña" ? "rgba(255,255,255,0.4)" : "#fff", fontSize: 14,
+                }}>
+                  {label === "Contraseña" ? "••••••••" : "mgarcia@universidad.edu"}
+                </div>
+              </div>
+            ))}
+            <div style={{
+              background: "#fff", color: SC.primary, border: "none", borderRadius: 14,
+              padding: "14px 0", fontSize: 14, fontWeight: 900, cursor: "pointer",
+              width: "100%", textAlign: "center", marginTop: 8,
+              boxShadow: "0 6px 20px rgba(0,0,0,0.2)",
+            }} onClick={() => navigate("sCourses")}>Entrar →</div>
+            <div style={{ textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: 10, marginTop: 10 }}>
+              Rol ESTUDIANTE detectado por Roble
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+
+    const SCoursesScreen = ({ navigate }) => (
+      <div style={{ ...phoneStyle(SC) }}>
+        <div style={{ background: `linear-gradient(135deg, ${SC.primary}, ${SC.primaryLight})` }}>
+          <StatusBar dark />
+          <div style={{ padding: "8px 20px 20px" }}>
+            <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>Mis cursos</div>
+            <div style={{ color: "#fff", fontSize: 22, fontWeight: 900 }}>María García 🎓</div>
+          </div>
+        </div>
+
+        <div style={{ ...scrollable, padding: 16 }}>
+          <div style={{
+            background: `linear-gradient(135deg, ${SC.accent}, #4F46E5)`,
+            borderRadius: 20, padding: 18, marginBottom: 16, color: "#fff", cursor: "pointer",
+          }} onClick={() => navigate("sEvalList")}>
+            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, opacity: 0.8 }}>⚡ EVALUACIÓN ACTIVA</div>
+            <div style={{ fontWeight: 900, fontSize: 18, marginTop: 6 }}>Evaluación Semana 6</div>
+            <div style={{ fontSize: 12, opacity: 0.75, marginTop: 3 }}>Gestión de Proyectos · Cierra en 14h</div>
+            <div style={{ marginTop: 14, background: "rgba(255,255,255,0.25)", borderRadius: 99, height: 6 }}>
+              <div style={{ height: 6, borderRadius: 99, background: "#fff", width: "0%" }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 11, opacity: 0.8 }}>
+              <span>0/3 evaluados</span>
+              <span>Toca para empezar →</span>
+            </div>
+          </div>
+
+          <div style={{ fontWeight: 800, fontSize: 15, color: SC.text, marginBottom: 12 }}>Cursos activos</div>
+          {[
+            { name: "Gestión de Proyectos 2026-10", code: "GP2610", group: "Equipo DevOps 3", n: 4 },
+            { name: "Diseño UX Avanzado", code: "UX2610", group: "Grupo Prototipo A", n: 3 },
+          ].map(c => (
+            <SCard key={c.code} style={{ marginBottom: 12 }}>
+              <div style={{ fontWeight: 800, fontSize: 14, color: SC.text }}>{c.name}</div>
+              <div style={{ fontSize: 12, color: SC.textMid, marginTop: 3 }}>
+                👥 {c.group} · {c.n} integrantes
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <button onClick={() => navigate("sMyResults")} style={{
+                  width: "100%", background: SC.surfaceAlt, color: SC.primary,
+                  border: `1px solid ${SC.border}`, borderRadius: 12, padding: "9px 0",
+                  fontSize: 12, fontWeight: 700, cursor: "pointer",
+                }}>📊 Ver mis resultados</button>
+              </div>
+            </SCard>
+          ))}
+
+          <SCard style={{ textAlign: "center", background: SC.surfaceAlt }}>
+            <div style={{ fontSize: 20, marginBottom: 6 }}>➕</div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: SC.text }}>Unirse a un curso</div>
+            <div style={{ fontSize: 11, color: SC.textMid, marginTop: 3 }}>Ingresa el código del docente</div>
+            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+              <div style={{ flex: 1, padding: "10px 12px", borderRadius: 12, border: `1px solid ${SC.border}`, fontSize: 13, color: SC.textMid }}>
+                Código (ej: GP2610)
+              </div>
+              <button style={{ background: SC.primary, color: "#fff", border: "none", borderRadius: 12, padding: "0 14px", fontWeight: 700, cursor: "pointer" }}>→</button>
+            </div>
+          </SCard>
+        </div>
+
+        <div style={{ display: "flex", background: SC.surface, borderTop: `1px solid ${SC.border}`, padding: "8px 0 18px" }}>
+          {[["🏠", "Inicio", true], ["✍️", "Evaluar", false, "sEvalList"], ["⭐", "Resultados", false, "sMyResults"], ["👤", "Perfil", false]].map(([icon, label, active, screen]) => (
+            <button key={label} onClick={() => screen && navigate(screen)} style={{
+              flex: 1, flexDirection: "column", display: "flex", alignItems: "center",
+              gap: 2, background: "none", border: "none", cursor: "pointer",
+              color: active ? SC.primary : "#94A3B8",
+            }}>
+              <span style={{ fontSize: 20 }}>{icon}</span>
+              <span style={{ fontSize: 10, fontWeight: active ? 800 : 500 }}>{label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+
+    const SEvalListScreen = ({ navigate }) => {
+      const peers = [
+        { name: "Luis Pérez", initials: "LP", color: "#6366F1", done: false },
+        { name: "Rosa Sánchez", initials: "RS", color: "#F59E0B", done: false },
+        { name: "Carlos Ruíz", initials: "CR", color: "#EF4444", done: false },
+      ];
+      const [done, setDone] = useState([]);
+      return (
+        <div style={{ ...phoneStyle(SC) }}>
+          <div style={{ background: `linear-gradient(135deg, ${SC.primary}, ${SC.primaryLight})` }}>
+            <StatusBar dark />
+            <div style={{ padding: "8px 20px 20px", color: "#fff" }}>
+              <button onClick={() => navigate("sCourses")} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 10, padding: "6px 12px", color: "#fff", cursor: "pointer", marginBottom: 10, fontSize: 13 }}>← Volver</button>
+              <div style={{ fontSize: 19, fontWeight: 900 }}>Evaluación Semana 6</div>
+              <div style={{ fontSize: 11, opacity: 0.7 }}>Gestión de Proyectos · Equipo DevOps 3</div>
+            </div>
+          </div>
+          <div style={{ ...scrollable, padding: 16 }}>
+            <SCard style={{ marginBottom: 16, background: `${SC.accent}10`, border: `1px solid ${SC.accent}30` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 13, color: SC.text }}>⏳ Cierra en 14h</div>
+                  <div style={{ fontSize: 11, color: SC.textMid }}>{done.length}/{peers.length} compañeros evaluados</div>
+                </div>
+                <div style={{ fontSize: 28, fontWeight: 900, color: SC.accent }}>{Math.round((done.length / peers.length) * 100)}%</div>
+              </div>
+              <div style={{ background: SC.border, borderRadius: 99, height: 6, marginTop: 10 }}>
+                <div style={{ height: 6, borderRadius: 99, background: SC.accent, width: `${(done.length / peers.length) * 100}%`, transition: "width 0.4s" }} />
+              </div>
+            </SCard>
+
+            <div style={{ fontWeight: 700, fontSize: 13, color: SC.textMid, marginBottom: 10 }}>COMPAÑEROS A EVALUAR</div>
+            {peers.map((p, i) => (
+              <SCard key={i} style={{ marginBottom: 12, border: done.includes(i) ? `2px solid ${SC.success}` : `1px solid ${SC.border}`, cursor: "pointer" }}
+                onClick={() => navigate("sPeerScoring")}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{
+                    width: 44, height: 44, borderRadius: 14,
+                    background: p.color, display: "flex", alignItems: "center",
+                    justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 15,
+                  }}>{p.initials}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 800, fontSize: 14, color: SC.text }}>{p.name}</div>
+                    <div style={{ fontSize: 12, color: done.includes(i) ? SC.success : SC.textMid }}>
+                      {done.includes(i) ? "✓ Evaluado" : "Toca para evaluar →"}
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 22 }}>{done.includes(i) ? "✅" : "→"}</span>
+                </div>
+              </SCard>
+            ))}
+
+            {done.length === peers.length && (
+              <SBtn label="🚀 Enviar toda la evaluación" full onClick={() => navigate("sCourses")} />
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    const SPeerScoringScreen = ({ navigate }) => {
+      const [scores, setScores] = useState({});
+      const criteria = [
+        { key: "punct", label: "Puntualidad", icon: "⏰", color: "#06B6D4" },
+        { key: "contrib", label: "Contribuciones", icon: "💡", color: SC.accent },
+        { key: "commit", label: "Compromiso", icon: "🔥", color: SC.primary },
+        { key: "attitude", label: "Actitud", icon: "😊", color: "#F59E0B" },
+      ];
+      const levels = [
+        { val: 2, label: "Necesita Mejorar" },
+        { val: 3, label: "Adecuado" },
+        { val: 4, label: "Bueno" },
+        { val: 5, label: "Excelente" },
+      ];
+      const allDone = criteria.every(c => scores[c.key]);
+      return (
+        <div style={{ ...phoneStyle(SC) }}>
+          <div style={{ background: "#6366F1" }}>
+            <StatusBar dark />
+            <div style={{ padding: "8px 20px 20px", color: "#fff" }}>
+              <button onClick={() => navigate("sEvalList")} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 10, padding: "6px 12px", color: "#fff", cursor: "pointer", marginBottom: 10, fontSize: 13 }}>← Volver</button>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{
+                  width: 42, height: 42, borderRadius: 14,
+                  background: "rgba(255,255,255,0.25)",
+                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20,
+                }}>LP</div>
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 900 }}>Luis Pérez</div>
+                  <div style={{ fontSize: 11, opacity: 0.7 }}>{Object.keys(scores).length}/4 criterios completados</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style={{ ...scrollable, padding: 16 }}>
+            {criteria.map(c => (
+              <SCard key={c.key} style={{ marginBottom: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                  <span style={{ fontSize: 18 }}>{c.icon}</span>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: SC.text, flex: 1 }}>{c.label}</div>
+                  {scores[c.key] && (
+                    <span style={{ background: c.color, color: "#fff", borderRadius: 20, padding: "2px 10px", fontSize: 12, fontWeight: 800 }}>
+                      {scores[c.key]}.0
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {levels.map(l => (
+                    <button key={l.val} onClick={() => setScores(prev => ({ ...prev, [c.key]: l.val }))} style={{
+                      flex: 1, padding: "8px 0", borderRadius: 10, cursor: "pointer",
+                      background: scores[c.key] === l.val ? c.color : SC.surfaceAlt,
+                      color: scores[c.key] === l.val ? "#fff" : "#64748B",
+                      border: "none", fontWeight: 700, fontSize: 12, transition: "all 0.15s",
+                    }}>{l.val}</button>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 6, textAlign: "center" }}>
+                  {levels.find(l => l.val === scores[c.key])?.label || "Selecciona un nivel"}
+                </div>
+              </SCard>
+            ))}
+            <SBtn
+              label={allDone ? "✓ Guardar evaluación →" : "Completa los 4 criterios"}
+              full
+              onClick={() => { if (allDone) navigate("sEvalList"); }}
+            />
+          </div>
+        </div>
+      );
+    };
+
+    const SMyResultsScreen = ({ navigate }) => {
+      const criteria = [
+        { label: "Puntualidad", val: 4.8, color: "#06B6D4", icon: "⏰" },
+        { label: "Contribuciones", val: 4.0, color: SC.accent, icon: "💡" },
+        { label: "Compromiso", val: 4.5, color: SC.primary, icon: "🔥" },
+        { label: "Actitud", val: 4.6, color: "#F59E0B", icon: "😊" },
+      ];
+      const avg = (criteria.reduce((s, c) => s + c.val, 0) / 4).toFixed(2);
+      return (
+        <div style={{ ...phoneStyle(SC) }}>
+          <div style={{ background: `linear-gradient(135deg, ${SC.primary}, ${SC.primaryLight})` }}>
+            <StatusBar dark />
+            <div style={{ padding: "8px 20px 20px", color: "#fff" }}>
+              <button onClick={() => navigate("sCourses")} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 10, padding: "6px 12px", color: "#fff", cursor: "pointer", marginBottom: 10, fontSize: 13 }}>← Volver</button>
+              <div style={{ fontSize: 19, fontWeight: 900 }}>Mis resultados</div>
+              <div style={{ fontSize: 11, opacity: 0.7 }}>Evaluación Semana 6 · Modo público</div>
+            </div>
+          </div>
+          <div style={{ ...scrollable, padding: 16 }}>
+            <SCard style={{ textAlign: "center", marginBottom: 16, padding: 24 }}>
+              <div style={{ fontSize: 56, fontWeight: 900, color: SC.primary, lineHeight: 1 }}>{avg}</div>
+              <div style={{ fontSize: 13, color: SC.textMid, marginTop: 6 }}>Tu promedio general</div>
+              <div style={{ marginTop: 14, background: `${SC.success}15`, borderRadius: 12, padding: "10px 20px", display: "inline-block" }}>
+                <span style={{ color: SC.success, fontWeight: 800, fontSize: 13 }}>🌟 Excelente desempeño en el equipo</span>
+              </div>
+            </SCard>
+
+            {criteria.map(c => (
+              <SCard key={c.label} style={{ marginBottom: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                  <span style={{ fontSize: 20 }}>{c.icon}</span>
+                  <div style={{ flex: 1, fontWeight: 800, fontSize: 14, color: SC.text }}>{c.label}</div>
+                  <div style={{ fontWeight: 900, fontSize: 22, color: c.color }}>{c.val}</div>
+                </div>
+                <div style={{ background: SC.border, borderRadius: 99, height: 8 }}>
+                  <div style={{ height: 8, borderRadius: 99, background: c.color, width: `${((c.val - 2) / 3) * 100}%`, transition: "width 0.8s" }} />
+                </div>
+                <div style={{ fontSize: 11, color: "#64748B", marginTop: 6 }}>
+                  {c.val >= 4.5 ? "⭐ Destacado por tus compañeros" : c.val >= 4 ? "👍 Buen desempeño" : "💪 Área de oportunidad"}
+                </div>
+              </SCard>
+            ))}
+          </div>
+        </div>
+      );
+    };
+
+    // ============================================================
+    // SCREEN REGISTRIES
+    // ============================================================
+
+    const TEACHER_SCREENS = {
+      tLogin: TLoginScreen,
+      tDashboard: TDashboardScreen,
+      tGroupImport: TGroupImportScreen,
+      tNewAssessment: TNewAssessmentScreen,
+      tResults: TResultsScreen,
+    };
+
+    const STUDENT_SCREENS = {
+      sLogin: SLoginScreen,
+      sCourses: SCoursesScreen,
+      sEvalList: SEvalListScreen,
+      sPeerScoring: SPeerScoringScreen,
+      sMyResults: SMyResultsScreen,
+    };
+
+    // ============================================================
+    // MAIN COMPONENT
+    // ============================================================
+
+    function PeerEvalDuoPrototype() {
+      const [tScreen, setTScreen] = useState("tLogin");
+      const [sScreen, setSScreen] = useState("sLogin");
+
+      const tNavigate = (s) => setTScreen(s);
+      const sNavigate = (s) => setSScreen(s);
+
+      const TeacherScreen = TEACHER_SCREENS[tScreen] || TLoginScreen;
+      const StudentScreen = STUDENT_SCREENS[sScreen] || SLoginScreen;
+
+      const teacherNav = [
+        { label: "🔐 Login", screen: "tLogin" },
+        { label: "🏠 Dashboard", screen: "tDashboard" },
+        { label: "🔗 Grupos", screen: "tGroupImport" },
+        { label: "📝 Nueva eval.", screen: "tNewAssessment" },
+        { label: "📊 Resultados", screen: "tResults" },
+      ];
+      const studentNav = [
+        { label: "🔐 Login", screen: "sLogin" },
+        { label: "🏠 Cursos", screen: "sCourses" },
+        { label: "📋 Evaluar", screen: "sEvalList" },
+        { label: "✍️ Criterios", screen: "sPeerScoring" },
+        { label: "⭐ Resultados", screen: "sMyResults" },
+      ];
+
+      return (
+        <div style={{
+          minHeight: "100vh",
+          background: "linear-gradient(135deg, #0F172A 0%, #1E3A5F 50%, #0F172A 100%)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          padding: "36px 20px 48px",
+          fontFamily: "'Outfit', 'Segoe UI', sans-serif",
+        }}>
+          {/* Header */}
+          <div style={{ textAlign: "center", marginBottom: 28 }}>
+            <div style={{ fontSize: 30, fontWeight: 900, color: "#fff", letterSpacing: -0.5 }}>
+              PeerEval Dúo — Propuesta 2
+            </div>
+            <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 13, marginTop: 5 }}>
+              Dos apps especializadas · Navega cada una de forma independiente
+            </div>
+          </div>
+
+          {/* App labels & nav */}
+          <div style={{ display: "flex", gap: 40, marginBottom: 24, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
+            <div style={{ textAlign: "center" }}>
+              <div style={{
+                background: `linear-gradient(135deg, ${TC.primary}, ${TC.primaryLight})`,
+                color: "#fff", borderRadius: 12, padding: "6px 20px",
+                fontWeight: 800, fontSize: 13, letterSpacing: 0.5, marginBottom: 8,
+                boxShadow: "0 4px 20px rgba(30,58,95,0.5)",
+              }}>👨‍🏫 PEEREVAL TEACHER</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
+                {teacherNav.map(item => (
+                  <button key={item.screen} onClick={() => tNavigate(item.screen)} style={{
+                    background: tScreen === item.screen ? TC.accent : "rgba(255,255,255,0.08)",
+                    color: tScreen === item.screen ? TC.primary : "#fff",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    borderRadius: 16, padding: "5px 11px", fontSize: 11,
+                    fontWeight: 700, cursor: "pointer",
+                  }}>{item.label}</button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 22 }}>⟷</div>
+
+            <div style={{ textAlign: "center" }}>
+              <div style={{
+                background: `linear-gradient(135deg, ${SC.primary}, ${SC.primaryLight})`,
+                color: "#fff", borderRadius: 12, padding: "6px 20px",
+                fontWeight: 800, fontSize: 13, letterSpacing: 0.5, marginBottom: 8,
+                boxShadow: "0 4px 20px rgba(5,150,105,0.5)",
+              }}>🎓 PEEREVAL STUDENT</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
+                {studentNav.map(item => (
+                  <button key={item.screen} onClick={() => sNavigate(item.screen)} style={{
+                    background: sScreen === item.screen ? "#fff" : "rgba(255,255,255,0.08)",
+                    color: sScreen === item.screen ? SC.primary : "#fff",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    borderRadius: 16, padding: "5px 11px", fontSize: 11,
+                    fontWeight: 700, cursor: "pointer",
+                  }}>{item.label}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Phones */}
+          <div style={{ display: "flex", gap: 48, alignItems: "flex-start", flexWrap: "wrap", justifyContent: "center" }}>
+            {/* Teacher phone */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+              <div style={{
+                boxShadow: `0 40px 80px rgba(30,58,95,0.6), 0 0 0 10px #0D2540, 0 0 0 12px ${TC.accent}60`,
+                borderRadius: 44,
+              }}>
+                <TeacherScreen navigate={tNavigate} />
+              </div>
+              <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, textAlign: "center" }}>
+                App Docente — Identidad azul marino + dorado
+              </div>
+            </div>
+
+            {/* Student phone */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+              <div style={{
+                boxShadow: `0 40px 80px rgba(5,150,105,0.6), 0 0 0 10px #034732, 0 0 0 12px ${SC.primaryLight}60`,
+                borderRadius: 44,
+              }}>
+                <StudentScreen navigate={sNavigate} />
+              </div>
+              <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, textAlign: "center" }}>
+                App Estudiante — Identidad verde esmeralda
+              </div>
+            </div>
+          </div>
+
+          <div style={{ color: "rgba(255,255,255,0.25)", fontSize: 11, marginTop: 32, textAlign: "center", maxWidth: 600 }}>
+            Cada app tiene su propia identidad visual · El shared package peereval_core comparte la lógica de dominio · Toca cualquier elemento para navegar
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<PeerEvalDuoPrototype />);
+  </script>
+</body>
+</html>
