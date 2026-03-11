@@ -35,6 +35,7 @@ class _SLoginPageState extends State<SLoginPage> {
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ── Logo ──────────────────────────────────────────────────
                 Container(
@@ -145,9 +146,11 @@ class _SLoginPageState extends State<SLoginPage> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  'Rol ESTUDIANTE · Roble SSO',
-                  style: GoogleFonts.dmMono(fontSize: 11, color: skTextFaint),
+                Center(
+                  child: Text(
+                    'Rol ESTUDIANTE · Roble SSO',
+                    style: GoogleFonts.dmMono(fontSize: 11, color: skTextFaint),
+                  ),
                 ),
               ],
             ),

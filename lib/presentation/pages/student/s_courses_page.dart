@@ -39,44 +39,51 @@ class SCoursesPage extends StatelessWidget {
                               letterSpacing: 0.4,
                             ),
                           ),
-                          Obx(() => Text(
-                                ctrl.currentStudent.name,
-                                style: GoogleFonts.sora(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.5,
-                                  color: skText,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              )),
+                          Obx(() {
+                            final s = ctrl.student.value;
+                            if (s == null) return const SizedBox.shrink();
+                            return Text(
+                              s.name,
+                              style: GoogleFonts.sora(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.5,
+                                color: skText,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            );
+                          }),
                         ],
                       )),
                       const SizedBox(width: 12),
-                      Obx(() => GestureDetector(
-                            onTap: () =>
-                                _showProfileSheet(context, ctrl),
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: skPrimaryLight,
-                                borderRadius: BorderRadius.circular(13),
-                              ),
-                              padding: const EdgeInsets.all(4),
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  ctrl.currentStudent.initials,
-                                  style: GoogleFonts.sora(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w800,
-                                    color: skPrimary,
-                                  ),
+                      Obx(() {
+                        final s = ctrl.student.value;
+                        if (s == null) return const SizedBox.shrink();
+                        return GestureDetector(
+                          onTap: () => _showProfileSheet(context, ctrl),
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: skPrimaryLight,
+                              borderRadius: BorderRadius.circular(13),
+                            ),
+                            padding: const EdgeInsets.all(4),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                s.initials,
+                                style: GoogleFonts.sora(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: skPrimary,
                                 ),
                               ),
                             ),
-                          )),
+                          ),
+                        );
+                      }),
                     ],
                   ),
                 ],

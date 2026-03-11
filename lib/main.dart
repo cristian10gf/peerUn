@@ -12,7 +12,8 @@ import 'package:example/presentation/pages/student/s_peer_score_page.dart';
 import 'package:example/presentation/pages/student/s_my_results_page.dart';
 import 'package:example/presentation/pages/auth/s_register_page.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const PeerEvalApp());
 }
 

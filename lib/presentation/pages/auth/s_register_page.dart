@@ -71,6 +71,7 @@ class _SRegisterPageState extends State<SRegisterPage> {
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ── Logo ──────────────────────────────────────────────────
                 Container(
