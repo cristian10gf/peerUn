@@ -8,6 +8,8 @@ import 'package:example/domain/models/peer_evaluation.dart';
 class SPeerScorePage extends StatelessWidget {
   const SPeerScorePage({super.key});
 
+  static const _critColors = [critBlue, critPurple, critGreen, critAmber];
+
   @override
   Widget build(BuildContext context) {
     final ctrl = Get.find<StudentController>();
@@ -87,7 +89,13 @@ class SPeerScorePage extends StatelessWidget {
                 child: Column(
                   children: [
                     ...EvalCriterion.defaults
-                        .map((c) => _CriterionCard(criterion: c, ctrl: ctrl)),
+                        .asMap()
+                        .entries
+                        .map((e) => _CriterionCard(
+                              criterion: e.value,
+                              ctrl:      ctrl,
+                              color:     _critColors[e.key],
+                            )),
                     const SizedBox(height: 4),
                     _SubmitButton(ctrl: ctrl),
                   ],
@@ -104,7 +112,8 @@ class SPeerScorePage extends StatelessWidget {
 class _CriterionCard extends StatelessWidget {
   final EvalCriterion criterion;
   final StudentController ctrl;
-  const _CriterionCard({required this.criterion, required this.ctrl});
+  final Color color;
+  const _CriterionCard({required this.criterion, required this.ctrl, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -138,7 +147,7 @@ class _CriterionCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                     decoration: BoxDecoration(
-                      color: criterion.color.withOpacity(0.13),
+                      color: color.withValues(alpha: 0.13),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -146,7 +155,7 @@ class _CriterionCard extends StatelessWidget {
                       style: GoogleFonts.dmMono(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
-                        color: criterion.color,
+                        color: color,
                       ),
                     ),
                   ),
@@ -170,9 +179,9 @@ class _CriterionCard extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 9),
                         decoration: BoxDecoration(
-                          color: selected ? criterion.color : skSurface,
+                          color: selected ? color : skSurface,
                           border: Border.all(
-                            color: selected ? criterion.color : skBorder,
+                            color: selected ? color : skBorder,
                           ),
                           borderRadius: BorderRadius.circular(9),
                         ),

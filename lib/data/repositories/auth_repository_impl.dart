@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:example/data/services/database_service.dart';
 import 'package:example/domain/models/student.dart';
 import 'package:example/domain/repositories/i_auth_repository.dart';
@@ -13,6 +15,9 @@ class AuthRepositoryImpl implements IAuthRepository {
     return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
   }
 
+  static String _hash(String password) =>
+      sha256.convert(utf8.encode(password)).toString();
+
   Future<void> _saveSession(int studentId) async {
     final db = await _db.database;
     await db.delete('sessions');
@@ -25,7 +30,7 @@ class AuthRepositoryImpl implements IAuthRepository {
     final rows = await db.query(
       'students',
       where: 'email = ? AND password = ?',
-      whereArgs: [email.trim().toLowerCase(), password],
+      whereArgs: [email.trim().toLowerCase(), _hash(password)],
     );
     if (rows.isEmpty) return null;
     await _saveSession(rows.first['id'] as int);
@@ -39,7 +44,7 @@ class AuthRepositoryImpl implements IAuthRepository {
     final id = await db.insert('students', {
       'name':     name.trim(),
       'email':    email.trim().toLowerCase(),
-      'password': password,
+      'password': _hash(password),
       'initials': initials,
     });
     await _saveSession(id);

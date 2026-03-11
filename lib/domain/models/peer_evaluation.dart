@@ -1,6 +1,3 @@
-import 'package:flutter/material.dart';
-import 'package:example/presentation/theme/app_colors.dart';
-
 class Peer {
   final String id;
   final String name;
@@ -20,19 +17,14 @@ class Peer {
 class EvalCriterion {
   final String id;
   final String label;
-  final Color color;
 
-  const EvalCriterion({
-    required this.id,
-    required this.label,
-    required this.color,
-  });
+  const EvalCriterion({required this.id, required this.label});
 
   static const List<EvalCriterion> defaults = [
-    EvalCriterion(id: 'punct',    label: 'Puntualidad',    color: critBlue),
-    EvalCriterion(id: 'contrib',  label: 'Contribuciones', color: critPurple),
-    EvalCriterion(id: 'commit',   label: 'Compromiso',     color: critGreen),
-    EvalCriterion(id: 'attitude', label: 'Actitud',        color: critAmber),
+    EvalCriterion(id: 'punct',    label: 'Puntualidad'),
+    EvalCriterion(id: 'contrib',  label: 'Contribuciones'),
+    EvalCriterion(id: 'commit',   label: 'Compromiso'),
+    EvalCriterion(id: 'attitude', label: 'Actitud'),
   ];
 
   static const List<String> levelLabels = [
@@ -48,13 +40,8 @@ class EvalCriterion {
 class CriterionResult {
   final String label;
   final double value;
-  final Color color;
 
-  const CriterionResult({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
+  const CriterionResult({required this.label, required this.value});
 
   double get barFraction => ((value - 2) / 3).clamp(0.0, 1.0);
 }

@@ -8,6 +8,8 @@ import 'package:example/domain/models/peer_evaluation.dart';
 class SMyResultsPage extends StatelessWidget {
   const SMyResultsPage({super.key});
 
+  static const _critColors = [critBlue, critPurple, critGreen, critAmber];
+
   @override
   Widget build(BuildContext context) {
     final ctrl = Get.find<StudentController>();
@@ -72,7 +74,13 @@ class SMyResultsPage extends StatelessWidget {
                     const SizedBox(height: 10),
 
                     // Criteria cards
-                    ...ctrl.myResults.map((r) => _CriterionResultCard(result: r)),
+                    ...ctrl.myResults
+                        .asMap()
+                        .entries
+                        .map((e) => _CriterionResultCard(
+                              result: e.value,
+                              color:  _critColors[e.key],
+                            )),
                   ],
                 ),
               ),
@@ -123,8 +131,8 @@ class _AverageCard extends StatelessWidget {
             padding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: skSuccess.withOpacity(0.09),
-              border: Border.all(color: skSuccess.withOpacity(0.3)),
+              color: skSuccess.withValues(alpha: 0.09),
+              border: Border.all(color: skSuccess.withValues(alpha: 0.3)),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
@@ -145,7 +153,8 @@ class _AverageCard extends StatelessWidget {
 
 class _CriterionResultCard extends StatelessWidget {
   final CriterionResult result;
-  const _CriterionResultCard({required this.result});
+  final Color color;
+  const _CriterionResultCard({required this.result, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -165,7 +174,7 @@ class _CriterionResultCard extends StatelessWidget {
                 width: 4,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: result.color,
+                  color: color,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -185,7 +194,7 @@ class _CriterionResultCard extends StatelessWidget {
                 style: GoogleFonts.dmMono(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
-                  color: result.color,
+                  color: color,
                 ),
               ),
             ],
@@ -196,7 +205,7 @@ class _CriterionResultCard extends StatelessWidget {
             child: LinearProgressIndicator(
               value: result.barFraction,
               backgroundColor: skBorder,
-              valueColor: AlwaysStoppedAnimation(result.color),
+              valueColor: AlwaysStoppedAnimation(color),
               minHeight: 5,
             ),
           ),

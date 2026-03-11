@@ -3,7 +3,6 @@ import 'package:example/domain/models/student.dart';
 import 'package:example/domain/models/course.dart';
 import 'package:example/domain/models/peer_evaluation.dart';
 import 'package:example/domain/repositories/i_auth_repository.dart';
-import 'package:example/presentation/theme/app_colors.dart';
 
 class StudentController extends GetxController {
   final IAuthRepository _authRepo;
@@ -117,14 +116,10 @@ class StudentController extends GetxController {
 
   // ── My results (mock received scores) ────────────────────────────────────
   final myResults = <CriterionResult>[
-    const CriterionResult(label: 'Puntualidad', value: 4.5, color: critBlue),
-    const CriterionResult(
-      label: 'Contribuciones',
-      value: 3.8,
-      color: critPurple,
-    ),
-    const CriterionResult(label: 'Compromiso', value: 4.3, color: critGreen),
-    const CriterionResult(label: 'Actitud', value: 4.7, color: critAmber),
+    const CriterionResult(label: 'Puntualidad',    value: 4.5),
+    const CriterionResult(label: 'Contribuciones', value: 3.8),
+    const CriterionResult(label: 'Compromiso',     value: 4.3),
+    const CriterionResult(label: 'Actitud',        value: 4.7),
   ];
 
   double get myAverage => myResults.isEmpty

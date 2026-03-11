@@ -5,6 +5,9 @@ import 'package:example/presentation/theme/teacher_colors.dart';
 import 'package:example/presentation/pages/teacher/teacher_controller.dart';
 import 'package:example/domain/models/teacher_data.dart';
 
+Color _tkScore(double v) => v >= 4.0 ? tkSuccess : tkWarning;
+const _kAvatarColors = [tkBlue, tkPurple, tkSuccess, tkPink];
+
 class TResultsPage extends StatelessWidget {
   const TResultsPage({super.key});
 
@@ -220,13 +223,13 @@ class _GroupCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: group.scoreColor.withValues(alpha: 0.12),
+                    color: _tkScore(group.average).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(group.average.toStringAsFixed(1),
                       style: GoogleFonts.dmMono(
                         fontSize: 15, fontWeight: FontWeight.w800,
-                        color: group.scoreColor,
+                        color: _tkScore(group.average),
                       )),
                 ),
               ],
@@ -238,7 +241,7 @@ class _GroupCard extends StatelessWidget {
                 value: group.barFraction,
                 backgroundColor: tkBorder,
                 valueColor:
-                    AlwaysStoppedAnimation(group.scoreColor),
+                    AlwaysStoppedAnimation(_tkScore(group.average)),
                 minHeight: 3,
               ),
             ),
@@ -292,7 +295,11 @@ class _DetailBody extends StatelessWidget {
               )),
           const SizedBox(height: 10),
 
-          ...group.students.map((s) => _StudentCard(student: s)),
+          ...group.students.asMap().entries.map(
+                (e) => _StudentCard(
+                  student:     e.value,
+                  avatarColor: _kAvatarColors[e.key % 4],
+                )),
         ],
       ),
     );
@@ -345,7 +352,8 @@ class _CriterionRing extends StatelessWidget {
 
 class _StudentCard extends StatelessWidget {
   final StudentResult student;
-  const _StudentCard({required this.student});
+  final Color avatarColor;
+  const _StudentCard({required this.student, required this.avatarColor});
 
   @override
   Widget build(BuildContext context) {
@@ -362,14 +370,14 @@ class _StudentCard extends StatelessWidget {
           Container(
             width: 34, height: 34,
             decoration: BoxDecoration(
-              color: student.avatarColor.withValues(alpha: 0.15),
+              color: avatarColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             alignment: Alignment.center,
             child: Text(student.initial,
                 style: GoogleFonts.sora(
                   fontSize: 12, fontWeight: FontWeight.w800,
-                  color: student.avatarColor,
+                  color: avatarColor,
                 )),
           ),
           const SizedBox(width: 12),
@@ -383,7 +391,7 @@ class _StudentCard extends StatelessWidget {
           Text(student.score.toStringAsFixed(1),
               style: GoogleFonts.dmMono(
                 fontSize: 18, fontWeight: FontWeight.w800,
-                color: student.scoreColor,
+                color: _tkScore(student.score),
               )),
         ],
       ),
