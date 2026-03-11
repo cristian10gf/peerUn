@@ -12,12 +12,12 @@ class TeacherController extends GetxController {
   TeacherController(this._authRepo, this._groupRepo);
 
   // ── Auth ──────────────────────────────────────────────────────────────────
-  final teacher   = Rx<Teacher?>(null);
+  final teacher = Rx<Teacher?>(null);
   final isLoading = false.obs;
   final authError = ''.obs;
 
   Teacher get currentTeacher => teacher.value!;
-  bool    get isLoggedIn     => teacher.value != null;
+  bool get isLoggedIn => teacher.value != null;
 
   @override
   void onInit() {
@@ -29,28 +29,6 @@ class TeacherController extends GetxController {
     isLoading.value = true;
     try {
       teacher.value = await _authRepo.getCurrentSession();
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  Future<void> login(String email, String password) async {
-    if (email.trim().isEmpty || password.isEmpty) {
-      authError.value = 'Completa todos los campos';
-      return;
-    }
-    isLoading.value = true;
-    authError.value = '';
-    try {
-      final t = await _authRepo.login(email, password);
-      if (t == null) {
-        authError.value = 'Correo o contraseña incorrectos';
-      } else {
-        teacher.value = t;
-        Get.offAllNamed('/teacher/dash');
-      }
-    } catch (_) {
-      authError.value = 'Error al conectar con la base de datos';
     } finally {
       isLoading.value = false;
     }
@@ -73,18 +51,23 @@ class TeacherController extends GetxController {
   Future<void> logout() async {
     await _authRepo.logout();
     teacher.value = null;
-    Get.offAllNamed('/teacher/login');
+    Get.offAllNamed('/login');
   }
 
   // ── Dashboard mock data ───────────────────────────────────────────────────
   final courses = <TeacherCourse>[
     const TeacherCourse(
-      id: 'c1', name: 'Desarrollo Móvil 2026-10',
-      code: 'DM2610', groupCount: 8, hasActive: true,
+      id: 'c1',
+      name: 'Desarrollo Móvil 2026-10',
+      code: 'DM2610',
+      groupCount: 8,
+      hasActive: true,
     ),
     const TeacherCourse(
-      id: 'c2', name: 'Arquitectura de Software',
-      code: 'AS2610', groupCount: 12,
+      id: 'c2',
+      name: 'Arquitectura de Software',
+      code: 'AS2610',
+      groupCount: 12,
     ),
   ];
 
@@ -120,8 +103,8 @@ class TeacherController extends GetxController {
   }
 
   // ── New evaluation ────────────────────────────────────────────────────────
-  final evalName           = 'Sprint 2 Review'.obs;
-  final selectedHours      = 48.obs;
+  final evalName = 'Sprint 2 Review'.obs;
+  final selectedHours = 48.obs;
   final selectedVisibility = 'private'.obs;
 
   // ── Results ───────────────────────────────────────────────────────────────
@@ -129,7 +112,8 @@ class TeacherController extends GetxController {
 
   final groups = <GroupResult>[
     GroupResult(
-      name: 'Equipo Ágil 1', average: 4.2,
+      name: 'Equipo Ágil 1',
+      average: 4.2,
       criteria: [4.0, 4.5, 4.1, 4.2],
       students: [
         StudentResult(initial: 'M', name: 'M. García',   score: 4.5),
@@ -139,7 +123,8 @@ class TeacherController extends GetxController {
       ],
     ),
     GroupResult(
-      name: 'Equipo Ágil 2', average: 3.6,
+      name: 'Equipo Ágil 2',
+      average: 3.6,
       criteria: [3.5, 3.8, 3.4, 3.7],
       students: [
         StudentResult(initial: 'L', name: 'L. Ramírez',  score: 3.5),
@@ -149,7 +134,8 @@ class TeacherController extends GetxController {
       ],
     ),
     GroupResult(
-      name: 'Equipo Ágil 3', average: 4.7,
+      name: 'Equipo Ágil 3',
+      average: 4.7,
       criteria: [4.8, 4.6, 4.7, 4.7],
       students: [
         StudentResult(initial: 'R', name: 'R. Vargas',   score: 4.8),
@@ -166,9 +152,15 @@ class TeacherController extends GetxController {
   }
 
   static const List<String> criteriaLabels = [
-    'PUNTU', 'CONTRIB', 'COMPRO', 'ACTITU',
+    'PUNTU',
+    'CONTRIB',
+    'COMPRO',
+    'ACTITU',
   ];
   static const List<double> criteriaColors = [
-    0xFF60A5FA, 0xFFA78BFA, 0xFF34D399, 0xFFF9A8D4,
+    0xFF60A5FA,
+    0xFFA78BFA,
+    0xFF34D399,
+    0xFFF9A8D4,
   ];
 }
