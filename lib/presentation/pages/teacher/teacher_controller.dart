@@ -9,39 +9,17 @@ class TeacherController extends GetxController {
   TeacherController(this._authRepo);
 
   // ── Auth ──────────────────────────────────────────────────────────────────
-  final teacher   = Rx<Teacher?>(null);
+  final teacher = Rx<Teacher?>(null);
   final isLoading = false.obs;
   final authError = ''.obs;
 
   Teacher get currentTeacher => teacher.value!;
-  bool    get isLoggedIn     => teacher.value != null;
+  bool get isLoggedIn => teacher.value != null;
 
   Future<void> checkSession() async {
     isLoading.value = true;
     try {
       teacher.value = await _authRepo.getCurrentSession();
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  Future<void> login(String email, String password) async {
-    if (email.trim().isEmpty || password.isEmpty) {
-      authError.value = 'Completa todos los campos';
-      return;
-    }
-    isLoading.value = true;
-    authError.value = '';
-    try {
-      final t = await _authRepo.login(email, password);
-      if (t == null) {
-        authError.value = 'Correo o contraseña incorrectos';
-      } else {
-        teacher.value = t;
-        Get.offAllNamed('/teacher/dash');
-      }
-    } catch (_) {
-      authError.value = 'Error al conectar con la base de datos';
     } finally {
       isLoading.value = false;
     }
@@ -64,26 +42,49 @@ class TeacherController extends GetxController {
   Future<void> logout() async {
     await _authRepo.logout();
     teacher.value = null;
-    Get.offAllNamed('/teacher/login');
+    Get.offAllNamed('/login');
   }
 
   // ── Dashboard mock data ───────────────────────────────────────────────────
   final courses = <TeacherCourse>[
     const TeacherCourse(
-      id: 'c1', name: 'Desarrollo Móvil 2026-10',
-      code: 'DM2610', groupCount: 8, hasActive: true,
+      id: 'c1',
+      name: 'Desarrollo Móvil 2026-10',
+      code: 'DM2610',
+      groupCount: 8,
+      hasActive: true,
     ),
     const TeacherCourse(
-      id: 'c2', name: 'Arquitectura de Software',
-      code: 'AS2610', groupCount: 12,
+      id: 'c2',
+      name: 'Arquitectura de Software',
+      code: 'AS2610',
+      groupCount: 12,
     ),
   ];
 
   // ── Import groups ─────────────────────────────────────────────────────────
   final importCategories = <ImportCategory>[
-    ImportCategory(name: 'Equipos Sprint 1',      groupCount: 8,  studentCount: 32, lastSync: 'Ayer',        syncOk: true),
-    ImportCategory(name: 'Equipos Proyecto Final', groupCount: 10, studentCount: 40, lastSync: 'Nunca',       syncOk: false),
-    ImportCategory(name: 'Grupos de Estudio',      groupCount: 4,  studentCount: 16, lastSync: 'Hace 5 días', syncOk: true),
+    ImportCategory(
+      name: 'Equipos Sprint 1',
+      groupCount: 8,
+      studentCount: 32,
+      lastSync: 'Ayer',
+      syncOk: true,
+    ),
+    ImportCategory(
+      name: 'Equipos Proyecto Final',
+      groupCount: 10,
+      studentCount: 40,
+      lastSync: 'Nunca',
+      syncOk: false,
+    ),
+    ImportCategory(
+      name: 'Grupos de Estudio',
+      groupCount: 4,
+      studentCount: 16,
+      lastSync: 'Hace 5 días',
+      syncOk: true,
+    ),
   ].obs;
 
   int get selectedCategoryCount =>
@@ -95,8 +96,8 @@ class TeacherController extends GetxController {
   }
 
   // ── New evaluation ────────────────────────────────────────────────────────
-  final evalName           = 'Sprint 2 Review'.obs;
-  final selectedHours      = 48.obs;
+  final evalName = 'Sprint 2 Review'.obs;
+  final selectedHours = 48.obs;
   final selectedVisibility = 'private'.obs;
 
   // ── Results ───────────────────────────────────────────────────────────────
@@ -104,33 +105,96 @@ class TeacherController extends GetxController {
 
   final groups = <GroupResult>[
     GroupResult(
-      name: 'Equipo Ágil 1', average: 4.2,
+      name: 'Equipo Ágil 1',
+      average: 4.2,
       criteria: [4.0, 4.5, 4.1, 4.2],
       students: [
-        StudentResult(initial: 'M', name: 'M. García',   score: 4.5, avatarColor: tkBlue),
-        StudentResult(initial: 'C', name: 'C. López',    score: 3.8, avatarColor: tkPurple),
-        StudentResult(initial: 'J', name: 'J. Martínez', score: 4.2, avatarColor: tkSuccess),
-        StudentResult(initial: 'A', name: 'A. Torres',   score: 4.0, avatarColor: tkPink),
+        StudentResult(
+          initial: 'M',
+          name: 'M. García',
+          score: 4.5,
+          avatarColor: tkBlue,
+        ),
+        StudentResult(
+          initial: 'C',
+          name: 'C. López',
+          score: 3.8,
+          avatarColor: tkPurple,
+        ),
+        StudentResult(
+          initial: 'J',
+          name: 'J. Martínez',
+          score: 4.2,
+          avatarColor: tkSuccess,
+        ),
+        StudentResult(
+          initial: 'A',
+          name: 'A. Torres',
+          score: 4.0,
+          avatarColor: tkPink,
+        ),
       ],
     ),
     GroupResult(
-      name: 'Equipo Ágil 2', average: 3.6,
+      name: 'Equipo Ágil 2',
+      average: 3.6,
       criteria: [3.5, 3.8, 3.4, 3.7],
       students: [
-        StudentResult(initial: 'L', name: 'L. Ramírez',  score: 3.5, avatarColor: tkBlue),
-        StudentResult(initial: 'S', name: 'S. Herrera',  score: 3.8, avatarColor: tkPurple),
-        StudentResult(initial: 'D', name: 'D. Castro',   score: 3.4, avatarColor: tkSuccess),
-        StudentResult(initial: 'P', name: 'P. Gómez',    score: 3.7, avatarColor: tkPink),
+        StudentResult(
+          initial: 'L',
+          name: 'L. Ramírez',
+          score: 3.5,
+          avatarColor: tkBlue,
+        ),
+        StudentResult(
+          initial: 'S',
+          name: 'S. Herrera',
+          score: 3.8,
+          avatarColor: tkPurple,
+        ),
+        StudentResult(
+          initial: 'D',
+          name: 'D. Castro',
+          score: 3.4,
+          avatarColor: tkSuccess,
+        ),
+        StudentResult(
+          initial: 'P',
+          name: 'P. Gómez',
+          score: 3.7,
+          avatarColor: tkPink,
+        ),
       ],
     ),
     GroupResult(
-      name: 'Equipo Ágil 3', average: 4.7,
+      name: 'Equipo Ágil 3',
+      average: 4.7,
       criteria: [4.8, 4.6, 4.7, 4.7],
       students: [
-        StudentResult(initial: 'R', name: 'R. Vargas',   score: 4.8, avatarColor: tkBlue),
-        StudentResult(initial: 'N', name: 'N. Peña',     score: 4.6, avatarColor: tkPurple),
-        StudentResult(initial: 'F', name: 'F. Morales',  score: 4.7, avatarColor: tkSuccess),
-        StudentResult(initial: 'V', name: 'V. Ríos',     score: 4.7, avatarColor: tkPink),
+        StudentResult(
+          initial: 'R',
+          name: 'R. Vargas',
+          score: 4.8,
+          avatarColor: tkBlue,
+        ),
+        StudentResult(
+          initial: 'N',
+          name: 'N. Peña',
+          score: 4.6,
+          avatarColor: tkPurple,
+        ),
+        StudentResult(
+          initial: 'F',
+          name: 'F. Morales',
+          score: 4.7,
+          avatarColor: tkSuccess,
+        ),
+        StudentResult(
+          initial: 'V',
+          name: 'V. Ríos',
+          score: 4.7,
+          avatarColor: tkPink,
+        ),
       ],
     ),
   ];
@@ -141,9 +205,15 @@ class TeacherController extends GetxController {
   }
 
   static const List<String> criteriaLabels = [
-    'PUNTU', 'CONTRIB', 'COMPRO', 'ACTITU',
+    'PUNTU',
+    'CONTRIB',
+    'COMPRO',
+    'ACTITU',
   ];
   static const List<double> criteriaColors = [
-    0xFF60A5FA, 0xFFA78BFA, 0xFF34D399, 0xFFF9A8D4,
+    0xFF60A5FA,
+    0xFFA78BFA,
+    0xFF34D399,
+    0xFFF9A8D4,
   ];
 }
