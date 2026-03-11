@@ -34,7 +34,7 @@
 
 ## 1. Descripción de la propuesta
 
-**Evalia** es una plataforma móvil centrada en la evaluación entre compañeros dentro de cursos universitarios con trabajo colaborativo. El nombre refleja la combinación de *evaluación* e *IA*, evocando un proceso reflexivo, moderno y orientado al aprendizaje.
+**Evalia** es una plataforma móvil centrada en la evaluación entre compañeros dentro de cursos universitarios con trabajo colaborativo. 
 
 El sistema define dos actores principales con interfaces completamente separadas pero que comparten componentes reutilizables:
 

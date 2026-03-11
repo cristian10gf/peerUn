@@ -57,7 +57,7 @@ class _TLoginPageState extends State<TLoginPage> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'PeerEval',
+                  'Evalia',
                   style: GoogleFonts.sora(
                     fontSize: 26, fontWeight: FontWeight.w800,
                     letterSpacing: -0.8, color: tkText,

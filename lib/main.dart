@@ -55,7 +55,7 @@ class PeerEvalApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
-      title: 'PeerEval',
+      title: 'Evalia',
       debugShowCheckedModeBanner: false,
       initialBinding: _AppBindings(),
       theme: ThemeData(
