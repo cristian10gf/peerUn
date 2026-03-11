@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/pages/auth/login_controller.dart';
 import 'package:example/presentation/theme/app_colors.dart';
-import 'package:example/presentation/theme/teacher_colors.dart';
+//import 'package:example/presentation/theme/teacher_colors.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
