@@ -56,7 +56,7 @@ class _SLoginPageState extends State<SLoginPage> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Evalia',
+                  'EvalUn',
                   style: GoogleFonts.sora(
                     fontSize: 26, fontWeight: FontWeight.w800,
                     letterSpacing: -0.8, color: skText,

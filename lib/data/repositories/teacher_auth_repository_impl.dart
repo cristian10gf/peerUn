@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:example/data/services/database_service.dart';
 import 'package:example/domain/models/teacher.dart';
 import 'package:example/domain/repositories/i_teacher_auth_repository.dart';
@@ -13,6 +15,9 @@ class TeacherAuthRepositoryImpl implements ITeacherAuthRepository {
     return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
   }
 
+  static String _hash(String password) =>
+      sha256.convert(utf8.encode(password)).toString();
+
   Future<void> _saveSession(int teacherId) async {
     final db = await _db.database;
     await db.delete('teacher_sessions');
@@ -25,7 +30,7 @@ class TeacherAuthRepositoryImpl implements ITeacherAuthRepository {
     final rows = await db.query(
       'teachers',
       where: 'email = ? AND password = ?',
-      whereArgs: [email.trim().toLowerCase(), password],
+      whereArgs: [email.trim().toLowerCase(), _hash(password)],
     );
     if (rows.isEmpty) return null;
     await _saveSession(rows.first['id'] as int);
@@ -39,7 +44,7 @@ class TeacherAuthRepositoryImpl implements ITeacherAuthRepository {
     final id = await db.insert('teachers', {
       'name':     name.trim(),
       'email':    email.trim().toLowerCase(),
-      'password': password,
+      'password': _hash(password),
       'initials': initials,
     });
     await _saveSession(id);
