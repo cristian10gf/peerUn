@@ -270,7 +270,7 @@ class _ActiveEvalCard extends StatelessWidget {
                   style: GoogleFonts.sora(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white.withOpacity(0.75),
+                    color: Colors.white.withValues(alpha: 0.75),
                     letterSpacing: 1.5,
                   ),
                 ),
@@ -299,7 +299,7 @@ class _ActiveEvalCard extends StatelessWidget {
                         eval.courseAndDeadline,
                         style: GoogleFonts.sora(
                           fontSize: 11,
-                          color: Colors.white.withOpacity(0.65),
+                          color: Colors.white.withValues(alpha: 0.65),
                         ),
                       ),
                     ],
@@ -313,7 +313,7 @@ class _ActiveEvalCard extends StatelessWidget {
                       'Progreso',
                       style: GoogleFonts.sora(
                         fontSize: 11,
-                        color: Colors.white.withOpacity(0.5),
+                        color: Colors.white.withValues(alpha: 0.5),
                       ),
                     ),
                     Text(
@@ -334,7 +334,7 @@ class _ActiveEvalCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(99),
               child: LinearProgressIndicator(
                 value: eval.progress,
-                backgroundColor: Colors.white.withOpacity(0.25),
+                backgroundColor: Colors.white.withValues(alpha: 0.25),
                 valueColor: const AlwaysStoppedAnimation(Colors.white),
                 minHeight: 3,
               ),
@@ -345,7 +345,7 @@ class _ActiveEvalCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 9),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
+                color: Colors.white.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
               alignment: Alignment.center,

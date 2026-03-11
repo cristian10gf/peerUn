@@ -1,6 +1,3 @@
-import 'package:flutter/material.dart';
-import 'package:example/presentation/theme/teacher_colors.dart';
-
 class TeacherCourse {
   final String id;
   final String name;
@@ -30,7 +27,6 @@ class GroupResult {
     required this.students,
   });
 
-  Color get scoreColor => average >= 4.0 ? tkSuccess : tkWarning;
   double get barFraction => ((average - 2) / 3).clamp(0.0, 1.0);
 }
 
@@ -38,32 +34,10 @@ class StudentResult {
   final String initial;
   final String name;
   final double score;
-  final Color avatarColor;
 
   const StudentResult({
     required this.initial,
     required this.name,
     required this.score,
-    required this.avatarColor,
-  });
-
-  Color get scoreColor => score >= 4.0 ? tkSuccess : tkWarning;
-}
-
-class ImportCategory {
-  final String name;
-  final int groupCount;
-  final int studentCount;
-  final String lastSync;
-  final bool syncOk;
-  bool selected;
-
-  ImportCategory({
-    required this.name,
-    required this.groupCount,
-    required this.studentCount,
-    required this.lastSync,
-    required this.syncOk,
-    this.selected = false,
   });
 }

@@ -1,12 +1,15 @@
 import 'package:get/get.dart';
 import 'package:example/domain/models/teacher.dart';
 import 'package:example/domain/models/teacher_data.dart';
+import 'package:example/domain/models/group_category.dart';
 import 'package:example/domain/repositories/i_teacher_auth_repository.dart';
-import 'package:example/presentation/theme/teacher_colors.dart';
+import 'package:example/domain/repositories/i_group_repository.dart';
 
 class TeacherController extends GetxController {
   final ITeacherAuthRepository _authRepo;
-  TeacherController(this._authRepo);
+  final IGroupRepository       _groupRepo;
+
+  TeacherController(this._authRepo, this._groupRepo);
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   final teacher = Rx<Teacher?>(null);
@@ -15,6 +18,12 @@ class TeacherController extends GetxController {
 
   Teacher get currentTeacher => teacher.value!;
   bool get isLoggedIn => teacher.value != null;
+
+  @override
+  void onInit() {
+    super.onInit();
+    loadCategories();
+  }
 
   Future<void> checkSession() async {
     isLoading.value = true;
@@ -62,37 +71,35 @@ class TeacherController extends GetxController {
     ),
   ];
 
-  // ── Import groups ─────────────────────────────────────────────────────────
-  final importCategories = <ImportCategory>[
-    ImportCategory(
-      name: 'Equipos Sprint 1',
-      groupCount: 8,
-      studentCount: 32,
-      lastSync: 'Ayer',
-      syncOk: true,
-    ),
-    ImportCategory(
-      name: 'Equipos Proyecto Final',
-      groupCount: 10,
-      studentCount: 40,
-      lastSync: 'Nunca',
-      syncOk: false,
-    ),
-    ImportCategory(
-      name: 'Grupos de Estudio',
-      groupCount: 4,
-      studentCount: 16,
-      lastSync: 'Hace 5 días',
-      syncOk: true,
-    ),
-  ].obs;
+  // ── Group categories (CSV import) ─────────────────────────────────────────
+  final categories   = <GroupCategory>[].obs;
+  final importLoading = false.obs;
+  final importError   = ''.obs;
 
-  int get selectedCategoryCount =>
-      importCategories.where((c) => c.selected).length;
+  Future<void> loadCategories() async {
+    try {
+      categories.assignAll(await _groupRepo.getAll());
+    } catch (_) {
+      // ignore on startup
+    }
+  }
 
-  void toggleCategory(int index) {
-    importCategories[index].selected = !importCategories[index].selected;
-    importCategories.refresh();
+  Future<void> importCsv(String csvContent, String categoryName) async {
+    importLoading.value = true;
+    importError.value   = '';
+    try {
+      final cat = await _groupRepo.importCsv(csvContent, categoryName);
+      categories.insert(0, cat);
+    } catch (e) {
+      importError.value = 'Error al importar: $e';
+    } finally {
+      importLoading.value = false;
+    }
+  }
+
+  Future<void> deleteCategory(int id) async {
+    await _groupRepo.delete(id);
+    categories.removeWhere((c) => c.id == id);
   }
 
   // ── New evaluation ────────────────────────────────────────────────────────
@@ -109,30 +116,10 @@ class TeacherController extends GetxController {
       average: 4.2,
       criteria: [4.0, 4.5, 4.1, 4.2],
       students: [
-        StudentResult(
-          initial: 'M',
-          name: 'M. García',
-          score: 4.5,
-          avatarColor: tkBlue,
-        ),
-        StudentResult(
-          initial: 'C',
-          name: 'C. López',
-          score: 3.8,
-          avatarColor: tkPurple,
-        ),
-        StudentResult(
-          initial: 'J',
-          name: 'J. Martínez',
-          score: 4.2,
-          avatarColor: tkSuccess,
-        ),
-        StudentResult(
-          initial: 'A',
-          name: 'A. Torres',
-          score: 4.0,
-          avatarColor: tkPink,
-        ),
+        StudentResult(initial: 'M', name: 'M. García',   score: 4.5),
+        StudentResult(initial: 'C', name: 'C. López',    score: 3.8),
+        StudentResult(initial: 'J', name: 'J. Martínez', score: 4.2),
+        StudentResult(initial: 'A', name: 'A. Torres',   score: 4.0),
       ],
     ),
     GroupResult(
@@ -140,30 +127,10 @@ class TeacherController extends GetxController {
       average: 3.6,
       criteria: [3.5, 3.8, 3.4, 3.7],
       students: [
-        StudentResult(
-          initial: 'L',
-          name: 'L. Ramírez',
-          score: 3.5,
-          avatarColor: tkBlue,
-        ),
-        StudentResult(
-          initial: 'S',
-          name: 'S. Herrera',
-          score: 3.8,
-          avatarColor: tkPurple,
-        ),
-        StudentResult(
-          initial: 'D',
-          name: 'D. Castro',
-          score: 3.4,
-          avatarColor: tkSuccess,
-        ),
-        StudentResult(
-          initial: 'P',
-          name: 'P. Gómez',
-          score: 3.7,
-          avatarColor: tkPink,
-        ),
+        StudentResult(initial: 'L', name: 'L. Ramírez',  score: 3.5),
+        StudentResult(initial: 'S', name: 'S. Herrera',  score: 3.8),
+        StudentResult(initial: 'D', name: 'D. Castro',   score: 3.4),
+        StudentResult(initial: 'P', name: 'P. Gómez',    score: 3.7),
       ],
     ),
     GroupResult(
@@ -171,30 +138,10 @@ class TeacherController extends GetxController {
       average: 4.7,
       criteria: [4.8, 4.6, 4.7, 4.7],
       students: [
-        StudentResult(
-          initial: 'R',
-          name: 'R. Vargas',
-          score: 4.8,
-          avatarColor: tkBlue,
-        ),
-        StudentResult(
-          initial: 'N',
-          name: 'N. Peña',
-          score: 4.6,
-          avatarColor: tkPurple,
-        ),
-        StudentResult(
-          initial: 'F',
-          name: 'F. Morales',
-          score: 4.7,
-          avatarColor: tkSuccess,
-        ),
-        StudentResult(
-          initial: 'V',
-          name: 'V. Ríos',
-          score: 4.7,
-          avatarColor: tkPink,
-        ),
+        StudentResult(initial: 'R', name: 'R. Vargas',   score: 4.8),
+        StudentResult(initial: 'N', name: 'N. Peña',     score: 4.6),
+        StudentResult(initial: 'F', name: 'F. Morales',  score: 4.7),
+        StudentResult(initial: 'V', name: 'V. Ríos',     score: 4.7),
       ],
     ),
   ];
