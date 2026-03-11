@@ -148,7 +148,7 @@ class _SLoginPageState extends State<SLoginPage> {
                 const SizedBox(height: 16),
                 Center(
                   child: Text(
-                    'Rol ESTUDIANTE · Roble SSO',
+                    'Autenticado por Roble SSO',
                     style: GoogleFonts.dmMono(fontSize: 11, color: skTextFaint),
                   ),
                 ),
