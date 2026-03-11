@@ -9,7 +9,7 @@ import 'package:example/domain/repositories/i_auth_repository.dart';
 import 'package:example/domain/repositories/i_teacher_auth_repository.dart';
 import 'package:example/domain/repositories/i_unified_auth_repository.dart';
 import 'package:example/presentation/theme/app_colors.dart';
-import 'package:example/presentation/theme/teacher_colors.dart';
+//import 'package:example/presentation/theme/teacher_colors.dart';
 
 // Student
 import 'package:example/presentation/pages/student/student_controller.dart';

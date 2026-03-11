@@ -6,7 +6,7 @@ import 'package:example/domain/models/auth_login_result.dart';
 import 'package:example/presentation/pages/student/student_controller.dart';
 import 'package:example/presentation/pages/teacher/teacher_controller.dart';
 import 'package:example/presentation/theme/app_colors.dart';
-import 'package:example/presentation/theme/teacher_colors.dart';
+//import 'package:example/presentation/theme/teacher_colors.dart';
 
 class RegisterPage extends StatefulWidget {
   final AppUserRole initialRole;
