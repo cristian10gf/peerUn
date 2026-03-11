@@ -17,6 +17,7 @@ class SCoursesPage extends StatelessWidget {
           children: [
             // ── Header ─────────────────────────────────────────────────────
             Container(
+              width: double.infinity,
               color: skSurface,
               padding: const EdgeInsets.fromLTRB(22, 4, 22, 20),
               child: Column(

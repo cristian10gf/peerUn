@@ -18,6 +18,7 @@ class SEvalListPage extends StatelessWidget {
           children: [
             // ── Header ─────────────────────────────────────────────────────
             Container(
+              width: double.infinity,
               color: skSurface,
               padding: const EdgeInsets.fromLTRB(22, 4, 22, 16),
               child: Column(
