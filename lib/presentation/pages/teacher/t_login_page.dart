@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:example/presentation/theme/app_colors.dart';
-import 'package:example/presentation/pages/student/student_controller.dart';
-import 'package:example/presentation/widgets/auth_widgets.dart';
+import 'package:example/presentation/theme/teacher_colors.dart';
+import 'package:example/presentation/pages/teacher/teacher_controller.dart';
+import 'package:example/presentation/widgets/teacher_auth_widgets.dart';
 
-class SLoginPage extends StatefulWidget {
-  const SLoginPage({super.key});
+class TLoginPage extends StatefulWidget {
+  const TLoginPage({super.key});
 
   @override
-  State<SLoginPage> createState() => _SLoginPageState();
+  State<TLoginPage> createState() => _TLoginPageState();
 }
 
-class _SLoginPageState extends State<SLoginPage> {
+class _TLoginPageState extends State<TLoginPage> {
   final _emailCtrl    = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscure       = true;
@@ -26,9 +26,9 @@ class _SLoginPageState extends State<SLoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final ctrl = Get.find<StudentController>();
+    final ctrl = Get.find<TeacherController>();
     return Scaffold(
-      backgroundColor: skBackground,
+      backgroundColor: tkBackground,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -41,15 +41,16 @@ class _SLoginPageState extends State<SLoginPage> {
                 Container(
                   width: 52, height: 52,
                   decoration: BoxDecoration(
-                    color: skPrimaryLight,
+                    color:        tkGoldLight,
+                    border:       Border.all(color: tkGoldBorder),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Center(
                     child: Container(
-                      width: 28, height: 28,
+                      width: 22, height: 22,
                       decoration: BoxDecoration(
-                        color: skPrimary,
-                        borderRadius: BorderRadius.circular(8),
+                        color:        tkGold,
+                        borderRadius: BorderRadius.circular(6),
                       ),
                     ),
                   ),
@@ -59,30 +60,28 @@ class _SLoginPageState extends State<SLoginPage> {
                   'PeerEval',
                   style: GoogleFonts.sora(
                     fontSize: 26, fontWeight: FontWeight.w800,
-                    letterSpacing: -0.8, color: skText,
+                    letterSpacing: -0.8, color: tkText,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'STUDENT',
+                  'TEACHER',
                   style: GoogleFonts.sora(
                     fontSize: 12, fontWeight: FontWeight.w500,
-                    letterSpacing: 3, color: skTextFaint,
+                    letterSpacing: 3, color: tkTextFaint,
                   ),
                 ),
                 const SizedBox(height: 32),
 
-                // ── Email ──────────────────────────────────────────────────
-                AppTextField(
-                  controller:  _emailCtrl,
-                  hint:        'Correo electrónico',
-                  icon:        Icons.mail_outline_rounded,
+                TeacherTextField(
+                  controller:   _emailCtrl,
+                  hint:         'Correo institucional',
+                  icon:         Icons.mail_outline_rounded,
                   keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 10),
 
-                // ── Password ───────────────────────────────────────────────
-                AppTextField(
+                TeacherTextField(
                   controller: _passwordCtrl,
                   hint:       'Contraseña',
                   icon:       Icons.lock_outline_rounded,
@@ -92,7 +91,7 @@ class _SLoginPageState extends State<SLoginPage> {
                       _obscure
                           ? Icons.visibility_off_outlined
                           : Icons.visibility_outlined,
-                      size: 18, color: skTextFaint,
+                      size: 18, color: tkTextFaint,
                     ),
                     onPressed: () => setState(() => _obscure = !_obscure),
                   ),
@@ -105,17 +104,14 @@ class _SLoginPageState extends State<SLoginPage> {
                   if (err.isEmpty) return const SizedBox(height: 8);
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(
-                      err,
-                      style: GoogleFonts.sora(
-                          fontSize: 12, color: Colors.red.shade400),
-                      textAlign: TextAlign.center,
-                    ),
+                    child: Text(err,
+                        style: GoogleFonts.sora(
+                            fontSize: 12, color: tkDanger),
+                        textAlign: TextAlign.center),
                   );
                 }),
 
-                // ── Login button ───────────────────────────────────────────
-                Obx(() => PrimaryButton(
+                Obx(() => TeacherPrimaryButton(
                       label:   'Iniciar sesión',
                       loading: ctrl.isLoading.value,
                       onTap: () =>
@@ -123,49 +119,45 @@ class _SLoginPageState extends State<SLoginPage> {
                     )),
                 const SizedBox(height: 20),
 
-                // ── Register link ──────────────────────────────────────────
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text('¿No tienes cuenta? ',
                         style: GoogleFonts.sora(
-                            fontSize: 12, color: skTextFaint)),
+                            fontSize: 12, color: tkTextFaint)),
                     GestureDetector(
                       onTap: () {
                         ctrl.authError.value = '';
-                        Get.toNamed('/student/register');
+                        Get.toNamed('/teacher/register');
                       },
-                      child: Text(
-                        'Regístrate',
-                        style: GoogleFonts.sora(
-                          fontSize: 12, fontWeight: FontWeight.w700,
-                          color: skPrimary,
-                        ),
-                      ),
+                      child: Text('Regístrate',
+                          style: GoogleFonts.sora(
+                            fontSize: 12, fontWeight: FontWeight.w700,
+                            color: tkGold,
+                          )),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
+
                 Center(
-                  child: Text(
-                    'Rol ESTUDIANTE · Roble SSO',
-                    style: GoogleFonts.dmMono(fontSize: 11, color: skTextFaint),
-                  ),
+                  child: Text('Autenticado por Roble SSO',
+                      style: GoogleFonts.dmMono(
+                          fontSize: 11, color: tkTextFaint)),
                 ),
                 const SizedBox(height: 24),
+
+                // ── Toggle a estudiante ────────────────────────────────────
                 Center(
                   child: GestureDetector(
-                    onTap: () {
-                      ctrl.authError.value = '';
-                      Get.offNamed('/teacher/login');
-                    },
+                    onTap: () => Get.offNamed('/student/login'),
                     child: Text(
-                      '¿Eres docente? Accede aquí →',
+                      '← Acceder como estudiante',
                       style: GoogleFonts.sora(
                         fontSize: 12,
-                        color: skTextMid,
+                        color: tkTextMid,
                         decoration: TextDecoration.underline,
-                        decorationColor: skTextMid,
+                        decorationColor: tkTextMid,
                       ),
                     ),
                   ),
