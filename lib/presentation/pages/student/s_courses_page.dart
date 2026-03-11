@@ -24,8 +24,10 @@ class SCoursesPage extends StatelessWidget {
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Column(
+                      Expanded(
+                        child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
@@ -44,9 +46,12 @@ class SCoursesPage extends StatelessWidget {
                                   letterSpacing: -0.5,
                                   color: skText,
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               )),
                         ],
-                      ),
+                      )),
+                      const SizedBox(width: 12),
                       Obx(() => GestureDetector(
                             onTap: () =>
                                 _showProfileSheet(context, ctrl),
@@ -57,13 +62,16 @@ class SCoursesPage extends StatelessWidget {
                                 color: skPrimaryLight,
                                 borderRadius: BorderRadius.circular(13),
                               ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                ctrl.currentStudent.initials,
-                                style: GoogleFonts.sora(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color: skPrimary,
+                              padding: const EdgeInsets.all(4),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  ctrl.currentStudent.initials,
+                                  style: GoogleFonts.sora(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: skPrimary,
+                                  ),
                                 ),
                               ),
                             ),
