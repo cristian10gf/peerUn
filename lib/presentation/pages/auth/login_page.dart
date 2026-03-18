@@ -42,20 +42,29 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       backgroundColor: bgColor,
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 420),
-              padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: borderColor),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) => SingleChildScrollView(
+                      padding: const EdgeInsets.all(20),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight - 40,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                   Row(
                     children: [
                       Container(
@@ -95,7 +104,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Bienvenido a Evalia',
+                    'Bienvenido a EvalUn',
                     style: GoogleFonts.sora(
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
@@ -103,14 +112,8 @@ class _LoginPageState extends State<LoginPage> {
                       color: textColor,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Inicia sesión y te llevamos automáticamente a tu Home de estudiante o docente.',
-                    style: GoogleFonts.sora(
-                      fontSize: 12,
-                      color: mutedTextColor,
-                    ),
-                  ),
+                  const SizedBox(height: 16),
+                  
                   const SizedBox(height: 20),
                   _AuthField(
                     controller: _emailCtrl,
@@ -197,11 +200,13 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    '¿No tienes cuenta?',
-                    style: GoogleFonts.sora(
-                      fontSize: 12,
-                      color: mutedTextColor,
+                  Center(
+                    child: Text(
+                      '¿No tienes cuenta?',
+                      style: GoogleFonts.sora(
+                        fontSize: 12,
+                        color: mutedTextColor,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -224,13 +229,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Text(
-                    'Elige Estudiante o Profesor dentro del registro usando el slider.',
-                    style: GoogleFonts.sora(
-                      fontSize: 11,
-                      color: mutedTextColor,
-                    ),
-                  ),
+                  
                   const SizedBox(height: 14),
                   Center(
                     child: Text(
@@ -246,6 +245,11 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
         ),
+        ),
+        ),
+      ],
+    ),
+  ),
       ),
     );
   }
