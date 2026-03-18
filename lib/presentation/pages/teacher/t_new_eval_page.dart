@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/teacher_colors.dart';
-import 'package:example/presentation/pages/teacher/teacher_controller.dart';
+import 'package:example/presentation/controllers/teacher_controller.dart';
 
 class TNewEvalPage extends StatelessWidget {
   const TNewEvalPage({super.key});

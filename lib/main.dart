@@ -14,17 +14,17 @@ import 'package:example/presentation/theme/app_colors.dart';
 //import 'package:example/presentation/theme/teacher_colors.dart';
 
 // Student
-import 'package:example/presentation/pages/student/student_controller.dart';
+import 'package:example/presentation/controllers/student_controller.dart';
 import 'package:example/presentation/pages/student/s_courses_page.dart';
 import 'package:example/presentation/pages/student/s_eval_list_page.dart';
 import 'package:example/presentation/pages/student/s_peer_score_page.dart';
 import 'package:example/presentation/pages/student/s_my_results_page.dart';
 import 'package:example/presentation/pages/auth/register_page.dart';
 import 'package:example/presentation/pages/auth/login_page.dart';
-import 'package:example/presentation/pages/auth/login_controller.dart';
+import 'package:example/presentation/controllers/login_controller.dart';
 
 // Teacher
-import 'package:example/presentation/pages/teacher/teacher_controller.dart';
+import 'package:example/presentation/controllers/teacher_controller.dart';
 import 'package:example/presentation/pages/teacher/t_dash_page.dart';
 import 'package:example/presentation/pages/teacher/t_import_page.dart';
 import 'package:example/presentation/pages/teacher/t_new_eval_page.dart';

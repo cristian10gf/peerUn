@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/teacher_colors.dart';
-import 'package:example/presentation/pages/teacher/teacher_controller.dart';
+import 'package:example/presentation/controllers/teacher_controller.dart';
 import 'package:example/domain/models/teacher_data.dart';
 
 Color _tkScore(double v) => v >= 4.0 ? tkSuccess : tkWarning;

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/app_colors.dart';
-import 'package:example/presentation/pages/student/student_controller.dart';
+import 'package:example/presentation/controllers/student_controller.dart';
 
 class SCoursesPage extends StatelessWidget {
   const SCoursesPage({super.key});

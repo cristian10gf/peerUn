@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:example/domain/models/auth_login_result.dart';
-import 'package:example/presentation/pages/student/student_controller.dart';
-import 'package:example/presentation/pages/teacher/teacher_controller.dart';
+import 'package:example/presentation/controllers/student_controller.dart';
+import 'package:example/presentation/controllers/teacher_controller.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 //import 'package:example/presentation/theme/teacher_colors.dart';
 
