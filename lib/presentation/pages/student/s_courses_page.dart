@@ -95,6 +95,21 @@ class SCoursesPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // ── Destacado: evaluación más reciente activa ──────────
+                    Obx(() {
+                      final eval = ctrl.evaluations
+                          .where((e) => e.isActive)
+                          .toList()
+                        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+                      if (eval.isEmpty) return const SizedBox.shrink();
+                      return Column(
+                        children: [
+                          _ActiveEvalCard(eval: eval.first, ctrl: ctrl),
+                          const SizedBox(height: 20),
+                        ],
+                      );
+                    }),
+
                     Text(
                       'EVALUACIONES ACTIVAS',
                       style: GoogleFonts.sora(
@@ -263,6 +278,141 @@ class SCoursesPage extends StatelessWidget {
   }
 }
 
+// ── Active eval hero card ───────────────────────────────────────────────────────
+
+class _ActiveEvalCard extends StatelessWidget {
+  final Evaluation eval;
+  final StudentController ctrl;
+  const _ActiveEvalCard({required this.eval, required this.ctrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final closesIn = eval.closesAt.difference(DateTime.now());
+    final timeLabel = _fmtDuration(closesIn);
+
+    return GestureDetector(
+      onTap: () async {
+        await ctrl.selectEvalForEvaluation(eval);
+        Get.toNamed('/student/peers');
+      },
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: skPrimary,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _PulseDot(color: Colors.white),
+                const SizedBox(width: 6),
+                Text(
+                  'EVALUACIÓN PENDIENTE',
+                  style: GoogleFonts.sora(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white.withValues(alpha: 0.75),
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        eval.name,
+                        style: GoogleFonts.sora(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${eval.categoryName} · $timeLabel',
+                        style: GoogleFonts.sora(
+                          fontSize: 11,
+                          color: Colors.white.withValues(alpha: 0.65),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Obx(() => Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          'Progreso',
+                          style: GoogleFonts.sora(
+                            fontSize: 11,
+                            color: Colors.white.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        Text(
+                          '${ctrl.doneCount}/${ctrl.totalPeers}',
+                          style: GoogleFonts.dmMono(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    )),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Obx(() => ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: LinearProgressIndicator(
+                    value: ctrl.evalProgress,
+                    backgroundColor: Colors.white.withValues(alpha: 0.25),
+                    valueColor: const AlwaysStoppedAnimation(Colors.white),
+                    minHeight: 3,
+                  ),
+                )),
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 9),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                'Evaluar ahora',
+                style: GoogleFonts.sora(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _fmtDuration(Duration d) {
+    if (d.isNegative) return 'Cerrada';
+    if (d.inDays > 0)  return 'Cierra en ${d.inDays}d';
+    if (d.inHours > 0) return 'Cierra en ${d.inHours}h';
+    return 'Cierra en ${d.inMinutes}m';
+  }
+}
+
 // ── Eval card ──────────────────────────────────────────────────────────────────
 
 class _EvalCard extends StatelessWidget {
@@ -391,6 +541,8 @@ class _EvalCard extends StatelessWidget {
 }
 
 class _PulseDot extends StatefulWidget {
+  final Color color;
+  const _PulseDot({this.color = skPrimary});
   @override
   State<_PulseDot> createState() => _PulseDotState();
 }
@@ -426,8 +578,8 @@ class _PulseDotState extends State<_PulseDot>
         opacity: _anim.value,
         child: Container(
           width: 7, height: 7,
-          decoration: const BoxDecoration(
-            color: skPrimary,
+          decoration: BoxDecoration(
+            color: widget.color,
             shape: BoxShape.circle,
           ),
         ),
