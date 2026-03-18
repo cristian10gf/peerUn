@@ -26,7 +26,7 @@ class SPeerScorePage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _BackButton(label: 'Lista', route: '/student/eval-list'),
+                  _BackButton(label: 'Compañeros', route: '/student/peers'),
                   const SizedBox(height: 14),
                   Obx(() {
                     final peer = ctrl.currentPeer.value;
@@ -242,7 +242,7 @@ class _SubmitButton extends StatelessWidget {
       onTap: ready
           ? () {
               ctrl.savePeerScore();
-              Get.offNamed('/student/eval-list');
+              Get.offNamed('/student/peers');
             }
           : null,
       child: Container(

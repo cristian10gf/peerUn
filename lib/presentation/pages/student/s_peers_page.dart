@@ -24,7 +24,7 @@ class SPeersPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _BackButton(label: 'Volver', route: '/student/courses'),
+                  _BackButton(label: 'Volver'),
                   const SizedBox(height: 16),
                   Obx(() => Text(
                         ctrl.activeEvalDb.value?.name ?? 'Evaluación',
@@ -270,13 +270,12 @@ class _PeerCard extends StatelessWidget {
 
 class _BackButton extends StatelessWidget {
   final String label;
-  final String route;
-  const _BackButton({required this.label, required this.route});
+  const _BackButton({required this.label});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => Get.offNamed(route),
+      onTap: () => Get.back(),
       child: Container(
         padding: const EdgeInsets.fromLTRB(8, 7, 12, 7),
         decoration: BoxDecoration(

@@ -21,6 +21,7 @@ import 'package:example/presentation/pages/student/s_courses_page.dart';
 import 'package:example/presentation/pages/student/s_eval_list_page.dart';
 import 'package:example/presentation/pages/student/s_peer_score_page.dart';
 import 'package:example/presentation/pages/student/s_my_results_page.dart';
+import 'package:example/presentation/pages/student/s_peers_page.dart';
 import 'package:example/presentation/pages/auth/register_page.dart';
 import 'package:example/presentation/pages/auth/login_page.dart';
 import 'package:example/presentation/controllers/login_controller.dart';
@@ -125,6 +126,7 @@ class PeerEvalApp extends StatelessWidget {
           name: '/student/peer-score',
           page: () => const SPeerScorePage(),
         ),
+        GetPage(name: '/student/peers',  page: () => const SPeersPage()),
         GetPage(name: '/student/results', page: () => const SMyResultsPage()),
         // Teacher
         GetPage(name: '/teacher/dash', page: () => const TDashPage()),
