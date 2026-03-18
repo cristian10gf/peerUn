@@ -367,6 +367,52 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     }).toList();
   }
 
+  @override
+  Future<bool> hasCompletedAllPeers({
+    required int evalId,
+    required String email,
+    required int studentId,
+  }) async {
+    final db = await _db.database;
+
+    // Get student's group in this eval's category
+    final groupRows = await db.rawQuery('''
+      SELECT g.id
+      FROM groups g
+      JOIN group_members gm ON gm.group_id = g.id
+      JOIN evaluations e    ON e.category_id = g.category_id
+      WHERE e.id = ? AND LOWER(gm.username) = ?
+      LIMIT 1
+    ''', [evalId, email.toLowerCase()]);
+    if (groupRows.isEmpty) return false;
+
+    final groupId = groupRows.first['id'] as int;
+
+    // All peer member ids (excluding self)
+    final peerRows = await db.query(
+      'group_members',
+      columns: ['id'],
+      where: 'group_id = ? AND LOWER(username) != ?',
+      whereArgs: [groupId, email.toLowerCase()],
+    );
+    final total = peerRows.length;
+    if (total == 0) return false;
+
+    final peerIds = peerRows.map((r) => r['id'] as int).toList();
+    final placeholders = List.filled(peerIds.length, '?').join(',');
+
+    // How many of those peers has the student already evaluated
+    final doneRows = await db.rawQuery('''
+      SELECT COUNT(DISTINCT evaluated_member_id) AS cnt
+      FROM evaluation_responses
+      WHERE eval_id = ? AND evaluator_id = ?
+        AND evaluated_member_id IN ($placeholders)
+    ''', [evalId, studentId, ...peerIds]);
+
+    final done = (doneRows.first['cnt'] as int?) ?? 0;
+    return done >= total;
+  }
+
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   Evaluation _rowToEval(Map<String, Object?> row) {

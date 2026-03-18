@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 import 'package:example/presentation/controllers/student_controller.dart';
 import 'package:example/domain/models/evaluation.dart';
+// EvalStudentStatus lives in student_controller.dart
 
 class SEvalListPage extends StatelessWidget {
   const SEvalListPage({super.key});
@@ -93,122 +94,141 @@ class _HistorialItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isActive = eval.isActive;
     final date =
         '${eval.createdAt.day}/${eval.createdAt.month}/${eval.createdAt.year}';
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: skSurface,
-        border: Border.all(color: isActive ? skPrimaryMid : skBorder),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  eval.name,
-                  style: GoogleFonts.sora(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: skText,
+    return Obx(() {
+      final status = ctrl.evalStatuses[eval.id];
+
+      final (badgeLabel, badgeColor, badgeBg) = switch (status) {
+        EvalStudentStatus.activePending   => ('ACTIVA', skPrimary, skPrimaryLight),
+        EvalStudentStatus.activeCompleted => ('ACTIVA · REALIZADA', critGreen, const Color(0xFFD1FAE5)),
+        EvalStudentStatus.closedNotDone   => ('FINALIZADA · NO REALIZADA', const Color(0xFFEF4444), const Color(0xFFFEF2F2)),
+        EvalStudentStatus.closedCompleted => ('FINALIZADA', skTextFaint, skSurfaceAlt),
+        null                              => eval.isActive
+            ? ('ACTIVA', skPrimary, skPrimaryLight)
+            : ('CERRADA', skTextFaint, skSurfaceAlt),
+      };
+
+      final showEvaluarBtn = status == EvalStudentStatus.activePending;
+      final borderColor = switch (status) {
+        EvalStudentStatus.activePending   => skPrimaryMid,
+        EvalStudentStatus.activeCompleted => critGreen,
+        EvalStudentStatus.closedNotDone   => const Color(0xFFFECACA),
+        _                                 => skBorder,
+      };
+
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: skSurface,
+          border: Border.all(color: borderColor),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    eval.name,
+                    style: GoogleFonts.sora(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: skText,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: isActive
-                      ? skPrimaryLight
-                      : skSurfaceAlt,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  isActive ? 'ACTIVA' : 'CERRADA',
-                  style: GoogleFonts.sora(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: isActive ? skPrimary : skTextFaint,
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: badgeBg,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    badgeLabel,
+                    style: GoogleFonts.sora(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: badgeColor,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '${eval.categoryName} · $date',
-            style: GoogleFonts.dmMono(fontSize: 11, color: skTextFaint),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              if (isActive) ...[
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${eval.categoryName} · $date',
+              style: GoogleFonts.dmMono(fontSize: 11, color: skTextFaint),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                if (showEvaluarBtn) ...[
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () async {
+                        await ctrl.selectEvalForEvaluation(eval);
+                        Get.toNamed('/student/peers');
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 9),
+                        decoration: BoxDecoration(
+                          color: skPrimary,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Evaluar',
+                          style: GoogleFonts.sora(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 Expanded(
                   child: GestureDetector(
                     onTap: () async {
-                      await ctrl.selectEvalForEvaluation(eval);
-                      Get.toNamed('/student/peers');
+                      await ctrl.selectEvalForResults(eval);
+                      Get.toNamed('/student/results');
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 9),
                       decoration: BoxDecoration(
-                        color: skPrimary,
+                        color: skSurface,
+                        border: Border.all(color: skBorder),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        'Evaluar',
+                        'Ver resultados',
                         style: GoogleFonts.sora(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                          color: skPrimary,
                         ),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
               ],
-              Expanded(
-                child: GestureDetector(
-                  onTap: () async {
-                    await ctrl.selectEvalForResults(eval);
-                    Get.toNamed('/student/results');
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 9),
-                    decoration: BoxDecoration(
-                      color: skSurface,
-                      border: Border.all(color: skBorder),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      'Ver resultados',
-                      style: GoogleFonts.sora(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: skPrimary,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+            ),
+          ],
+        ),
+      );
+    });
   }
 }
 

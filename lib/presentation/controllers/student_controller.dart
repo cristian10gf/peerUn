@@ -5,6 +5,13 @@ import 'package:example/domain/models/peer_evaluation.dart';
 import 'package:example/domain/repositories/i_auth_repository.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
 
+enum EvalStudentStatus {
+  activePending,    // activa, el estudiante aún no la completó
+  activeCompleted,  // activa, el estudiante ya evaluó a todos
+  closedNotDone,    // cerrada, el estudiante no la realizó
+  closedCompleted,  // cerrada, el estudiante la realizó
+}
+
 class StudentController extends GetxController {
   final IAuthRepository        _authRepo;
   final IEvaluationRepository  _evalRepo;
@@ -62,10 +69,12 @@ class StudentController extends GetxController {
   final currentGroupName = ''.obs;
   final hasActiveEval    = false.obs;
   final evaluations      = <Evaluation>[].obs;
+  final evalStatuses     = <int, EvalStudentStatus>{}.obs;
 
   Future<void> loadEvalData() async {
     final s = student.value;
     if (s == null) return;
+    final studentId = int.parse(s.id);
 
     // Load all evaluations this student is part of
     List<Evaluation> evalList = [];
@@ -74,8 +83,13 @@ class StudentController extends GetxController {
       evaluations.assignAll(evalList);
     } catch (_) {}
 
-    // Pick first active eval (or most recent) as default context
-    final Evaluation? eval = evalList.firstWhereOrNull((e) => e.isActive) ??
+    // Compute per-eval completion status
+    await _computeStatuses(evalList, s.email, studentId);
+
+    // Pick first active+pending eval as default context, fallback to first active
+    final Evaluation? eval =
+        evalList.firstWhereOrNull((e) => evalStatuses[e.id] == EvalStudentStatus.activePending) ??
+        evalList.firstWhereOrNull((e) => e.isActive) ??
         (evalList.isNotEmpty ? evalList.first : null);
 
     activeEvalDb.value = eval;
@@ -91,6 +105,34 @@ class StudentController extends GetxController {
     hasActiveEval.value = eval.isActive;
     await _loadGroupAndPeers(eval, s);
     await _loadMyResultsInternal(eval.id, s.email);
+  }
+
+  Future<void> _computeStatuses(
+      List<Evaluation> evalList, String email, int studentId) async {
+    final statuses = <int, EvalStudentStatus>{};
+    for (final eval in evalList) {
+      try {
+        final completed = await _evalRepo.hasCompletedAllPeers(
+          evalId:    eval.id,
+          email:     email,
+          studentId: studentId,
+        );
+        if (eval.isActive) {
+          statuses[eval.id] = completed
+              ? EvalStudentStatus.activeCompleted
+              : EvalStudentStatus.activePending;
+        } else {
+          statuses[eval.id] = completed
+              ? EvalStudentStatus.closedCompleted
+              : EvalStudentStatus.closedNotDone;
+        }
+      } catch (_) {
+        statuses[eval.id] = eval.isActive
+            ? EvalStudentStatus.activePending
+            : EvalStudentStatus.closedNotDone;
+      }
+    }
+    evalStatuses.assignAll(statuses);
   }
 
   Future<void> _loadGroupAndPeers(Evaluation eval, dynamic s) async {
@@ -198,6 +240,18 @@ class StudentController extends GetxController {
       }
     }
     await _loadMyResultsInternal(eval.id, s.email);
+
+    // Refresh status for this eval now that responses are saved
+    try {
+      final completed = await _evalRepo.hasCompletedAllPeers(
+        evalId:    eval.id,
+        email:     s.email,
+        studentId: studentId,
+      );
+      evalStatuses[eval.id] = eval.isActive
+          ? (completed ? EvalStudentStatus.activeCompleted : EvalStudentStatus.activePending)
+          : (completed ? EvalStudentStatus.closedCompleted : EvalStudentStatus.closedNotDone);
+    } catch (_) {}
   }
 
   // ── My results ────────────────────────────────────────────────────────────
@@ -221,18 +275,12 @@ class StudentController extends GetxController {
     peers.refresh();
   }
 
-  String _formatDuration(Duration d) {
-    if (d.isNegative) return 'Cerrada';
-    if (d.inDays > 0)  return 'Cierra en ${d.inDays}d';
-    if (d.inHours > 0) return 'Cierra en ${d.inHours}h';
-    return 'Cierra en ${d.inMinutes}m';
-  }
-
   void _resetEvalState() {
     activeEvalDb.value     = null;
     hasActiveEval.value    = false;
     currentGroupName.value = '';
     evaluations.clear();
+    evalStatuses.clear();
     peers.clear();
     myResults.clear();
     currentPeer.value = null;

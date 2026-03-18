@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 import 'package:example/presentation/controllers/student_controller.dart';
 import 'package:example/domain/models/evaluation.dart';
+// EvalStudentStatus lives in student_controller.dart
 
 class SCoursesPage extends StatelessWidget {
   const SCoursesPage({super.key});
@@ -95,16 +96,18 @@ class SCoursesPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Destacado: evaluación más reciente activa ──────────
+                    // ── Destacado: evaluación pendiente más reciente ───────
                     Obx(() {
-                      final eval = ctrl.evaluations
-                          .where((e) => e.isActive)
+                      final pending = ctrl.evaluations
+                          .where((e) =>
+                              ctrl.evalStatuses[e.id] ==
+                              EvalStudentStatus.activePending)
                           .toList()
                         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-                      if (eval.isEmpty) return const SizedBox.shrink();
+                      if (pending.isEmpty) return const SizedBox.shrink();
                       return Column(
                         children: [
-                          _ActiveEvalCard(eval: eval.first, ctrl: ctrl),
+                          _ActiveEvalCard(eval: pending.first, ctrl: ctrl),
                           const SizedBox(height: 20),
                         ],
                       );
@@ -422,114 +425,141 @@ class _EvalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final closesIn = eval.closesAt.difference(DateTime.now());
+    final closesIn  = eval.closesAt.difference(DateTime.now());
     final timeLabel = _fmt(closesIn);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: skSurface,
-        border: Border.all(color: skPrimaryMid),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Name + status badge
-          Row(
-            children: [
-              _PulseDot(),
-              const SizedBox(width: 6),
-              Text(
-                'ACTIVA',
-                style: GoogleFonts.sora(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: skPrimary,
-                  letterSpacing: 1.2,
+    return Obx(() {
+      final status = ctrl.evalStatuses[eval.id] ?? EvalStudentStatus.activePending;
+      final isPending = status == EvalStudentStatus.activePending;
+
+      final (badgeLabel, badgeColor, badgeBg) = isPending
+          ? ('ACTIVA', skPrimary, skPrimaryLight)
+          : ('ACTIVA · REALIZADA', critGreen, const Color(0xFFD1FAE5));
+
+      final borderColor = isPending ? skPrimaryMid : critGreen;
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: skSurface,
+          border: Border.all(color: borderColor),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Badge
+            Row(
+              children: [
+                if (isPending) ...[
+                  _PulseDot(),
+                  const SizedBox(width: 6),
+                ] else ...[
+                  Icon(Icons.check_circle_rounded,
+                      size: 12, color: critGreen),
+                  const SizedBox(width: 5),
+                ],
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: badgeBg,
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: Text(
+                    badgeLabel,
+                    style: GoogleFonts.sora(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: badgeColor,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            eval.name,
-            style: GoogleFonts.sora(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: skText,
-              letterSpacing: -0.3,
+              ],
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '${eval.categoryName} · $timeLabel',
-            style: GoogleFonts.dmMono(fontSize: 11, color: skTextFaint),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 14),
-          // Action buttons
-          Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () async {
-                    await ctrl.selectEvalForEvaluation(eval);
-                    Get.toNamed('/student/peers');
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: skPrimary,
-                      borderRadius: BorderRadius.circular(10),
+            const SizedBox(height: 8),
+            Text(
+              eval.name,
+              style: GoogleFonts.sora(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: skText,
+                letterSpacing: -0.3,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${eval.categoryName} · $timeLabel',
+              style: GoogleFonts.dmMono(fontSize: 11, color: skTextFaint),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                if (isPending) ...[
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () async {
+                        await ctrl.selectEvalForEvaluation(eval);
+                        Get.toNamed('/student/peers');
+                      },
+                      child: Container(
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: skPrimary,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Evaluar',
+                          style: GoogleFonts.sora(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
                     ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      'Evaluar',
-                      style: GoogleFonts.sora(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () async {
+                      await ctrl.selectEvalForResults(eval);
+                      Get.toNamed('/student/results');
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: skSurface,
+                        border: Border.all(color: skBorder),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Ver resultados',
+                        style: GoogleFonts.sora(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: skPrimary,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () async {
-                    await ctrl.selectEvalForResults(eval);
-                    Get.toNamed('/student/results');
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: skSurface,
-                      border: Border.all(color: skBorder),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      'Ver resultados',
-                      style: GoogleFonts.sora(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: skPrimary,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+              ],
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   String _fmt(Duration d) {

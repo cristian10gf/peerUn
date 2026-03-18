@@ -57,6 +57,13 @@ abstract class IEvaluationRepository {
     required int evaluatedMemberId,
   });
 
+  /// Returns true if [email] (studentId) has evaluated ALL their peers in [evalId].
+  Future<bool> hasCompletedAllPeers({
+    required int evalId,
+    required String email,
+    required int studentId,
+  });
+
   /// Returns the average scores per criterion received by [email] in [evalId].
   Future<List<CriterionResult>> getMyResults(int evalId, String email);
 }
