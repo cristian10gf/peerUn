@@ -54,25 +54,29 @@ class SPeerScorePage extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              peer.name,
-                              style: GoogleFonts.sora(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w800,
-                                color: skText,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                peer.name,
+                                style: GoogleFonts.sora(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w800,
+                                  color: skText,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                            Text(
-                              '$scored/4 criterios',
-                              style: GoogleFonts.dmMono(
-                                fontSize: 11,
-                                color: skTextFaint,
+                              Text(
+                                '$scored/4 criterios',
+                                style: GoogleFonts.dmMono(
+                                  fontSize: 11,
+                                  color: skTextFaint,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     );

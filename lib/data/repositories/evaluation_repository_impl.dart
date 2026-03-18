@@ -24,8 +24,15 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     required int categoryId,
     required int hours,
     required String visibility,
+    required int teacherId,
   }) async {
     final db = await _db.database;
+    // Duplicate name check
+    final dup = await db.query('evaluations',
+        where: 'LOWER(name) = ? AND teacher_id = ?',
+        whereArgs: [name.toLowerCase(), teacherId],
+        limit: 1);
+    if (dup.isNotEmpty) throw Exception('Ya existe una evaluación con ese nombre');
     final now = DateTime.now();
     final closesAt = now.add(Duration(hours: hours));
     final id = await db.insert('evaluations', {
@@ -35,6 +42,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       'visibility':  visibility,
       'created_at':  now.millisecondsSinceEpoch,
       'closes_at':   closesAt.millisecondsSinceEpoch,
+      'teacher_id':  teacherId,
     });
     final catRows = await db.query('group_categories',
         where: 'id = ?', whereArgs: [categoryId]);
@@ -55,15 +63,36 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
   // ── All evaluations ────────────────────────────────────────────────────────
 
   @override
-  Future<List<Evaluation>> getAll() async {
+  Future<List<Evaluation>> getAll(int teacherId) async {
     final db   = await _db.database;
     final rows = await db.rawQuery('''
       SELECT e.*, gc.name AS category_name
       FROM evaluations e
       JOIN group_categories gc ON gc.id = e.category_id
+      WHERE e.teacher_id = ?
       ORDER BY e.created_at DESC
-    ''');
+    ''', [teacherId]);
     return rows.map(_rowToEval).toList();
+  }
+
+  @override
+  Future<void> rename(int evalId, String newName, int teacherId) async {
+    final db = await _db.database;
+    final dup = await db.query('evaluations',
+        where: 'LOWER(name) = ? AND teacher_id = ? AND id != ?',
+        whereArgs: [newName.toLowerCase(), teacherId, evalId],
+        limit: 1);
+    if (dup.isNotEmpty) throw Exception('Ya existe una evaluación con ese nombre');
+    await db.update('evaluations', {'name': newName},
+        where: 'id = ?', whereArgs: [evalId]);
+  }
+
+  @override
+  Future<void> delete(int evalId) async {
+    final db = await _db.database;
+    await db.delete('evaluation_responses',
+        where: 'eval_id = ?', whereArgs: [evalId]);
+    await db.delete('evaluations', where: 'id = ?', whereArgs: [evalId]);
   }
 
   // ── Group results ──────────────────────────────────────────────────────────
@@ -166,6 +195,21 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
   }
 
   // ── Queries ────────────────────────────────────────────────────────────────
+
+  @override
+  Future<List<Evaluation>> getEvaluationsForStudent(String email) async {
+    final db   = await _db.database;
+    final rows = await db.rawQuery('''
+      SELECT DISTINCT e.*, gc.name AS category_name
+      FROM evaluations e
+      JOIN group_categories gc ON gc.id = e.category_id
+      JOIN groups g            ON g.category_id = e.category_id
+      JOIN group_members gm    ON gm.group_id = g.id
+      WHERE LOWER(gm.username) = ?
+      ORDER BY e.created_at DESC
+    ''', [email.toLowerCase()]);
+    return rows.map(_rowToEval).toList();
+  }
 
   @override
   Future<Evaluation?> getLatestForStudent(String email) async {

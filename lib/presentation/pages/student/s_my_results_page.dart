@@ -64,7 +64,10 @@ class SMyResultsPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Average card
-                    Obx(() => _AverageCard(ctrl: ctrl)),
+                    Obx(() => _AverageCard(
+                          avg:   ctrl.myAverage,
+                          badge: ctrl.performanceBadge,
+                        )),
                     const SizedBox(height: 20),
 
                     // Section label
@@ -102,12 +105,12 @@ class SMyResultsPage extends StatelessWidget {
 }
 
 class _AverageCard extends StatelessWidget {
-  final StudentController ctrl;
-  const _AverageCard({required this.ctrl});
+  final double avg;
+  final String badge;
+  const _AverageCard({required this.avg, required this.badge});
 
   @override
   Widget build(BuildContext context) {
-    final avg = ctrl.myAverage;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
@@ -145,7 +148,7 @@ class _AverageCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
-              ctrl.performanceBadge,
+              badge,
               style: GoogleFonts.sora(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,

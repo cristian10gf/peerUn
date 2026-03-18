@@ -31,6 +31,7 @@ import 'package:example/presentation/pages/teacher/t_dash_page.dart';
 import 'package:example/presentation/pages/teacher/t_import_page.dart';
 import 'package:example/presentation/pages/teacher/t_new_eval_page.dart';
 import 'package:example/presentation/pages/teacher/t_results_page.dart';
+import 'package:example/presentation/pages/teacher/t_profile_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -130,6 +131,7 @@ class PeerEvalApp extends StatelessWidget {
         GetPage(name: '/teacher/import', page: () => const TImportPage()),
         GetPage(name: '/teacher/new-eval', page: () => const TNewEvalPage()),
         GetPage(name: '/teacher/results', page: () => const TResultsPage()),
+        GetPage(name: '/teacher/profile', page: () => const TProfilePage()),
       ],
     );
   }

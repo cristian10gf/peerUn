@@ -11,9 +11,10 @@ class GroupRepositoryImpl implements IGroupRepository {
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
   @override
-  Future<List<GroupCategory>> getAll() async {
+  Future<List<GroupCategory>> getAll(int teacherId) async {
     final db         = await _db.database;
-    final catRows    = await db.query('group_categories', orderBy: 'imported_at DESC');
+    final catRows    = await db.query('group_categories',
+        where: 'teacher_id = ?', whereArgs: [teacherId], orderBy: 'imported_at DESC');
     final result     = <GroupCategory>[];
 
     for (final cat in catRows) {
@@ -51,7 +52,7 @@ class GroupRepositoryImpl implements IGroupRepository {
   // ── Import CSV ─────────────────────────────────────────────────────────────
 
   @override
-  Future<GroupCategory> importCsv(String csvContent, String categoryName) async {
+  Future<GroupCategory> importCsv(String csvContent, String categoryName, int teacherId) async {
     final db = await _db.database;
 
     // Strip UTF-8 BOM if present
@@ -90,6 +91,7 @@ class GroupRepositoryImpl implements IGroupRepository {
       final catId = await txn.insert('group_categories', {
         'name':        categoryName,
         'imported_at': now,
+        'teacher_id':  teacherId,
       });
 
       final groups = <CourseGroup>[];

@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 import 'package:example/presentation/controllers/student_controller.dart';
+import 'package:example/domain/models/evaluation.dart';
 
 class SCoursesPage extends StatelessWidget {
   const SCoursesPage({super.key});
@@ -20,72 +21,68 @@ class SCoursesPage extends StatelessWidget {
               width: double.infinity,
               color: skSurface,
               padding: const EdgeInsets.fromLTRB(22, 4, 22, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Mis cursos',
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Mis evaluaciones',
+                          style: GoogleFonts.sora(
+                            fontSize: 12,
+                            color: skTextFaint,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                        Obx(() {
+                          final s = ctrl.student.value;
+                          if (s == null) return const SizedBox.shrink();
+                          return Text(
+                            s.name,
                             style: GoogleFonts.sora(
-                              fontSize: 12,
-                              color: skTextFaint,
-                              letterSpacing: 0.4,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.5,
+                              color: skText,
                             ),
-                          ),
-                          Obx(() {
-                            final s = ctrl.student.value;
-                            if (s == null) return const SizedBox.shrink();
-                            return Text(
-                              s.name,
-                              style: GoogleFonts.sora(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.5,
-                                color: skText,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            );
-                          }),
-                        ],
-                      )),
-                      const SizedBox(width: 12),
-                      Obx(() {
-                        final s = ctrl.student.value;
-                        if (s == null) return const SizedBox.shrink();
-                        return GestureDetector(
-                          onTap: () => _showProfileSheet(context, ctrl),
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: skPrimaryLight,
-                              borderRadius: BorderRadius.circular(13),
-                            ),
-                            padding: const EdgeInsets.all(4),
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(
-                                s.initials,
-                                style: GoogleFonts.sora(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color: skPrimary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          );
+                        }),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 12),
+                  Obx(() {
+                    final s = ctrl.student.value;
+                    if (s == null) return const SizedBox.shrink();
+                    return GestureDetector(
+                      onTap: () => _showProfileSheet(context, ctrl),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: skPrimaryLight,
+                          borderRadius: BorderRadius.circular(13),
+                        ),
+                        padding: const EdgeInsets.all(4),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            s.initials,
+                            style: GoogleFonts.sora(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: skPrimary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),
@@ -98,19 +95,8 @@ class SCoursesPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Active eval card (only when there is an active eval)
-                    Obx(() => ctrl.hasActiveEval.value
-                        ? Column(
-                            children: [
-                              _ActiveEvalCard(ctrl: ctrl),
-                              const SizedBox(height: 18),
-                            ],
-                          )
-                        : const SizedBox.shrink()),
-
-                    // Section label
                     Text(
-                      'CURSOS ACTIVOS',
+                      'EVALUACIONES ACTIVAS',
                       style: GoogleFonts.sora(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -120,12 +106,50 @@ class SCoursesPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
 
-                    // Course cards
-                    Obx(() => Column(
-                          children: ctrl.courses
-                              .map((c) => _CourseCard(course: c))
-                              .toList(),
-                        )),
+                    Obx(() {
+                      final active = ctrl.evaluations
+                          .where((e) => e.isActive)
+                          .toList();
+                      if (active.isEmpty) {
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 32, horizontal: 24),
+                          decoration: BoxDecoration(
+                            color: skSurfaceAlt,
+                            border: Border.all(color: skBorder),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            children: [
+                              const Icon(Icons.rate_review_outlined,
+                                  size: 32, color: skTextFaint),
+                              const SizedBox(height: 10),
+                              Text(
+                                'Sin evaluaciones activas',
+                                style: GoogleFonts.sora(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: skTextMid,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Aquí aparecerán las evaluaciones\ncuando el docente las active',
+                                style: GoogleFonts.sora(
+                                    fontSize: 11, color: skTextFaint),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                      return Column(
+                        children: active
+                            .map((e) => _EvalCard(eval: e, ctrl: ctrl))
+                            .toList(),
+                      );
+                    }),
                   ],
                 ),
               ),
@@ -152,7 +176,6 @@ class SCoursesPage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle bar
             Container(
               width: 36, height: 4,
               decoration: BoxDecoration(
@@ -161,7 +184,6 @@ class SCoursesPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            // Avatar + info
             Row(
               children: [
                 Container(
@@ -185,22 +207,16 @@ class SCoursesPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        student.name,
-                        style: GoogleFonts.sora(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: skText,
-                        ),
-                      ),
+                      Text(student.name,
+                          style: GoogleFonts.sora(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: skText,
+                          )),
                       const SizedBox(height: 2),
-                      Text(
-                        student.email,
-                        style: GoogleFonts.dmMono(
-                          fontSize: 11,
-                          color: skTextFaint,
-                        ),
-                      ),
+                      Text(student.email,
+                          style: GoogleFonts.dmMono(
+                              fontSize: 11, color: skTextFaint)),
                     ],
                   ),
                 ),
@@ -209,7 +225,6 @@ class SCoursesPage extends StatelessWidget {
             const SizedBox(height: 20),
             const Divider(color: skBorder, height: 1),
             const SizedBox(height: 12),
-            // Logout button
             GestureDetector(
               onTap: () {
                 Get.back();
@@ -248,127 +263,130 @@ class SCoursesPage extends StatelessWidget {
   }
 }
 
-class _ActiveEvalCard extends StatelessWidget {
+// ── Eval card ──────────────────────────────────────────────────────────────────
+
+class _EvalCard extends StatelessWidget {
+  final Evaluation eval;
   final StudentController ctrl;
-  const _ActiveEvalCard({required this.ctrl});
+  const _EvalCard({required this.eval, required this.ctrl});
 
   @override
   Widget build(BuildContext context) {
-    return Obx(() {
-      final eval = ctrl.activeEval.value;
-      return GestureDetector(
-      onTap: () => Get.toNamed('/student/eval-list'),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: skPrimary,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                _PulseDot(),
-                const SizedBox(width: 6),
-                Text(
-                  'EVALUACIÓN ACTIVA',
-                  style: GoogleFonts.sora(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white.withValues(alpha: 0.75),
-                    letterSpacing: 1.5,
-                  ),
+    final closesIn = eval.closesAt.difference(DateTime.now());
+    final timeLabel = _fmt(closesIn);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: skSurface,
+        border: Border.all(color: skPrimaryMid),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Name + status badge
+          Row(
+            children: [
+              _PulseDot(),
+              const SizedBox(width: 6),
+              Text(
+                'ACTIVA',
+                style: GoogleFonts.sora(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: skPrimary,
+                  letterSpacing: 1.2,
                 ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            eval.name,
+            style: GoogleFonts.sora(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: skText,
+              letterSpacing: -0.3,
             ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        eval.title,
-                        style: GoogleFonts.sora(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          height: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        eval.courseAndDeadline,
-                        style: GoogleFonts.sora(
-                          fontSize: 11,
-                          color: Colors.white.withValues(alpha: 0.65),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      'Progreso',
-                      style: GoogleFonts.sora(
-                        fontSize: 11,
-                        color: Colors.white.withValues(alpha: 0.5),
-                      ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${eval.categoryName} · $timeLabel',
+            style: GoogleFonts.dmMono(fontSize: 11, color: skTextFaint),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 14),
+          // Action buttons
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () async {
+                    await ctrl.selectEvalForEvaluation(eval);
+                    Get.toNamed('/student/peers');
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: skPrimary,
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    Text(
-                      '${eval.completedCount}/${eval.totalCount}',
-                      style: GoogleFonts.dmMono(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
+                    alignment: Alignment.center,
+                    child: Text(
+                      'Evaluar',
+                      style: GoogleFonts.sora(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
                         color: Colors.white,
                       ),
                     ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Progress bar
-            ClipRRect(
-              borderRadius: BorderRadius.circular(99),
-              child: LinearProgressIndicator(
-                value: eval.progress,
-                backgroundColor: Colors.white.withValues(alpha: 0.25),
-                valueColor: const AlwaysStoppedAnimation(Colors.white),
-                minHeight: 3,
-              ),
-            ),
-            const SizedBox(height: 14),
-            // Action button
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 9),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                'Evaluar ahora',
-                style: GoogleFonts.sora(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () async {
+                    await ctrl.selectEvalForResults(eval);
+                    Get.toNamed('/student/results');
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: skSurface,
+                      border: Border.all(color: skBorder),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'Ver resultados',
+                      style: GoogleFonts.sora(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: skPrimary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
-    });
+  }
+
+  String _fmt(Duration d) {
+    if (d.isNegative) return 'Cerrada';
+    if (d.inDays > 0)  return 'Cierra en ${d.inDays}d';
+    if (d.inHours > 0) return 'Cierra en ${d.inHours}h';
+    return 'Cierra en ${d.inMinutes}m';
   }
 }
 
@@ -389,7 +407,7 @@ class _PulseDotState extends State<_PulseDot>
       vsync: this,
       duration: const Duration(milliseconds: 1800),
     )..repeat(reverse: true);
-    _anim = Tween<double>(begin: 1.0, end: 0.35).animate(
+    _anim = Tween<double>(begin: 1.0, end: 0.3).animate(
       CurvedAnimation(parent: _ac, curve: Curves.easeInOut),
     );
   }
@@ -407,10 +425,9 @@ class _PulseDotState extends State<_PulseDot>
       builder: (_, __) => Opacity(
         opacity: _anim.value,
         child: Container(
-          width: 7,
-          height: 7,
+          width: 7, height: 7,
           decoration: const BoxDecoration(
-            color: Colors.white,
+            color: skPrimary,
             shape: BoxShape.circle,
           ),
         ),
@@ -419,76 +436,7 @@ class _PulseDotState extends State<_PulseDot>
   }
 }
 
-class _CourseCard extends StatelessWidget {
-  final dynamic course;
-  const _CourseCard({required this.course});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: skSurfaceAlt,
-        border: Border.all(color: skBorder),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            course.name,
-            style: GoogleFonts.sora(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: skText,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              const Icon(Icons.people_outline_rounded, size: 12, color: skTextFaint),
-              const SizedBox(width: 4),
-              Text(
-                '${course.groupName} · ${course.memberCount} integrantes',
-                style: GoogleFonts.sora(fontSize: 11, color: skTextFaint),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          GestureDetector(
-            onTap: () => Get.toNamed('/student/results'),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 9),
-              decoration: BoxDecoration(
-                color: skSurface,
-                border: Border.all(color: skBorder),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.bar_chart_rounded,
-                      size: 13, color: skPrimary),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Ver mis resultados',
-                    style: GoogleFonts.sora(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: skPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+// ── Bottom nav ─────────────────────────────────────────────────────────────────
 
 class _BottomNav extends StatelessWidget {
   final int activeIndex;
@@ -497,9 +445,9 @@ class _BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      _NavItem(icon: Icons.home_rounded,          label: 'Inicio',     route: '/student/courses'),
-      _NavItem(icon: Icons.rate_review_rounded,   label: 'Evaluar',    route: '/student/eval-list'),
-      _NavItem(icon: Icons.bar_chart_rounded,     label: 'Resultados', route: '/student/results'),
+      _NavItem(icon: Icons.home_rounded,          label: 'Inicio',    route: '/student/courses'),
+      _NavItem(icon: Icons.history_rounded,        label: 'Historial', route: '/student/eval-list'),
+      _NavItem(icon: Icons.bar_chart_rounded,      label: 'Resultados',route: '/student/results'),
       _NavItem(icon: Icons.person_outline_rounded, label: 'Perfil',    route: null),
     ];
 
@@ -524,11 +472,8 @@ class _BottomNav extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    e.value.icon,
-                    size: 20,
-                    color: isActive ? skPrimary : skTextFaint,
-                  ),
+                  Icon(e.value.icon, size: 20,
+                      color: isActive ? skPrimary : skTextFaint),
                   const SizedBox(height: 3),
                   Text(
                     e.value.label,

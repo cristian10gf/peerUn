@@ -25,8 +25,12 @@ class TeacherController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    loadCategories();
-    loadEvaluations();
+    ever(teacher, (t) {
+      if (t != null) {
+        loadCategories();
+        loadEvaluations();
+      }
+    });
   }
 
   Future<void> checkSession() async {
@@ -67,8 +71,9 @@ class TeacherController extends GetxController {
       categories.fold(0, (s, c) => s + c.groupCount);
 
   Future<void> loadCategories() async {
+    final tid = int.tryParse(teacher.value?.id ?? '') ?? 0;
     try {
-      final cats = await _groupRepo.getAll();
+      final cats = await _groupRepo.getAll(tid);
       categories.assignAll(cats);
       if (cats.isNotEmpty && selectedCategoryId.value == null) {
         selectedCategoryId.value   = cats.first.id;
@@ -80,8 +85,9 @@ class TeacherController extends GetxController {
   Future<void> importCsv(String csvContent, String categoryName) async {
     importLoading.value = true;
     importError.value   = '';
+    final tid = int.tryParse(teacher.value?.id ?? '') ?? 0;
     try {
-      final cat = await _groupRepo.importCsv(csvContent, categoryName);
+      final cat = await _groupRepo.importCsv(csvContent, categoryName, tid);
       categories.insert(0, cat);
       selectedCategoryId.value   ??= cat.id;
       if (selectedCategoryId.value == cat.id) {
@@ -108,8 +114,9 @@ class TeacherController extends GetxController {
   final activeEval   = Rx<Evaluation?>(null);
 
   Future<void> loadEvaluations() async {
+    final tid = int.tryParse(teacher.value?.id ?? '') ?? 0;
     try {
-      final all = await _evalRepo.getAll();
+      final all = await _evalRepo.getAll(tid);
       evaluations.assignAll(all);
       activeEval.value = all.firstWhereOrNull((e) => e.isActive);
     } catch (_) {}
@@ -131,12 +138,14 @@ class TeacherController extends GetxController {
     }
     isLoading.value = true;
     evalError.value = '';
+    final tid = int.tryParse(teacher.value?.id ?? '') ?? 0;
     try {
       final eval = await _evalRepo.create(
         name:       evalName.value,
         categoryId: catId,
         hours:      selectedHours.value,
         visibility: selectedVisibility.value,
+        teacherId:  tid,
       );
       evaluations.insert(0, eval);
       activeEval.value = eval.isActive ? eval : activeEval.value;
@@ -151,6 +160,36 @@ class TeacherController extends GetxController {
       evalError.value = 'Error al crear evaluación: $e';
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  Future<void> renameEvaluation(int evalId, String newName) async {
+    final tid = int.tryParse(teacher.value?.id ?? '') ?? 0;
+    await _evalRepo.rename(evalId, newName, tid);
+    final idx = evaluations.indexWhere((e) => e.id == evalId);
+    if (idx != -1) {
+      final old = evaluations[idx];
+      evaluations[idx] = Evaluation(
+        id:           old.id,
+        name:         newName,
+        categoryId:   old.categoryId,
+        categoryName: old.categoryName,
+        hours:        old.hours,
+        visibility:   old.visibility,
+        createdAt:    old.createdAt,
+        closesAt:     old.closesAt,
+      );
+      if (activeEval.value?.id == evalId) {
+        activeEval.value = evaluations[idx];
+      }
+    }
+  }
+
+  Future<void> deleteEvaluation(int evalId) async {
+    await _evalRepo.delete(evalId);
+    evaluations.removeWhere((e) => e.id == evalId);
+    if (activeEval.value?.id == evalId) {
+      activeEval.value = evaluations.firstWhereOrNull((e) => e.isActive);
     }
   }
 

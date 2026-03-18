@@ -170,7 +170,8 @@ class TDashPage extends StatelessWidget {
                       if (ctrl.evaluations.isEmpty) {
                         return Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 32),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 32, horizontal: 24),
                           decoration: BoxDecoration(
                             color: tkSurface,
                             border: Border.all(color: tkBorder),
@@ -187,9 +188,12 @@ class TDashPage extends StatelessWidget {
                                     color: tkTextMid,
                                   )),
                               const SizedBox(height: 4),
-                              Text('Importa grupos y crea tu primera evaluación',
-                                  style: GoogleFonts.sora(
-                                      fontSize: 11, color: tkTextFaint)),
+                              Text(
+                                'Importa grupos y crea tu primera evaluación',
+                                style: GoogleFonts.sora(
+                                    fontSize: 11, color: tkTextFaint),
+                                textAlign: TextAlign.center,
+                              ),
                             ],
                           ),
                         );
@@ -485,6 +489,14 @@ class _EvalCard extends StatelessWidget {
                   ),
                 ),
               ),
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: () => _showActions(context),
+                child: const Padding(
+                  padding: EdgeInsets.all(4),
+                  child: Icon(Icons.more_vert_rounded, size: 16, color: tkTextFaint),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 4),
@@ -497,24 +509,150 @@ class _EvalCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              _CourseBtn(
-                icon: Icons.group_outlined,
-                label: 'Grupos',
-                onTap: () => Get.toNamed('/teacher/import'),
-              ),
-              const SizedBox(width: 6),
-              _CourseBtn(
-                icon: Icons.bar_chart_rounded,
-                label: 'Resultados',
-                gold: true,
-                onTap: () async {
-                  await ctrl.loadGroupResults(eval);
-                  Get.toNamed('/teacher/results');
-                },
-              ),
-            ],
+          _CourseBtn(
+            icon: Icons.bar_chart_rounded,
+            label: 'Ver resultados',
+            gold: true,
+            onTap: () async {
+              await ctrl.loadGroupResults(eval);
+              Get.toNamed('/teacher/results');
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showActions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: tkSurface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                  color: tkBorder, borderRadius: BorderRadius.circular(99)),
+            ),
+            const SizedBox(height: 16),
+            Text(eval.name,
+                style: GoogleFonts.sora(
+                  fontSize: 14, fontWeight: FontWeight.w700, color: tkText,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 16),
+            const Divider(color: tkBorder, height: 1),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.edit_rounded, size: 18, color: tkTextMid),
+              title: Text('Renombrar',
+                  style: GoogleFonts.sora(fontSize: 14, color: tkText)),
+              onTap: () {
+                Get.back();
+                _showRenameDialog(context);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.delete_outline_rounded,
+                  size: 18, color: tkDanger),
+              title: Text('Eliminar evaluación',
+                  style: GoogleFonts.sora(fontSize: 14, color: tkDanger)),
+              onTap: () {
+                Get.back();
+                _showDeleteDialog(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showRenameDialog(BuildContext context) {
+    final nameCtrl = TextEditingController(text: eval.name);
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: tkSurface,
+        title: Text('Renombrar evaluación',
+            style: GoogleFonts.sora(
+                fontSize: 15, fontWeight: FontWeight.w700, color: tkText)),
+        content: TextField(
+          controller: nameCtrl,
+          autofocus: true,
+          style: GoogleFonts.sora(fontSize: 14, color: tkText),
+          decoration: InputDecoration(
+            hintText: 'Nombre de la evaluación',
+            hintStyle: GoogleFonts.sora(color: tkTextFaint),
+            enabledBorder: OutlineInputBorder(
+              borderSide: const BorderSide(color: tkBorder),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderSide: const BorderSide(color: tkGold),
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text('Cancelar',
+                style: GoogleFonts.sora(color: tkTextFaint)),
+          ),
+          TextButton(
+            onPressed: () async {
+              final newName = nameCtrl.text.trim();
+              if (newName.isEmpty) return;
+              Get.back();
+              try {
+                await ctrl.renameEvaluation(eval.id, newName);
+              } catch (e) {
+                Get.snackbar('Error', e.toString().replaceFirst('Exception: ', ''),
+                    snackPosition: SnackPosition.BOTTOM);
+              }
+            },
+            child: Text('Guardar',
+                style: GoogleFonts.sora(
+                    color: tkGold, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: tkSurface,
+        title: Text('Eliminar evaluación',
+            style: GoogleFonts.sora(
+                fontSize: 15, fontWeight: FontWeight.w700, color: tkText)),
+        content: Text(
+          'Se eliminarán todas las respuestas de "${eval.name}". Esta acción no se puede deshacer.',
+          style: GoogleFonts.sora(fontSize: 13, color: tkTextMid),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text('Cancelar',
+                style: GoogleFonts.sora(color: tkTextFaint)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Get.back();
+              await ctrl.deleteEvaluation(eval.id);
+            },
+            child: Text('Eliminar',
+                style: GoogleFonts.sora(
+                    color: tkDanger, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -580,19 +718,19 @@ class _CourseBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 9),
-          decoration: BoxDecoration(
-            color: gold ? tkGold : tkSurfaceAlt,
-            border: Border.all(color: gold ? tkGold : tkBorder),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 9),
+        decoration: BoxDecoration(
+          color: gold ? tkGold : tkSurfaceAlt,
+          border: Border.all(color: gold ? tkGold : tkBorder),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon, size: 12, color: gold ? tkBackground : tkTextMid),
               const SizedBox(width: 4),
@@ -609,8 +747,7 @@ class _CourseBtn extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 }
 
@@ -621,10 +758,10 @@ class _TBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      _NavItem(icon: Icons.home_rounded,          label: 'INICIO',   route: '/teacher/dash'),
-      _NavItem(icon: Icons.rate_review_rounded,   label: 'EVALUAR',  route: '/teacher/new-eval'),
-      _NavItem(icon: Icons.bar_chart_rounded,     label: 'DATOS',    route: '/teacher/results'),
-      _NavItem(icon: Icons.person_outline_rounded, label: 'PERFIL',  route: null),
+      _NavItem(icon: Icons.home_rounded,           label: 'INICIO',  route: '/teacher/dash'),
+      _NavItem(icon: Icons.rate_review_rounded,    label: 'EVALUAR', route: '/teacher/new-eval'),
+      _NavItem(icon: Icons.bar_chart_rounded,      label: 'DATOS',   route: '/teacher/results'),
+      _NavItem(icon: Icons.upload_file_rounded,     label: 'IMPORTAR', route: '/teacher/profile'),
     ];
 
     return Container(
@@ -640,8 +777,7 @@ class _TBottomNav extends StatelessWidget {
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () {
-                if (e.value.route != null &&
-                    !Get.currentRoute.endsWith(e.value.route!)) {
+                if (!Get.currentRoute.endsWith(e.value.route ?? '')) {
                   Get.offNamed(e.value.route!);
                 }
               },

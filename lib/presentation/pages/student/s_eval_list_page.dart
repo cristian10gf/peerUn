@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 import 'package:example/presentation/controllers/student_controller.dart';
-import 'package:example/domain/models/peer_evaluation.dart';
+import 'package:example/domain/models/evaluation.dart';
 
 class SEvalListPage extends StatelessWidget {
   const SEvalListPage({super.key});
@@ -20,111 +20,65 @@ class SEvalListPage extends StatelessWidget {
             Container(
               width: double.infinity,
               color: skSurface,
-              padding: const EdgeInsets.fromLTRB(22, 4, 22, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _BackButton(label: 'Volver', route: '/student/courses'),
-                  const SizedBox(height: 16),
-                  Obx(() => Text(
-                        ctrl.activeEval.value.title,
-                        style: GoogleFonts.sora(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                          color: skText,
-                        ),
-                      )),
-                  const SizedBox(height: 3),
-                  Obx(() => Text(
-                        '${ctrl.currentGroupName.value} · ${ctrl.doneCount}/${ctrl.totalPeers} evaluados',
-                        style: GoogleFonts.dmMono(
-                          fontSize: 11,
-                          color: skTextFaint,
-                        ),
-                      )),
-                ],
+              padding: const EdgeInsets.fromLTRB(22, 16, 22, 18),
+              child: Text(
+                'Historial',
+                style: GoogleFonts.sora(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                  color: skText,
+                ),
               ),
             ),
             const Divider(height: 1, color: skBorder),
 
             // ── Body ───────────────────────────────────────────────────────
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(22),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Time / progress card
-                    Obx(() => _ProgressCard(
-                          progress: ctrl.evalProgress,
-                          percentage:
-                              (ctrl.evalProgress * 100).round(),
-                        )),
-                    const SizedBox(height: 18),
-
-                    // Section label
-                    Text(
-                      'COMPAÑEROS A EVALUAR',
-                      style: GoogleFonts.sora(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: skTextFaint,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-
-                    // Peer cards
-                    Obx(() => Column(
-                          children: ctrl.peers
-                              .map((p) => _PeerCard(
-                                    peer: p,
-                                    onTap: () {
-                                      ctrl.selectPeer(p);
-                                      Get.toNamed('/student/peer-score');
-                                    },
-                                  ))
-                              .toList(),
-                        )),
-
-                    // Submit button
-                    Obx(() {
-                      if (!ctrl.allEvaluated) return const SizedBox.shrink();
-                      return Column(
+              child: Obx(() {
+                final evals = ctrl.evaluations;
+                if (evals.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          const SizedBox(height: 8),
-                          GestureDetector(
-                            onTap: () async {
-                              await ctrl.submitEvaluation();
-                              Get.offNamed('/student/courses');
-                            },
-                            child: Container(
-                              width: double.infinity,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
-                              decoration: BoxDecoration(
-                                color: skPrimary,
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                'Enviar evaluación completa',
-                                style: GoogleFonts.sora(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              ),
+                          const Icon(Icons.history_rounded,
+                              size: 40, color: skTextFaint),
+                          const SizedBox(height: 14),
+                          Text(
+                            'Sin historial',
+                            style: GoogleFonts.sora(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: skTextMid,
                             ),
                           ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Las evaluaciones en las que participes\naparecerán aquí',
+                            style: GoogleFonts.sora(
+                                fontSize: 12, color: skTextFaint),
+                            textAlign: TextAlign.center,
+                          ),
                         ],
-                      );
-                    }),
-                  ],
-                ),
-              ),
+                      ),
+                    ),
+                  );
+                }
+                return ListView.separated(
+                  padding: const EdgeInsets.all(22),
+                  itemCount: evals.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (_, i) =>
+                      _HistorialItem(eval: evals[i], ctrl: ctrl),
+                );
+              }),
             ),
+
+            // ── Bottom nav ─────────────────────────────────────────────────
+            _BottomNav(activeIndex: 1),
           ],
         ),
       ),
@@ -132,55 +86,125 @@ class SEvalListPage extends StatelessWidget {
   }
 }
 
-class _ProgressCard extends StatelessWidget {
-  final double progress;
-  final int percentage;
-  const _ProgressCard({required this.progress, required this.percentage});
+class _HistorialItem extends StatelessWidget {
+  final Evaluation eval;
+  final StudentController ctrl;
+  const _HistorialItem({required this.eval, required this.ctrl});
 
   @override
   Widget build(BuildContext context) {
+    final isActive = eval.isActive;
+    final date =
+        '${eval.createdAt.day}/${eval.createdAt.month}/${eval.createdAt.year}';
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: skSurfaceAlt,
-        border: Border.all(color: skBorder),
+        color: skSurface,
+        border: Border.all(color: isActive ? skPrimaryMid : skBorder),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.schedule_rounded, size: 15, color: skTextMid),
-              const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Cierra en 12h 30m',
+                  eval.name,
                   style: GoogleFonts.sora(
-                    fontSize: 13,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: skText,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Text(
-                '$percentage%',
-                style: GoogleFonts.dmMono(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: skPrimary,
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? skPrimaryLight
+                      : skSurfaceAlt,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  isActive ? 'ACTIVA' : 'CERRADA',
+                  style: GoogleFonts.sora(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: isActive ? skPrimary : skTextFaint,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(99),
-            child: LinearProgressIndicator(
-              value: progress,
-              backgroundColor: skBorder,
-              valueColor: const AlwaysStoppedAnimation(skPrimary),
-              minHeight: 3,
-            ),
+          const SizedBox(height: 4),
+          Text(
+            '${eval.categoryName} · $date',
+            style: GoogleFonts.dmMono(fontSize: 11, color: skTextFaint),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              if (isActive) ...[
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () async {
+                      await ctrl.selectEvalForEvaluation(eval);
+                      Get.toNamed('/student/peers');
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 9),
+                      decoration: BoxDecoration(
+                        color: skPrimary,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Evaluar',
+                        style: GoogleFonts.sora(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: GestureDetector(
+                  onTap: () async {
+                    await ctrl.selectEvalForResults(eval);
+                    Get.toNamed('/student/results');
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    decoration: BoxDecoration(
+                      color: skSurface,
+                      border: Border.all(color: skBorder),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'Ver resultados',
+                      style: GoogleFonts.sora(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: skPrimary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -188,123 +212,68 @@ class _ProgressCard extends StatelessWidget {
   }
 }
 
-class _PeerCard extends StatelessWidget {
-  final Peer peer;
-  final VoidCallback onTap;
-  const _PeerCard({required this.peer, required this.onTap});
+// ── Bottom nav ─────────────────────────────────────────────────────────────────
+
+class _BottomNav extends StatelessWidget {
+  final int activeIndex;
+  const _BottomNav({required this.activeIndex});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: peer.evaluated ? null : onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: peer.evaluated ? skPrimaryLight : skSurface,
-          border: Border.all(
-            color: peer.evaluated ? skPrimaryMid : skBorder,
-          ),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          children: [
-            // Avatar
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: peer.evaluated ? skPrimary : skSurfaceAlt,
-                border: Border.all(
-                  color: peer.evaluated ? skPrimary : skBorder,
-                ),
-                borderRadius: BorderRadius.circular(13),
-              ),
-              alignment: Alignment.center,
-              child: peer.evaluated
-                  ? const Icon(Icons.check_rounded,
-                      size: 16, color: Colors.white)
-                  : Text(
-                      peer.initials,
-                      style: GoogleFonts.dmMono(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: skTextMid,
-                      ),
-                    ),
-            ),
-            const SizedBox(width: 13),
-            // Name + status
-            Expanded(
+    final items = [
+      _NavItem(icon: Icons.home_rounded,          label: 'Inicio',    route: '/student/courses'),
+      _NavItem(icon: Icons.history_rounded,        label: 'Historial', route: '/student/eval-list'),
+      _NavItem(icon: Icons.bar_chart_rounded,      label: 'Resultados',route: '/student/results'),
+      _NavItem(icon: Icons.person_outline_rounded, label: 'Perfil',    route: null),
+    ];
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: skSurface,
+        border: Border(top: BorderSide(color: skBorder)),
+      ),
+      padding: const EdgeInsets.fromLTRB(0, 10, 0, 20),
+      child: Row(
+        children: items.asMap().entries.map((e) {
+          final isActive = e.key == activeIndex;
+          return Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                if (e.value.route != null &&
+                    !Get.currentRoute.endsWith(e.value.route!)) {
+                  Get.offNamed(e.value.route!);
+                }
+              },
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
+                  Icon(e.value.icon, size: 20,
+                      color: isActive ? skPrimary : skTextFaint),
+                  const SizedBox(height: 3),
                   Text(
-                    peer.name,
+                    e.value.label,
                     style: GoogleFonts.sora(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: skText,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    peer.evaluated ? 'Evaluado' : 'Pendiente',
-                    style: GoogleFonts.sora(
-                      fontSize: 11,
-                      fontWeight: peer.evaluated
-                          ? FontWeight.w600
-                          : FontWeight.w400,
-                      color:
-                          peer.evaluated ? skPrimary : skTextFaint,
+                      fontSize: 9,
+                      letterSpacing: 0.3,
+                      fontWeight:
+                          isActive ? FontWeight.w700 : FontWeight.w500,
+                      color: isActive ? skPrimary : skTextFaint,
                     ),
                   ),
                 ],
               ),
             ),
-            if (!peer.evaluated)
-              const Icon(Icons.chevron_right_rounded,
-                  size: 14, color: skTextFaint),
-          ],
-        ),
+          );
+        }).toList(),
       ),
     );
   }
 }
 
-class _BackButton extends StatelessWidget {
+class _NavItem {
+  final IconData icon;
   final String label;
-  final String route;
-  const _BackButton({required this.label, required this.route});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Get.offNamed(route),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(8, 7, 12, 7),
-        decoration: BoxDecoration(
-          color: skSurfaceAlt,
-          border: Border.all(color: skBorder),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.chevron_left_rounded,
-                size: 14, color: skTextMid),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: GoogleFonts.sora(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: skTextMid,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  final String? route;
+  const _NavItem({required this.icon, required this.label, this.route});
 }

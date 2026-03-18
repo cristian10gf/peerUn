@@ -1,6 +1,5 @@
 import 'package:get/get.dart';
 import 'package:example/domain/models/student.dart';
-import 'package:example/domain/models/course.dart';
 import 'package:example/domain/models/evaluation.dart';
 import 'package:example/domain/models/peer_evaluation.dart';
 import 'package:example/domain/repositories/i_auth_repository.dart';
@@ -62,31 +61,22 @@ class StudentController extends GetxController {
   final activeEvalDb     = Rx<Evaluation?>(null);
   final currentGroupName = ''.obs;
   final hasActiveEval    = false.obs;
-
-  // ActiveEvaluation UI model (for the card in courses page)
-  final activeEval = Rx<ActiveEvaluation>(const ActiveEvaluation(
-    id: '', title: 'Sin evaluación activa',
-    courseAndDeadline: '', completedCount: 0, totalCount: 0,
-  ));
-
-  // Courses derived from group memberships
-  final courses = <Course>[].obs;
+  final evaluations      = <Evaluation>[].obs;
 
   Future<void> loadEvalData() async {
     final s = student.value;
     if (s == null) return;
 
-    // Load courses (groups student belongs to)
+    // Load all evaluations this student is part of
+    List<Evaluation> evalList = [];
     try {
-      final c = await _evalRepo.getCoursesForStudent(s.email);
-      courses.assignAll(c);
+      evalList = await _evalRepo.getEvaluationsForStudent(s.email);
+      evaluations.assignAll(evalList);
     } catch (_) {}
 
-    // Load latest eval linked to this student
-    Evaluation? eval;
-    try {
-      eval = await _evalRepo.getLatestForStudent(s.email);
-    } catch (_) {}
+    // Pick first active eval (or most recent) as default context
+    final Evaluation? eval = evalList.firstWhereOrNull((e) => e.isActive) ??
+        (evalList.isNotEmpty ? evalList.first : null);
 
     activeEvalDb.value = eval;
 
@@ -98,7 +88,12 @@ class StudentController extends GetxController {
       return;
     }
 
-    // Group name
+    hasActiveEval.value = eval.isActive;
+    await _loadGroupAndPeers(eval, s);
+    await _loadMyResultsInternal(eval.id, s.email);
+  }
+
+  Future<void> _loadGroupAndPeers(Evaluation eval, dynamic s) async {
     try {
       final gName = await _evalRepo.getGroupNameForStudent(eval.id, s.email);
       currentGroupName.value = gName ?? eval.categoryName;
@@ -106,34 +101,43 @@ class StudentController extends GetxController {
       currentGroupName.value = eval.categoryName;
     }
 
-    // Load peers and check which are already evaluated
     final studentId = int.parse(s.id);
     List<Peer> peerList = [];
     try {
       peerList = await _evalRepo.getPeersForStudent(eval.id, s.email);
       for (final p in peerList) {
         p.evaluated = await _evalRepo.hasEvaluated(
-          evalId:              eval.id,
-          evaluatorStudentId:  studentId,
-          evaluatedMemberId:   int.parse(p.id),
+          evalId:             eval.id,
+          evaluatorStudentId: studentId,
+          evaluatedMemberId:  int.parse(p.id),
         );
       }
     } catch (_) {}
     peers.assignAll(peerList);
+  }
 
-    // Active eval card
-    hasActiveEval.value = eval.isActive;
-    final closesIn    = eval.closesAt.difference(DateTime.now());
-    final closesLabel = _formatDuration(closesIn);
-    activeEval.value = ActiveEvaluation(
-      id:                eval.id.toString(),
-      title:             eval.name,
-      courseAndDeadline: '${currentGroupName.value} · $closesLabel',
-      completedCount:    peerList.where((p) => p.evaluated).length,
-      totalCount:        peerList.length,
-    );
+  /// Select an eval for peer-scoring (loads peers, sets active eval).
+  Future<void> selectEvalForEvaluation(Evaluation eval) async {
+    final s = student.value;
+    if (s == null) return;
+    activeEvalDb.value     = eval;
+    hasActiveEval.value    = eval.isActive;
+    peers.clear();
+    myResults.clear();
+    await _loadGroupAndPeers(eval, s);
+  }
 
-    // Load my results
+  /// Select an eval to view results (loads my results, sets active eval).
+  Future<void> selectEvalForResults(Evaluation eval) async {
+    final s = student.value;
+    if (s == null) return;
+    activeEvalDb.value = eval;
+    try {
+      final gName = await _evalRepo.getGroupNameForStudent(eval.id, s.email);
+      currentGroupName.value = gName ?? eval.categoryName;
+    } catch (_) {
+      currentGroupName.value = eval.categoryName;
+    }
     await _loadMyResultsInternal(eval.id, s.email);
   }
 
@@ -214,17 +218,7 @@ class StudentController extends GetxController {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   void _refreshActiveEvalCard() {
-    final eval = activeEvalDb.value;
-    if (eval == null) return;
-    final closesIn    = eval.closesAt.difference(DateTime.now());
-    final closesLabel = _formatDuration(closesIn);
-    activeEval.value = ActiveEvaluation(
-      id:                eval.id.toString(),
-      title:             eval.name,
-      courseAndDeadline: '${currentGroupName.value} · $closesLabel',
-      completedCount:    doneCount,
-      totalCount:        totalPeers,
-    );
+    peers.refresh();
   }
 
   String _formatDuration(Duration d) {
@@ -238,14 +232,10 @@ class StudentController extends GetxController {
     activeEvalDb.value     = null;
     hasActiveEval.value    = false;
     currentGroupName.value = '';
+    evaluations.clear();
     peers.clear();
     myResults.clear();
     currentPeer.value = null;
     scores.clear();
-    courses.clear();
-    activeEval.value = const ActiveEvaluation(
-      id: '', title: 'Sin evaluación activa',
-      courseAndDeadline: '', completedCount: 0, totalCount: 0,
-    );
   }
 }
