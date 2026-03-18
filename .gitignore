@@ -89,3 +89,4 @@ coverage/
 .copilot/
 .github-copilot/
 .github/agents/
+/f_web_authentication
