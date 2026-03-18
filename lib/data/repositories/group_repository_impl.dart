@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:example/data/services/database_service.dart';
 import 'package:example/domain/models/group_category.dart';
 import 'package:example/domain/repositories/i_group_repository.dart';
@@ -104,6 +106,16 @@ class GroupRepositoryImpl implements IGroupRepository {
             'name':     m.name,
             'username': m.username,
           });
+          // Register student with default password if not already registered
+          await txn.rawInsert('''
+            INSERT OR IGNORE INTO students (name, email, password, initials)
+            VALUES (?, ?, ?, ?)
+          ''', [
+            m.name,
+            m.username.toLowerCase(),
+            _hash('evalun2026'),
+            _buildInitials(m.name),
+          ]);
           members.add(GroupMember(id: mId, name: m.name, username: m.username));
         }
         groups.add(CourseGroup(id: grpId, name: entry.key, members: members));
@@ -139,4 +151,14 @@ class _ParsedMember {
   final String name;
   final String username;
   const _ParsedMember({required this.name, required this.username});
+}
+
+String _hash(String password) =>
+    sha256.convert(utf8.encode(password)).toString();
+
+String _buildInitials(String name) {
+  final parts = name.trim().split(' ').where((p) => p.isNotEmpty).toList();
+  if (parts.isEmpty) return '?';
+  if (parts.length == 1) return parts[0][0].toUpperCase();
+  return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
 }

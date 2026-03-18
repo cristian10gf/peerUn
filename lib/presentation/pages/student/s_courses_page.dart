@@ -98,9 +98,15 @@ class SCoursesPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Active eval card
-                    _ActiveEvalCard(ctrl: ctrl),
-                    const SizedBox(height: 18),
+                    // Active eval card (only when there is an active eval)
+                    Obx(() => ctrl.hasActiveEval.value
+                        ? Column(
+                            children: [
+                              _ActiveEvalCard(ctrl: ctrl),
+                              const SizedBox(height: 18),
+                            ],
+                          )
+                        : const SizedBox.shrink()),
 
                     // Section label
                     Text(

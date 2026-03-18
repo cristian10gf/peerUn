@@ -344,7 +344,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           : () => _submit(studentCtrl, teacherCtrl),
                       child: Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
                         decoration: BoxDecoration(
                           color: loading
                               ? accentColor.withValues(alpha: 0.7)
@@ -361,14 +361,17 @@ class _RegisterPageState extends State<RegisterPage> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : Text(
-                                _selectedRole == AppUserRole.student
-                                    ? 'Crear cuenta de estudiante'
-                                    : 'Crear cuenta de profesor',
-                                style: GoogleFonts.sora(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: buttonTextColor,
+                            : FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  _selectedRole == AppUserRole.student
+                                      ? 'Crear cuenta de estudiante'
+                                      : 'Crear cuenta de profesor',
+                                  style: GoogleFonts.sora(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: buttonTextColor,
+                                  ),
                                 ),
                               ),
                       ),

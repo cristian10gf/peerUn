@@ -38,13 +38,19 @@ class SMyResultsPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 3),
-                  Text(
-                    'Sprint 2 Review · Visibilidad pública',
-                    style: GoogleFonts.dmMono(
-                      fontSize: 11,
-                      color: skTextFaint,
-                    ),
-                  ),
+                  Obx(() {
+                    final eval = ctrl.activeEvalDb.value;
+                    final label = eval == null
+                        ? 'Sin evaluación'
+                        : '${eval.name} · ${eval.visibility == 'public' ? 'Visibilidad pública' : 'Privada'}';
+                    return Text(
+                      label,
+                      style: GoogleFonts.dmMono(
+                        fontSize: 11,
+                        color: skTextFaint,
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),
@@ -58,7 +64,7 @@ class SMyResultsPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Average card
-                    _AverageCard(ctrl: ctrl),
+                    Obx(() => _AverageCard(ctrl: ctrl)),
                     const SizedBox(height: 20),
 
                     // Section label
@@ -74,13 +80,16 @@ class SMyResultsPage extends StatelessWidget {
                     const SizedBox(height: 10),
 
                     // Criteria cards
-                    ...ctrl.myResults
-                        .asMap()
-                        .entries
-                        .map((e) => _CriterionResultCard(
-                              result: e.value,
-                              color:  _critColors[e.key],
-                            )),
+                    Obx(() => Column(
+                          children: ctrl.myResults
+                              .asMap()
+                              .entries
+                              .map((e) => _CriterionResultCard(
+                                    result: e.value,
+                                    color:  _critColors[e.key % _critColors.length],
+                                  ))
+                              .toList(),
+                        )),
                   ],
                 ),
               ),

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/teacher_colors.dart';
 import 'package:example/presentation/pages/teacher/teacher_controller.dart';
 import 'package:example/domain/models/teacher_data.dart';
+// ignore_for_file: unused_import
 
 Color _tkScore(double v) => v >= 4.0 ? tkSuccess : tkWarning;
 const _kAvatarColors = [tkBlue, tkPurple, tkSuccess, tkPink];
@@ -64,7 +65,7 @@ class TResultsPage extends StatelessWidget {
                     const SizedBox(height: 16),
                     Text(
                       drill != null
-                          ? ctrl.groups[drill].name
+                          ? ctrl.groupResults[drill].name
                           : 'Resultados',
                       style: GoogleFonts.sora(
                         fontSize: 20, fontWeight: FontWeight.w800,
@@ -72,11 +73,14 @@ class TResultsPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 3),
-                    Text(
-                      'Sprint 2 Review · ${drill != null ? 'Desglose completo' : 'Vista general'}',
-                      style: GoogleFonts.dmMono(
-                          fontSize: 11, color: tkTextFaint),
-                    ),
+                    Obx(() {
+                      final evalName = ctrl.selectedEval.value?.name ?? '—';
+                      return Text(
+                        '$evalName · ${drill != null ? 'Desglose completo' : 'Vista general'}',
+                        style: GoogleFonts.dmMono(
+                            fontSize: 11, color: tkTextFaint),
+                      );
+                    }),
                   ],
                 ),
               ),
@@ -84,10 +88,20 @@ class TResultsPage extends StatelessWidget {
 
               // ── Body ─────────────────────────────────────────────────────
               Expanded(
-                child: drill == null
-                    ? _OverviewBody(ctrl: ctrl)
-                    : _DetailBody(
-                        ctrl: ctrl, group: ctrl.groups[drill]),
+                child: Obx(() {
+                  if (ctrl.resultsLoading.value) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                          color: tkGold, strokeWidth: 2),
+                    );
+                  }
+                  final d = ctrl.drill.value;
+                  return d == null
+                      ? _OverviewBody(ctrl: ctrl)
+                      : _DetailBody(
+                          ctrl: ctrl,
+                          group: ctrl.groupResults[d]);
+                }),
               ),
             ],
           );
@@ -111,25 +125,27 @@ class _OverviewBody extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Stats
-          Row(
-            children: [
-              Expanded(
-                child: _StatCard(
-                  value: ctrl.overallAverage.toStringAsFixed(1),
-                  label: 'PROMEDIO GENERAL',
-                  valueColor: tkGold,
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: _StatCard(
-                  value: '75%',
-                  label: 'COMPLETITUD',
-                  valueColor: tkSuccess,
-                ),
-              ),
-            ],
-          ),
+          Obx(() => Row(
+                children: [
+                  Expanded(
+                    child: _StatCard(
+                      value: ctrl.groupResults.isEmpty
+                          ? '—'
+                          : ctrl.overallAverage.toStringAsFixed(1),
+                      label: 'PROMEDIO GENERAL',
+                      valueColor: tkGold,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _StatCard(
+                      value: ctrl.groupResults.length.toString(),
+                      label: 'GRUPOS',
+                      valueColor: tkSuccess,
+                    ),
+                  ),
+                ],
+              )),
           const SizedBox(height: 20),
 
           Text('GRUPOS — toca para detalle',
@@ -139,12 +155,44 @@ class _OverviewBody extends StatelessWidget {
               )),
           const SizedBox(height: 10),
 
-          ...ctrl.groups.asMap().entries.map(
-                (e) => _GroupCard(
-                  group: e.value,
-                  onTap: () => ctrl.drill.value = e.key,
+          Obx(() {
+            if (ctrl.groupResults.isEmpty) {
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 32),
+                decoration: BoxDecoration(
+                  color: tkSurface,
+                  border: Border.all(color: tkBorder),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-              ),
+                child: Column(
+                  children: [
+                    const Icon(Icons.inbox_outlined,
+                        size: 32, color: tkTextFaint),
+                    const SizedBox(height: 10),
+                    Text('Sin respuestas aún',
+                        style: GoogleFonts.sora(
+                          fontSize: 13, fontWeight: FontWeight.w600,
+                          color: tkTextMid,
+                        )),
+                    const SizedBox(height: 4),
+                    Text('Los resultados aparecerán cuando los\nestudiantes envíen sus evaluaciones',
+                        style: GoogleFonts.sora(
+                            fontSize: 11, color: tkTextFaint),
+                        textAlign: TextAlign.center),
+                  ],
+                ),
+              );
+            }
+            return Column(
+              children: ctrl.groupResults.asMap().entries.map(
+                    (e) => _GroupCard(
+                      group: e.value,
+                      onTap: () => ctrl.drill.value = e.key,
+                    ),
+                  ).toList(),
+            );
+          }),
         ],
       ),
     );

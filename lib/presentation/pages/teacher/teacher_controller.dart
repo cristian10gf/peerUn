@@ -1,18 +1,21 @@
 import 'package:get/get.dart';
 import 'package:example/domain/models/teacher.dart';
-import 'package:example/domain/models/teacher_data.dart';
+import 'package:example/domain/models/evaluation.dart';
 import 'package:example/domain/models/group_category.dart';
+import 'package:example/domain/models/teacher_data.dart';
 import 'package:example/domain/repositories/i_teacher_auth_repository.dart';
 import 'package:example/domain/repositories/i_group_repository.dart';
+import 'package:example/domain/repositories/i_evaluation_repository.dart';
 
 class TeacherController extends GetxController {
   final ITeacherAuthRepository _authRepo;
   final IGroupRepository       _groupRepo;
+  final IEvaluationRepository  _evalRepo;
 
-  TeacherController(this._authRepo, this._groupRepo);
+  TeacherController(this._authRepo, this._groupRepo, this._evalRepo);
 
   // ── Auth ──────────────────────────────────────────────────────────────────
-  final teacher = Rx<Teacher?>(null);
+  final teacher   = Rx<Teacher?>(null);
   final isLoading = false.obs;
   final authError = ''.obs;
 
@@ -23,6 +26,7 @@ class TeacherController extends GetxController {
   void onInit() {
     super.onInit();
     loadCategories();
+    loadEvaluations();
   }
 
   Future<void> checkSession() async {
@@ -54,34 +58,23 @@ class TeacherController extends GetxController {
     Get.offAllNamed('/login');
   }
 
-  // ── Dashboard mock data ───────────────────────────────────────────────────
-  final courses = <TeacherCourse>[
-    const TeacherCourse(
-      id: 'c1',
-      name: 'Desarrollo Móvil 2026-10',
-      code: 'DM2610',
-      groupCount: 8,
-      hasActive: true,
-    ),
-    const TeacherCourse(
-      id: 'c2',
-      name: 'Arquitectura de Software',
-      code: 'AS2610',
-      groupCount: 12,
-    ),
-  ];
-
   // ── Group categories (CSV import) ─────────────────────────────────────────
-  final categories   = <GroupCategory>[].obs;
+  final categories    = <GroupCategory>[].obs;
   final importLoading = false.obs;
   final importError   = ''.obs;
 
+  int get totalGroups =>
+      categories.fold(0, (s, c) => s + c.groupCount);
+
   Future<void> loadCategories() async {
     try {
-      categories.assignAll(await _groupRepo.getAll());
-    } catch (_) {
-      // ignore on startup
-    }
+      final cats = await _groupRepo.getAll();
+      categories.assignAll(cats);
+      if (cats.isNotEmpty && selectedCategoryId.value == null) {
+        selectedCategoryId.value   = cats.first.id;
+        selectedCategoryName.value = cats.first.name;
+      }
+    } catch (_) {}
   }
 
   Future<void> importCsv(String csvContent, String categoryName) async {
@@ -90,6 +83,10 @@ class TeacherController extends GetxController {
     try {
       final cat = await _groupRepo.importCsv(csvContent, categoryName);
       categories.insert(0, cat);
+      selectedCategoryId.value   ??= cat.id;
+      if (selectedCategoryId.value == cat.id) {
+        selectedCategoryName.value = cat.name;
+      }
     } catch (e) {
       importError.value = 'Error al importar: $e';
     } finally {
@@ -100,67 +97,95 @@ class TeacherController extends GetxController {
   Future<void> deleteCategory(int id) async {
     await _groupRepo.delete(id);
     categories.removeWhere((c) => c.id == id);
+    if (selectedCategoryId.value == id) {
+      selectedCategoryId.value   = categories.isNotEmpty ? categories.first.id : null;
+      selectedCategoryName.value = categories.isNotEmpty ? categories.first.name : '';
+    }
+  }
+
+  // ── Evaluations ───────────────────────────────────────────────────────────
+  final evaluations  = <Evaluation>[].obs;
+  final activeEval   = Rx<Evaluation?>(null);
+
+  Future<void> loadEvaluations() async {
+    try {
+      final all = await _evalRepo.getAll();
+      evaluations.assignAll(all);
+      activeEval.value = all.firstWhereOrNull((e) => e.isActive);
+    } catch (_) {}
   }
 
   // ── New evaluation ────────────────────────────────────────────────────────
-  final evalName = 'Sprint 2 Review'.obs;
-  final selectedHours = 48.obs;
-  final selectedVisibility = 'private'.obs;
+  final evalName             = 'Sprint 2 Review'.obs;
+  final selectedHours        = 48.obs;
+  final selectedVisibility   = 'private'.obs;
+  final selectedCategoryId   = Rx<int?>(null);
+  final selectedCategoryName = ''.obs;
+  final evalError            = ''.obs;
+
+  Future<void> createEvaluation() async {
+    final catId = selectedCategoryId.value;
+    if (catId == null) {
+      evalError.value = 'Selecciona una categoría de grupos';
+      return;
+    }
+    isLoading.value = true;
+    evalError.value = '';
+    try {
+      final eval = await _evalRepo.create(
+        name:       evalName.value,
+        categoryId: catId,
+        hours:      selectedHours.value,
+        visibility: selectedVisibility.value,
+      );
+      evaluations.insert(0, eval);
+      activeEval.value = eval.isActive ? eval : activeEval.value;
+      Get.offAllNamed('/teacher/dash');
+      Get.snackbar(
+        'Evaluación lanzada',
+        '${eval.name} está activa por ${eval.hours}h',
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 3),
+      );
+    } catch (e) {
+      evalError.value = 'Error al crear evaluación: $e';
+    } finally {
+      isLoading.value = false;
+    }
+  }
 
   // ── Results ───────────────────────────────────────────────────────────────
-  final drill = Rx<int?>(null);
+  final drill              = Rx<int?>(null);
+  final groupResults       = <GroupResult>[].obs;
+  final resultsLoading     = false.obs;
+  final selectedEval       = Rx<Evaluation?>(null);
 
-  final groups = <GroupResult>[
-    GroupResult(
-      name: 'Equipo Ágil 1',
-      average: 4.2,
-      criteria: [4.0, 4.5, 4.1, 4.2],
-      students: [
-        StudentResult(initial: 'M', name: 'M. García',   score: 4.5),
-        StudentResult(initial: 'C', name: 'C. López',    score: 3.8),
-        StudentResult(initial: 'J', name: 'J. Martínez', score: 4.2),
-        StudentResult(initial: 'A', name: 'A. Torres',   score: 4.0),
-      ],
-    ),
-    GroupResult(
-      name: 'Equipo Ágil 2',
-      average: 3.6,
-      criteria: [3.5, 3.8, 3.4, 3.7],
-      students: [
-        StudentResult(initial: 'L', name: 'L. Ramírez',  score: 3.5),
-        StudentResult(initial: 'S', name: 'S. Herrera',  score: 3.8),
-        StudentResult(initial: 'D', name: 'D. Castro',   score: 3.4),
-        StudentResult(initial: 'P', name: 'P. Gómez',    score: 3.7),
-      ],
-    ),
-    GroupResult(
-      name: 'Equipo Ágil 3',
-      average: 4.7,
-      criteria: [4.8, 4.6, 4.7, 4.7],
-      students: [
-        StudentResult(initial: 'R', name: 'R. Vargas',   score: 4.8),
-        StudentResult(initial: 'N', name: 'N. Peña',     score: 4.6),
-        StudentResult(initial: 'F', name: 'F. Morales',  score: 4.7),
-        StudentResult(initial: 'V', name: 'V. Ríos',     score: 4.7),
-      ],
-    ),
-  ];
+  Future<void> loadGroupResults(Evaluation eval) async {
+    selectedEval.value  = eval;
+    drill.value         = null;
+    resultsLoading.value = true;
+    try {
+      final results = await _evalRepo.getGroupResults(eval.id);
+      groupResults.assignAll(results);
+    } catch (_) {
+      groupResults.clear();
+    } finally {
+      resultsLoading.value = false;
+    }
+  }
 
   double get overallAverage {
-    if (groups.isEmpty) return 0;
-    return groups.map((g) => g.average).reduce((a, b) => a + b) / groups.length;
+    if (groupResults.isEmpty) return 0;
+    final nonZero = groupResults.where((g) => g.average > 0).toList();
+    if (nonZero.isEmpty) return 0;
+    return nonZero.map((g) => g.average).reduce((a, b) => a + b) /
+        nonZero.length;
   }
 
   static const List<String> criteriaLabels = [
-    'PUNTU',
-    'CONTRIB',
-    'COMPRO',
-    'ACTITU',
+    'PUNTU', 'CONTRIB', 'COMPRO', 'ACTITU',
   ];
   static const List<double> criteriaColors = [
-    0xFF60A5FA,
-    0xFFA78BFA,
-    0xFF34D399,
-    0xFFF9A8D4,
+    0xFF60A5FA, 0xFFA78BFA, 0xFF34D399, 0xFFF9A8D4,
   ];
 }

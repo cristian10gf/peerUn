@@ -4,11 +4,13 @@ import 'package:get/get.dart';
 import 'package:example/data/repositories/auth_repository_impl.dart';
 import 'package:example/data/repositories/teacher_auth_repository_impl.dart';
 import 'package:example/data/repositories/group_repository_impl.dart';
+import 'package:example/data/repositories/evaluation_repository_impl.dart';
 import 'package:example/data/repositories/unified_auth_repository_impl.dart';
 import 'package:example/data/services/database_service.dart';
 import 'package:example/domain/repositories/i_auth_repository.dart';
 import 'package:example/domain/repositories/i_teacher_auth_repository.dart';
 import 'package:example/domain/repositories/i_group_repository.dart';
+import 'package:example/domain/repositories/i_evaluation_repository.dart';
 import 'package:example/domain/repositories/i_unified_auth_repository.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 //import 'package:example/presentation/theme/teacher_colors.dart';
@@ -48,13 +50,20 @@ class _AppBindings extends Bindings {
       permanent: true,
     );
     Get.put<IGroupRepository>(GroupRepositoryImpl(db), permanent: true);
-    Get.put(StudentController(Get.find<IAuthRepository>()), permanent: true);
+    Get.put<IEvaluationRepository>(EvaluationRepositoryImpl(db), permanent: true);
     Get.put(
-        
+      StudentController(
+        Get.find<IAuthRepository>(),
+        Get.find<IEvaluationRepository>(),
+      ),
+      permanent: true,
+    );
+    Get.put(
       TeacherController(
-          Get.find<ITeacherAuthRepository>(),
-          Get.find<IGroupRepository>(),
-        ),
+        Get.find<ITeacherAuthRepository>(),
+        Get.find<IGroupRepository>(),
+        Get.find<IEvaluationRepository>(),
+      ),
       permanent: true,
     );
     Get.put<IUnifiedAuthRepository>(

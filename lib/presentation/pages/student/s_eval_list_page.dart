@@ -26,18 +26,18 @@ class SEvalListPage extends StatelessWidget {
                 children: [
                   _BackButton(label: 'Volver', route: '/student/courses'),
                   const SizedBox(height: 16),
-                  Text(
-                    'Sprint 2 Review',
-                    style: GoogleFonts.sora(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                      color: skText,
-                    ),
-                  ),
+                  Obx(() => Text(
+                        ctrl.activeEval.value.title,
+                        style: GoogleFonts.sora(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.5,
+                          color: skText,
+                        ),
+                      )),
                   const SizedBox(height: 3),
                   Obx(() => Text(
-                        'Equipo Ágil 3 · ${ctrl.doneCount}/${ctrl.totalPeers} evaluados',
+                        '${ctrl.currentGroupName.value} · ${ctrl.doneCount}/${ctrl.totalPeers} evaluados',
                         style: GoogleFonts.dmMono(
                           fontSize: 11,
                           color: skTextFaint,
@@ -95,8 +95,8 @@ class SEvalListPage extends StatelessWidget {
                         children: [
                           const SizedBox(height: 8),
                           GestureDetector(
-                            onTap: () {
-                              ctrl.submitEvaluation();
+                            onTap: () async {
+                              await ctrl.submitEvaluation();
                               Get.offNamed('/student/courses');
                             },
                             child: Container(

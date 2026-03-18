@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/teacher_colors.dart';
 import 'package:example/presentation/pages/teacher/teacher_controller.dart';
-import 'package:example/domain/models/teacher_data.dart';
+import 'package:example/domain/models/evaluation.dart';
 
 class TDashPage extends StatelessWidget {
   const TDashPage({super.key});
@@ -35,8 +35,7 @@ class TDashPage extends StatelessWidget {
                             Text('Panel docente',
                                 style: GoogleFonts.sora(
                                   fontSize: 12, color: tkTextFaint,
-                                  letterSpacing: 0.5,
-                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 0.5, fontWeight: FontWeight.w500,
                                 )),
                             Obx(() {
                               final t = ctrl.teacher.value;
@@ -83,16 +82,28 @@ class TDashPage extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  // Stats row
-                  Row(
-                    children: [
-                      _StatCard(value: '2',  label: 'CURSOS'),
-                      const SizedBox(width: 8),
-                      _StatCard(value: '1',  label: 'ACTIVA'),
-                      const SizedBox(width: 8),
-                      _StatCard(value: '20', label: 'GRUPOS'),
-                    ],
-                  ),
+                  // Stats row — real data
+                  Obx(() => Row(
+                        children: [
+                          _StatCard(
+                            value: ctrl.categories.length.toString(),
+                            label: 'CATEGORÍAS',
+                          ),
+                          const SizedBox(width: 8),
+                          _StatCard(
+                            value: ctrl.evaluations
+                                .where((e) => e.isActive)
+                                .length
+                                .toString(),
+                            label: 'ACTIVAS',
+                          ),
+                          const SizedBox(width: 8),
+                          _StatCard(
+                            value: ctrl.totalGroups.toString(),
+                            label: 'GRUPOS',
+                          ),
+                        ],
+                      )),
                 ],
               ),
             ),
@@ -105,18 +116,89 @@ class TDashPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Active eval card
-                    _ActiveEvalCard(),
-                    const SizedBox(height: 20),
+                    // Active eval card (only when there is one)
+                    Obx(() {
+                      final eval = ctrl.activeEval.value;
+                      if (eval == null) return const SizedBox.shrink();
+                      return Column(
+                        children: [
+                          _ActiveEvalCard(eval: eval, ctrl: ctrl),
+                          const SizedBox(height: 20),
+                        ],
+                      );
+                    }),
 
-                    Text('MIS CURSOS',
-                        style: GoogleFonts.sora(
-                          fontSize: 11, fontWeight: FontWeight.w700,
-                          color: tkTextFaint, letterSpacing: 1.5,
-                        )),
+                    // Evaluations section
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('MIS EVALUACIONES',
+                            style: GoogleFonts.sora(
+                              fontSize: 11, fontWeight: FontWeight.w700,
+                              color: tkTextFaint, letterSpacing: 1.5,
+                            )),
+                        GestureDetector(
+                          onTap: () => Get.toNamed('/teacher/new-eval'),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: tkGold,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.add_rounded,
+                                    size: 13, color: tkBackground),
+                                const SizedBox(width: 4),
+                                Text('Nueva',
+                                    style: GoogleFonts.sora(
+                                      fontSize: 11, fontWeight: FontWeight.w700,
+                                      color: tkBackground,
+                                    )),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 10),
 
-                    ...ctrl.courses.map((c) => _CourseCard(course: c)),
+                    Obx(() {
+                      if (ctrl.evaluations.isEmpty) {
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 32),
+                          decoration: BoxDecoration(
+                            color: tkSurface,
+                            border: Border.all(color: tkBorder),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            children: [
+                              const Icon(Icons.rate_review_outlined,
+                                  size: 32, color: tkTextFaint),
+                              const SizedBox(height: 10),
+                              Text('Sin evaluaciones aún',
+                                  style: GoogleFonts.sora(
+                                    fontSize: 13, fontWeight: FontWeight.w600,
+                                    color: tkTextMid,
+                                  )),
+                              const SizedBox(height: 4),
+                              Text('Importa grupos y crea tu primera evaluación',
+                                  style: GoogleFonts.sora(
+                                      fontSize: 11, color: tkTextFaint)),
+                            ],
+                          ),
+                        );
+                      }
+                      return Column(
+                        children: ctrl.evaluations
+                            .map((e) => _EvalCard(eval: e, ctrl: ctrl))
+                            .toList(),
+                      );
+                    }),
                   ],
                 ),
               ),
@@ -188,7 +270,7 @@ class TDashPage extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
-            Divider(color: tkBorder, height: 1),
+            const Divider(color: tkBorder, height: 1),
             const SizedBox(height: 12),
             GestureDetector(
               onTap: () {
@@ -224,41 +306,13 @@ class TDashPage extends StatelessWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
-  final String value;
-  final String label;
-  const _StatCard({required this.value, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: tkSurfaceAlt,
-          border: Border.all(color: tkBorder),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Text(value,
-                style: GoogleFonts.dmMono(
-                  fontSize: 20, fontWeight: FontWeight.w800, color: tkText,
-                )),
-            const SizedBox(height: 2),
-            Text(label,
-                style: GoogleFonts.sora(
-                  fontSize: 10, fontWeight: FontWeight.w600,
-                  color: tkTextFaint, letterSpacing: 0.5,
-                )),
-          ],
-        ),
-      ),
-    );
-  }
-}
+// ── Active eval card (pulsing, real data) ──────────────────────────────────────
 
 class _ActiveEvalCard extends StatefulWidget {
+  final Evaluation eval;
+  final TeacherController ctrl;
+  const _ActiveEvalCard({required this.eval, required this.ctrl});
+
   @override
   State<_ActiveEvalCard> createState() => _ActiveEvalCardState();
 }
@@ -286,8 +340,15 @@ class _ActiveEvalCardState extends State<_ActiveEvalCard>
 
   @override
   Widget build(BuildContext context) {
+    final eval      = widget.eval;
+    final closesIn  = eval.closesAt.difference(DateTime.now());
+    final closesLabel = _formatDuration(closesIn);
+
     return GestureDetector(
-      onTap: () => Get.toNamed('/teacher/results'),
+      onTap: () async {
+        await widget.ctrl.loadGroupResults(eval);
+        Get.toNamed('/teacher/results');
+      },
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -328,13 +389,13 @@ class _ActiveEvalCardState extends State<_ActiveEvalCard>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Sprint 2 Review',
+                      Text(eval.name,
                           style: GoogleFonts.sora(
                             fontSize: 14, fontWeight: FontWeight.w700,
                             color: tkText,
                           )),
                       const SizedBox(height: 3),
-                      Text('DM2610 · cierra en 12h 30m',
+                      Text('${eval.categoryName} · $closesLabel',
                           style: GoogleFonts.dmMono(
                               fontSize: 9, color: tkTextFaint),
                           maxLines: 1,
@@ -345,41 +406,44 @@ class _ActiveEvalCardState extends State<_ActiveEvalCard>
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('56%',
+                    Text('Activa',
                         style: GoogleFonts.dmMono(
-                          fontSize: 22, fontWeight: FontWeight.w800,
+                          fontSize: 12, fontWeight: FontWeight.w800,
                           color: tkGold,
                         )),
-                    Text('completado',
+                    Text('ver resultados',
                         style: GoogleFonts.sora(
                             fontSize: 8, color: tkTextFaint)),
                   ],
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(99),
-              child: LinearProgressIndicator(
-                value: 0.56,
-                backgroundColor: tkBorder,
-                valueColor: const AlwaysStoppedAnimation(tkGold),
-                minHeight: 3,
-              ),
-            ),
           ],
         ),
       ),
     );
   }
+
+  String _formatDuration(Duration d) {
+    if (d.isNegative) return 'Cerrada';
+    if (d.inDays > 0)  return 'Cierra en ${d.inDays}d';
+    if (d.inHours > 0) return 'Cierra en ${d.inHours}h';
+    return 'Cierra en ${d.inMinutes}m';
+  }
 }
 
-class _CourseCard extends StatelessWidget {
-  final TeacherCourse course;
-  const _CourseCard({required this.course});
+// ── Evaluation card ────────────────────────────────────────────────────────────
+
+class _EvalCard extends StatelessWidget {
+  final Evaluation eval;
+  final TeacherController ctrl;
+  const _EvalCard({required this.eval, required this.ctrl});
 
   @override
   Widget build(BuildContext context) {
+    final isActive = eval.isActive;
+    final closesIn = eval.closesAt.difference(DateTime.now());
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(16),
@@ -395,7 +459,7 @@ class _CourseCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Text(course.name,
+                child: Text(eval.name,
                     style: GoogleFonts.sora(
                       fontSize: 13, fontWeight: FontWeight.w700,
                       color: tkText,
@@ -403,27 +467,34 @@ class _CourseCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
               ),
-              if (course.hasActive)
-                Container(
-                  margin: const EdgeInsets.only(left: 8),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: tkSuccess.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text('ACTIVO',
-                      style: GoogleFonts.sora(
-                        fontSize: 10, fontWeight: FontWeight.w700,
-                        color: tkSuccess,
-                      )),
+              Container(
+                margin: const EdgeInsets.only(left: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? tkSuccess.withValues(alpha: 0.12)
+                      : tkSurfaceAlt,
+                  borderRadius: BorderRadius.circular(6),
                 ),
+                child: Text(
+                  isActive ? 'ACTIVA' : 'CERRADA',
+                  style: GoogleFonts.sora(
+                    fontSize: 10, fontWeight: FontWeight.w700,
+                    color: isActive ? tkSuccess : tkTextFaint,
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 4),
-          Text('${course.code} · ${course.groupCount} grupos',
-              style: GoogleFonts.dmMono(
-                  fontSize: 11, color: tkTextFaint)),
+          Text(
+            '${eval.categoryName} · ${eval.hours}h · '
+            '${eval.visibility == 'public' ? 'Pública' : 'Privada'}'
+            '${isActive ? ' · ${_fmt(closesIn)}' : ''}',
+            style: GoogleFonts.dmMono(fontSize: 11, color: tkTextFaint),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -434,20 +505,60 @@ class _CourseCard extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               _CourseBtn(
-                icon: Icons.add_rounded,
-                label: 'Nueva eval.',
-                gold: true,
-                onTap: () => Get.toNamed('/teacher/new-eval'),
-              ),
-              const SizedBox(width: 6),
-              _CourseBtn(
                 icon: Icons.bar_chart_rounded,
                 label: 'Resultados',
-                onTap: () => Get.toNamed('/teacher/results'),
+                gold: true,
+                onTap: () async {
+                  await ctrl.loadGroupResults(eval);
+                  Get.toNamed('/teacher/results');
+                },
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  String _fmt(Duration d) {
+    if (d.isNegative) return 'Cerrada';
+    if (d.inDays > 0)  return 'Cierra en ${d.inDays}d';
+    if (d.inHours > 0) return 'Cierra en ${d.inHours}h';
+    return 'Cierra en ${d.inMinutes}m';
+  }
+}
+
+// ── Shared widgets ─────────────────────────────────────────────────────────────
+
+class _StatCard extends StatelessWidget {
+  final String value;
+  final String label;
+  const _StatCard({required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: tkSurfaceAlt,
+          border: Border.all(color: tkBorder),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Text(value,
+                style: GoogleFonts.dmMono(
+                  fontSize: 20, fontWeight: FontWeight.w800, color: tkText,
+                )),
+            const SizedBox(height: 2),
+            Text(label,
+                style: GoogleFonts.sora(
+                  fontSize: 10, fontWeight: FontWeight.w600,
+                  color: tkTextFaint, letterSpacing: 0.5,
+                )),
+          ],
+        ),
       ),
     );
   }
@@ -482,8 +593,7 @@ class _CourseBtn extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 12,
-                  color: gold ? tkBackground : tkTextMid),
+              Icon(icon, size: 12, color: gold ? tkBackground : tkTextMid),
               const SizedBox(width: 4),
               Flexible(
                 child: FittedBox(
@@ -510,10 +620,10 @@ class _TBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      _NavItem(icon: Icons.home_rounded,         label: 'INICIO',   route: '/teacher/dash'),
-      _NavItem(icon: Icons.rate_review_rounded,  label: 'EVALUAR',  route: '/teacher/new-eval'),
-      _NavItem(icon: Icons.bar_chart_rounded,    label: 'DATOS',    route: '/teacher/results'),
-      _NavItem(icon: Icons.person_outline_rounded, label: 'PERFIL', route: null),
+      _NavItem(icon: Icons.home_rounded,          label: 'INICIO',   route: '/teacher/dash'),
+      _NavItem(icon: Icons.rate_review_rounded,   label: 'EVALUAR',  route: '/teacher/new-eval'),
+      _NavItem(icon: Icons.bar_chart_rounded,     label: 'DATOS',    route: '/teacher/results'),
+      _NavItem(icon: Icons.person_outline_rounded, label: 'PERFIL',  route: null),
     ];
 
     return Container(
@@ -543,9 +653,8 @@ class _TBottomNav extends StatelessWidget {
                   Text(e.value.label,
                       style: GoogleFonts.sora(
                         fontSize: 9, letterSpacing: 0.3,
-                        fontWeight: isActive
-                            ? FontWeight.w700
-                            : FontWeight.w500,
+                        fontWeight:
+                            isActive ? FontWeight.w700 : FontWeight.w500,
                         color: isActive ? tkGold : tkTextFaint,
                       )),
                 ],
