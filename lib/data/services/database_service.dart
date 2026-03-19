@@ -77,15 +77,23 @@ class DatabaseService {
           await _createEvalTables(db);
         }
         if (oldVersion < 5) {
-          await db.execute(
-              'ALTER TABLE group_categories ADD COLUMN teacher_id INTEGER NOT NULL DEFAULT 0');
-          await db.execute(
-              'ALTER TABLE evaluations ADD COLUMN teacher_id INTEGER NOT NULL DEFAULT 0');
+          // Columns may already exist if _createGroupTables was called in the
+          // < 3 migration after the schema was updated to include them.
+          try {
+            await db.execute(
+                'ALTER TABLE group_categories ADD COLUMN teacher_id INTEGER NOT NULL DEFAULT 0');
+          } catch (_) {}
+          try {
+            await db.execute(
+                'ALTER TABLE evaluations ADD COLUMN teacher_id INTEGER NOT NULL DEFAULT 0');
+          } catch (_) {}
         }
         if (oldVersion < 6) {
           await _createCoursesTable(db);
-          await db.execute(
-              'ALTER TABLE group_categories ADD COLUMN course_id INTEGER NOT NULL DEFAULT 0');
+          try {
+            await db.execute(
+                'ALTER TABLE group_categories ADD COLUMN course_id INTEGER NOT NULL DEFAULT 0');
+          } catch (_) {}
         }
       },
     );
