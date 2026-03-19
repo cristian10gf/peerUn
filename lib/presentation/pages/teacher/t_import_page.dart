@@ -65,45 +65,117 @@ class TImportPage extends StatelessWidget {
             Container(
               width: double.infinity,
               color: tkSurface,
-              padding: const EdgeInsets.fromLTRB(22, 4, 22, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _BackButton(label: 'Volver', route: '/teacher/dash'),
-                      GestureDetector(
-                        onTap: () => Get.toNamed('/teacher/courses'),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text('Gestionar cursos',
-                                style: GoogleFonts.sora(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: tkGold,
-                                )),
-                            const SizedBox(width: 3),
-                            const Icon(Icons.chevron_right_rounded,
-                                size: 14, color: tkGold),
-                          ],
+              padding: const EdgeInsets.fromLTRB(22, 16, 22, 20),
+              child: Obx(() {
+                final t = ctrl.teacher.value;
+                if (t == null) return const SizedBox.shrink();
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 52, height: 52,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [tkGold, Color(0xFFE3C26E)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(t.initials,
+                              style: GoogleFonts.dmMono(
+                                fontSize: 14, fontWeight: FontWeight.w800,
+                                color: tkBackground,
+                              )),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text('Importar grupos',
-                      style: GoogleFonts.sora(
-                        fontSize: 20, fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5, color: tkText,
-                      )),
-                  const SizedBox(height: 3),
-                  Text('Desde archivo CSV de Brightspace',
-                      style: GoogleFonts.dmMono(
-                          fontSize: 11, color: tkTextFaint)),
-                ],
-              ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(t.name,
+                                  style: GoogleFonts.sora(
+                                    fontSize: 17, fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.3, color: tkText,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis),
+                              const SizedBox(height: 2),
+                              Text(t.email,
+                                  style: GoogleFonts.dmMono(
+                                      fontSize: 11, color: tkTextFaint),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        GestureDetector(
+                          onTap: () => ctrl.logout(),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: tkDanger.withValues(alpha: 0.1),
+                              border: Border.all(
+                                  color: tkDanger.withValues(alpha: 0.3)),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.logout_rounded,
+                                    size: 13, color: tkDanger),
+                                const SizedBox(width: 6),
+                                Text('Salir',
+                                    style: GoogleFonts.sora(
+                                      fontSize: 12, fontWeight: FontWeight.w700,
+                                      color: tkDanger,
+                                    )),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Importar grupos',
+                            style: GoogleFonts.sora(
+                              fontSize: 20, fontWeight: FontWeight.w800,
+                              letterSpacing: -0.5, color: tkText,
+                            )),
+                        GestureDetector(
+                          onTap: () => Get.toNamed('/teacher/courses'),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('Gestionar cursos',
+                                  style: GoogleFonts.sora(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: tkGold,
+                                  )),
+                              const SizedBox(width: 3),
+                              const Icon(Icons.chevron_right_rounded,
+                                  size: 14, color: tkGold),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text('Desde archivo CSV de Brightspace',
+                        style: GoogleFonts.dmMono(
+                            fontSize: 11, color: tkTextFaint)),
+                  ],
+                );
+              }),
             ),
             const Divider(height: 1, color: tkBorder),
 
@@ -217,6 +289,9 @@ class TImportPage extends StatelessWidget {
                 ),
               ),
             ),
+
+            // ── Bottom nav ─────────────────────────────────────────────────
+            _TBottomNav(activeIndex: 3),
           ],
         ),
       ),
@@ -585,38 +660,63 @@ class _CoursePickerSheetState extends State<_CoursePickerSheet> {
   }
 }
 
-// ── Back button ────────────────────────────────────────────────────────────────
+// ── Bottom nav ─────────────────────────────────────────────────────────────────
 
-class _BackButton extends StatelessWidget {
-  final String label;
-  final String route;
-  const _BackButton({required this.label, required this.route});
+class _TBottomNav extends StatelessWidget {
+  final int activeIndex;
+  const _TBottomNav({required this.activeIndex});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Get.offNamed(route),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(8, 7, 12, 7),
-        decoration: BoxDecoration(
-          color: tkSurfaceAlt,
-          border: Border.all(color: tkBorder),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.chevron_left_rounded,
-                size: 14, color: tkTextMid),
-            const SizedBox(width: 6),
-            Text(label,
-                style: GoogleFonts.sora(
-                  fontSize: 12, fontWeight: FontWeight.w600,
-                  color: tkTextMid,
-                )),
-          ],
-        ),
+    final items = [
+      _NavItem(icon: Icons.home_rounded,        label: 'INICIO',   route: '/teacher/dash'),
+      _NavItem(icon: Icons.rate_review_rounded, label: 'EVALUAR',  route: '/teacher/new-eval'),
+      _NavItem(icon: Icons.bar_chart_rounded,   label: 'DATOS',    route: '/teacher/results'),
+      _NavItem(icon: Icons.upload_file_rounded, label: 'IMPORTAR', route: '/teacher/import'),
+    ];
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: tkSurface,
+        border: Border(top: BorderSide(color: tkBorder)),
+      ),
+      padding: const EdgeInsets.fromLTRB(0, 10, 0, 20),
+      child: Row(
+        children: items.asMap().entries.map((e) {
+          final isActive = e.key == activeIndex;
+          return Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                if (!Get.currentRoute.endsWith(e.value.route)) {
+                  Get.offNamed(e.value.route);
+                }
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(e.value.icon, size: 18,
+                      color: isActive ? tkGold : tkTextFaint),
+                  const SizedBox(height: 3),
+                  Text(e.value.label,
+                      style: GoogleFonts.sora(
+                        fontSize: 9, letterSpacing: 0.3,
+                        fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                        color: isActive ? tkGold : tkTextFaint,
+                      )),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
+}
+
+class _NavItem {
+  final IconData icon;
+  final String label;
+  final String route;
+  const _NavItem({required this.icon, required this.label, required this.route});
 }

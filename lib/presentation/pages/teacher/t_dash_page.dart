@@ -760,7 +760,7 @@ class _TBottomNav extends StatelessWidget {
       _NavItem(icon: Icons.home_rounded,           label: 'INICIO',  route: '/teacher/dash'),
       _NavItem(icon: Icons.rate_review_rounded,    label: 'EVALUAR', route: '/teacher/new-eval'),
       _NavItem(icon: Icons.bar_chart_rounded,      label: 'DATOS',   route: '/teacher/results'),
-      _NavItem(icon: Icons.upload_file_rounded,     label: 'IMPORTAR', route: '/teacher/profile'),
+      _NavItem(icon: Icons.upload_file_rounded,     label: 'IMPORTAR', route: '/teacher/import'),
     ];
 
     return Container(
