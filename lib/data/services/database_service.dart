@@ -1,7 +1,8 @@
 import 'package:sqflite/sqflite.dart';
 
 class DatabaseService {
-  Database? _db;
+  // Static so hot-reload doesn't create a new open attempt on an already-open DB.
+  static Database? _db;
 
   Future<Database> get database async {
     _db ??= await _open();

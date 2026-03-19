@@ -165,7 +165,14 @@ class _SplashPageState extends State<_SplashPage> {
     final student = Get.find<StudentController>();
     final teacher = Get.find<TeacherController>();
 
-    await Future.wait([student.checkSession(), teacher.checkSession()]);
+    try {
+      await Future.wait([student.checkSession(), teacher.checkSession()])
+          .timeout(const Duration(seconds: 8));
+    } catch (_) {
+      // timeout or error — fall through to login
+    }
+
+    if (!mounted) return;
 
     if (teacher.isLoggedIn) {
       Get.offAllNamed('/teacher/dash');
