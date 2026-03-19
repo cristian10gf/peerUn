@@ -37,12 +37,14 @@ class TImportPage extends StatelessWidget {
   }
 
   /// Shows a bottom sheet to pick (or quick-create) a course.
-  /// Returns the selected courseId, or null if cancelled.
+  /// Returns the selected courseId (0 = sin curso), or null if cancelled.
   Future<int?> _showCoursePicker(
       BuildContext context, TeacherController ctrl) async {
     return showModalBottomSheet<int>(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
       backgroundColor: tkSurface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -67,7 +69,29 @@ class TImportPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _BackButton(label: 'Volver', route: '/teacher/dash'),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _BackButton(label: 'Volver', route: '/teacher/dash'),
+                      GestureDetector(
+                        onTap: () => Get.toNamed('/teacher/courses'),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('Gestionar cursos',
+                                style: GoogleFonts.sora(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: tkGold,
+                                )),
+                            const SizedBox(width: 3),
+                            const Icon(Icons.chevron_right_rounded,
+                                size: 14, color: tkGold),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 16),
                   Text('Importar grupos',
                       style: GoogleFonts.sora(
@@ -528,6 +552,33 @@ class _CoursePickerSheetState extends State<_CoursePickerSheet> {
               ),
             ),
           ],
+
+          const SizedBox(height: 20),
+          const Divider(height: 1, color: tkBorder),
+          const SizedBox(height: 12),
+
+          // Footer: only cancel (a course is required)
+          SizedBox(
+            width: double.infinity,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context, null),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: tkSurfaceAlt,
+                  border: Border.all(color: tkBorder),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Text('Cancelar importación',
+                    style: GoogleFonts.sora(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: tkTextMid,
+                    )),
+              ),
+            ),
+          ),
         ],
       ),
     );

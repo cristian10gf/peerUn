@@ -1,5 +1,3 @@
-import 'dart:io';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,26 +7,6 @@ import 'package:example/domain/models/group_category.dart';
 
 class TProfilePage extends StatelessWidget {
   const TProfilePage({super.key});
-
-  Future<void> _pickAndImport(TeacherController ctrl) async {
-    final result = await FilePicker.platform.pickFiles(
-      type:              FileType.custom,
-      allowedExtensions: ['csv'],
-      withData:          false,
-      withReadStream:    false,
-    );
-    if (result == null || result.files.isEmpty) return;
-
-    final file = result.files.first;
-    final path = file.path;
-    if (path == null) return;
-
-    final content      = await File(path).readAsString();
-    final rawName      = file.name.replaceAll(RegExp(r'\.csv$', caseSensitive: false), '');
-    final categoryName = rawName.replaceAll(RegExp(r'_\d{14}'), '');
-
-    await ctrl.importCsv(content, categoryName, 0);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -138,7 +116,7 @@ class TProfilePage extends StatelessWidget {
                     Obx(() {
                       final loading = ctrl.importLoading.value;
                       return GestureDetector(
-                        onTap: loading ? null : () => _pickAndImport(ctrl),
+                        onTap: loading ? null : () => Get.offNamed('/teacher/import'),
                         child: Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 13),
