@@ -3,6 +3,7 @@ class Evaluation {
   final String name;
   final int categoryId;
   final String categoryName;
+  final String courseName; // denormalized for display; '' when no course
   final int hours;
   final String visibility; // 'public' | 'private'
   final DateTime createdAt;
@@ -13,6 +14,7 @@ class Evaluation {
     required this.name,
     required this.categoryId,
     required this.categoryName,
+    this.courseName = '',
     required this.hours,
     required this.visibility,
     required this.createdAt,

@@ -27,12 +27,14 @@ class GroupCategory {
   final String name;
   final DateTime importedAt;
   final List<CourseGroup> groups;
+  final int courseId; // 0 when not assigned to a course
 
   const GroupCategory({
     required this.id,
     required this.name,
     required this.importedAt,
     required this.groups,
+    this.courseId = 0,
   });
 
   int get groupCount   => groups.length;

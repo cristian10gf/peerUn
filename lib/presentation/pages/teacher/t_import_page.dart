@@ -10,7 +10,8 @@ import 'package:example/domain/models/group_category.dart';
 class TImportPage extends StatelessWidget {
   const TImportPage({super.key});
 
-  Future<void> _pickAndImport(TeacherController ctrl) async {
+  Future<void> _pickAndImport(
+      BuildContext context, TeacherController ctrl) async {
     final result = await FilePicker.platform.pickFiles(
       type:              FileType.custom,
       allowedExtensions: ['csv'],
@@ -28,7 +29,26 @@ class TImportPage extends StatelessWidget {
     // Strip trailing Brightspace timestamp pattern e.g. _20260217225843
     final categoryName = rawName.replaceAll(RegExp(r'_\d{14}'), '');
 
-    await ctrl.importCsv(content, categoryName);
+    if (!context.mounted) return;
+    final courseId = await _showCoursePicker(context, ctrl);
+    if (courseId == null) return; // user cancelled
+
+    await ctrl.importCsv(content, categoryName, courseId);
+  }
+
+  /// Shows a bottom sheet to pick (or quick-create) a course.
+  /// Returns the selected courseId, or null if cancelled.
+  Future<int?> _showCoursePicker(
+      BuildContext context, TeacherController ctrl) async {
+    return showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: tkSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _CoursePickerSheet(ctrl: ctrl),
+    );
   }
 
   @override
@@ -74,7 +94,7 @@ class TImportPage extends StatelessWidget {
                     Obx(() {
                       final loading = ctrl.importLoading.value;
                       return GestureDetector(
-                        onTap: loading ? null : () => _pickAndImport(ctrl),
+                        onTap: loading ? null : () => _pickAndImport(context, ctrl),
                         child: Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 14),
@@ -315,6 +335,203 @@ class _GroupRow extends StatelessWidget {
       .map((w) =>
           w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}')
       .join(' ');
+}
+
+// ── Course picker sheet ────────────────────────────────────────────────────────
+
+class _CoursePickerSheet extends StatefulWidget {
+  final TeacherController ctrl;
+  const _CoursePickerSheet({required this.ctrl});
+
+  @override
+  State<_CoursePickerSheet> createState() => _CoursePickerSheetState();
+}
+
+class _CoursePickerSheetState extends State<_CoursePickerSheet> {
+  bool _creating = false;
+  final _nameCtrl = TextEditingController();
+  final _codeCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _codeCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = widget.ctrl;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          22, 20, 22, MediaQuery.of(context).viewInsets.bottom + 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Asignar a curso',
+              style: GoogleFonts.sora(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: tkText,
+              )),
+          const SizedBox(height: 4),
+          Text('Selecciona el curso al que pertenece esta importación',
+              style: GoogleFonts.sora(fontSize: 12, color: tkTextFaint)),
+          const SizedBox(height: 16),
+
+          // Existing courses
+          Obx(() {
+            final courses = ctrl.courses;
+            if (courses.isEmpty && !_creating) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text('No tienes cursos. Crea uno abajo.',
+                    style: GoogleFonts.sora(
+                        fontSize: 12, color: tkTextFaint)),
+              );
+            }
+            return Column(
+              children: courses
+                  .map((c) => GestureDetector(
+                        onTap: () => Navigator.pop(context, c.id),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: tkSurfaceAlt,
+                            border: Border.all(color: tkBorder),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.school_rounded,
+                                  size: 16, color: tkGold),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  c.code.isNotEmpty
+                                      ? '${c.name}  ·  ${c.code}'
+                                      : c.name,
+                                  style: GoogleFonts.sora(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: tkText,
+                                  ),
+                                ),
+                              ),
+                              const Icon(Icons.chevron_right_rounded,
+                                  size: 16, color: tkTextFaint),
+                            ],
+                          ),
+                        ),
+                      ))
+                  .toList(),
+            );
+          }),
+
+          // Quick-create form toggle
+          if (_creating) ...[
+            const SizedBox(height: 4),
+            TextField(
+              controller: _nameCtrl,
+              style: GoogleFonts.sora(fontSize: 14, color: tkText),
+              decoration: InputDecoration(
+                hintText: 'Nombre del curso',
+                hintStyle:
+                    GoogleFonts.sora(fontSize: 14, color: tkTextFaint),
+                filled: true,
+                fillColor: tkSurfaceAlt,
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: tkBorder)),
+                enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: tkBorder)),
+                focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: tkGold)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _codeCtrl,
+              style: GoogleFonts.sora(fontSize: 14, color: tkText),
+              decoration: InputDecoration(
+                hintText: 'Código (opcional)',
+                hintStyle:
+                    GoogleFonts.sora(fontSize: 14, color: tkTextFaint),
+                filled: true,
+                fillColor: tkSurfaceAlt,
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: tkBorder)),
+                enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: tkBorder)),
+                focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: tkGold)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: GestureDetector(
+                onTap: () async {
+                  final name = _nameCtrl.text.trim();
+                  if (name.isEmpty) return;
+                  final nav = Navigator.of(context);
+                  await ctrl.createCourse(name, _codeCtrl.text.trim());
+                  // pick the newly created course
+                  final newId = ctrl.courses.first.id;
+                  if (mounted) nav.pop(newId);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  decoration: BoxDecoration(
+                    color: tkGold,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text('Crear y seleccionar',
+                      style: GoogleFonts.sora(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: tkBackground,
+                      )),
+                ),
+              ),
+            ),
+          ] else ...[
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => setState(() => _creating = true),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.add_circle_outline_rounded,
+                      size: 16, color: tkGold),
+                  const SizedBox(width: 6),
+                  Text('Crear nuevo curso',
+                      style: GoogleFonts.sora(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: tkGold,
+                      )),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 // ── Back button ────────────────────────────────────────────────────────────────

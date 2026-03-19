@@ -5,12 +5,14 @@ import 'package:example/data/repositories/auth_repository_impl.dart';
 import 'package:example/data/repositories/teacher_auth_repository_impl.dart';
 import 'package:example/data/repositories/group_repository_impl.dart';
 import 'package:example/data/repositories/evaluation_repository_impl.dart';
+import 'package:example/data/repositories/course_repository_impl.dart';
 import 'package:example/data/repositories/unified_auth_repository_impl.dart';
 import 'package:example/data/services/database_service.dart';
 import 'package:example/domain/repositories/i_auth_repository.dart';
 import 'package:example/domain/repositories/i_teacher_auth_repository.dart';
 import 'package:example/domain/repositories/i_group_repository.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
+import 'package:example/domain/repositories/i_course_repository.dart';
 import 'package:example/domain/repositories/i_unified_auth_repository.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 //import 'package:example/presentation/theme/teacher_colors.dart';
@@ -33,6 +35,7 @@ import 'package:example/presentation/pages/teacher/t_import_page.dart';
 import 'package:example/presentation/pages/teacher/t_new_eval_page.dart';
 import 'package:example/presentation/pages/teacher/t_results_page.dart';
 import 'package:example/presentation/pages/teacher/t_profile_page.dart';
+import 'package:example/presentation/pages/teacher/t_course_manage_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,6 +56,7 @@ class _AppBindings extends Bindings {
     );
     Get.put<IGroupRepository>(GroupRepositoryImpl(db), permanent: true);
     Get.put<IEvaluationRepository>(EvaluationRepositoryImpl(db), permanent: true);
+    Get.put<ICourseRepository>(CourseRepositoryImpl(db), permanent: true);
     Get.put(
       StudentController(
         Get.find<IAuthRepository>(),
@@ -65,6 +69,7 @@ class _AppBindings extends Bindings {
         Get.find<ITeacherAuthRepository>(),
         Get.find<IGroupRepository>(),
         Get.find<IEvaluationRepository>(),
+        Get.find<ICourseRepository>(),
       ),
       permanent: true,
     );
@@ -134,6 +139,7 @@ class PeerEvalApp extends StatelessWidget {
         GetPage(name: '/teacher/new-eval', page: () => const TNewEvalPage()),
         GetPage(name: '/teacher/results', page: () => const TResultsPage()),
         GetPage(name: '/teacher/profile', page: () => const TProfilePage()),
+        GetPage(name: '/teacher/courses', page: () => const TCourseManagePage()),
       ],
     );
   }

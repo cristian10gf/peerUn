@@ -12,7 +12,7 @@ class DatabaseService {
     final dir = await getDatabasesPath();
     return openDatabase(
       '$dir/peereval.db',
-      version: 5,
+      version: 6,
       onCreate: (db, _) async {
         await db.execute('''
           CREATE TABLE students (
@@ -46,6 +46,7 @@ class DatabaseService {
             FOREIGN KEY (teacher_id) REFERENCES teachers(id)
           )
         ''');
+        await _createCoursesTable(db);
         await _createGroupTables(db);
         await _createEvalTables(db);
       },
@@ -80,8 +81,25 @@ class DatabaseService {
           await db.execute(
               'ALTER TABLE evaluations ADD COLUMN teacher_id INTEGER NOT NULL DEFAULT 0');
         }
+        if (oldVersion < 6) {
+          await _createCoursesTable(db);
+          await db.execute(
+              'ALTER TABLE group_categories ADD COLUMN course_id INTEGER NOT NULL DEFAULT 0');
+        }
       },
     );
+  }
+
+  static Future<void> _createCoursesTable(dynamic db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS courses (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        teacher_id INTEGER NOT NULL DEFAULT 0,
+        name       TEXT    NOT NULL,
+        code       TEXT    NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL
+      )
+    ''');
   }
 
   static Future<void> _createEvalTables(dynamic db) async {
@@ -117,7 +135,8 @@ class DatabaseService {
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
         name        TEXT    NOT NULL,
         imported_at INTEGER NOT NULL,
-        teacher_id  INTEGER NOT NULL DEFAULT 0
+        teacher_id  INTEGER NOT NULL DEFAULT 0,
+        course_id   INTEGER NOT NULL DEFAULT 0
       )
     ''');
     await db.execute('''

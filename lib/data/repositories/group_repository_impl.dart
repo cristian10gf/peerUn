@@ -44,6 +44,7 @@ class GroupRepositoryImpl implements IGroupRepository {
         name:       cat['name'] as String,
         importedAt: DateTime.fromMillisecondsSinceEpoch(cat['imported_at'] as int),
         groups:     groups,
+        courseId:   cat['course_id'] as int? ?? 0,
       ));
     }
     return result;
@@ -52,7 +53,12 @@ class GroupRepositoryImpl implements IGroupRepository {
   // ── Import CSV ─────────────────────────────────────────────────────────────
 
   @override
-  Future<GroupCategory> importCsv(String csvContent, String categoryName, int teacherId) async {
+  Future<GroupCategory> importCsv(
+    String csvContent,
+    String categoryName,
+    int teacherId,
+    int courseId,
+  ) async {
     final db = await _db.database;
 
     // Strip UTF-8 BOM if present
@@ -92,6 +98,7 @@ class GroupRepositoryImpl implements IGroupRepository {
         'name':        categoryName,
         'imported_at': now,
         'teacher_id':  teacherId,
+        'course_id':   courseId,
       });
 
       final groups = <CourseGroup>[];
@@ -128,6 +135,7 @@ class GroupRepositoryImpl implements IGroupRepository {
         name:       categoryName,
         importedAt: DateTime.fromMillisecondsSinceEpoch(now),
         groups:     groups,
+        courseId:   courseId,
       );
     });
   }
@@ -144,8 +152,8 @@ class GroupRepositoryImpl implements IGroupRepository {
       await db.delete('group_members',
           where: 'group_id = ?', whereArgs: [g['id']]);
     }
-    await db.delete('groups',       where: 'category_id = ?', whereArgs: [categoryId]);
-    await db.delete('group_categories', where: 'id = ?', whereArgs: [categoryId]);
+    await db.delete('groups',           where: 'category_id = ?', whereArgs: [categoryId]);
+    await db.delete('group_categories', where: 'id = ?',          whereArgs: [categoryId]);
   }
 }
 

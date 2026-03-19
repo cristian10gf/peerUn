@@ -27,7 +27,7 @@ class TProfilePage extends StatelessWidget {
     final rawName      = file.name.replaceAll(RegExp(r'\.csv$', caseSensitive: false), '');
     final categoryName = rawName.replaceAll(RegExp(r'_\d{14}'), '');
 
-    await ctrl.importCsv(content, categoryName);
+    await ctrl.importCsv(content, categoryName, 0);
   }
 
   @override

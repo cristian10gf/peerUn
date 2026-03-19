@@ -66,9 +66,10 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
   Future<List<Evaluation>> getAll(int teacherId) async {
     final db   = await _db.database;
     final rows = await db.rawQuery('''
-      SELECT e.*, gc.name AS category_name
+      SELECT e.*, gc.name AS category_name, co.name AS course_name
       FROM evaluations e
       JOIN group_categories gc ON gc.id = e.category_id
+      LEFT JOIN courses co     ON co.id = gc.course_id
       WHERE e.teacher_id = ?
       ORDER BY e.created_at DESC
     ''', [teacherId]);
@@ -200,9 +201,10 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
   Future<List<Evaluation>> getEvaluationsForStudent(String email) async {
     final db   = await _db.database;
     final rows = await db.rawQuery('''
-      SELECT DISTINCT e.*, gc.name AS category_name
+      SELECT DISTINCT e.*, gc.name AS category_name, co.name AS course_name
       FROM evaluations e
       JOIN group_categories gc ON gc.id = e.category_id
+      LEFT JOIN courses co     ON co.id = gc.course_id
       JOIN groups g            ON g.category_id = e.category_id
       JOIN group_members gm    ON gm.group_id = g.id
       WHERE LOWER(gm.username) = ?
@@ -215,9 +217,10 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
   Future<Evaluation?> getLatestForStudent(String email) async {
     final db  = await _db.database;
     final rows = await db.rawQuery('''
-      SELECT DISTINCT e.*, gc.name AS category_name
+      SELECT DISTINCT e.*, gc.name AS category_name, co.name AS course_name
       FROM evaluations e
       JOIN group_categories gc ON gc.id = e.category_id
+      LEFT JOIN courses co     ON co.id = gc.course_id
       JOIN groups g            ON g.category_id = e.category_id
       JOIN group_members gm    ON gm.group_id = g.id
       WHERE LOWER(gm.username) = ?
@@ -421,6 +424,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       name:         row['name']        as String,
       categoryId:   row['category_id'] as int,
       categoryName: row['category_name'] as String,
+      courseName:   (row['course_name'] as String?) ?? '',
       hours:        row['hours']       as int,
       visibility:   row['visibility']  as String,
       createdAt:    DateTime.fromMillisecondsSinceEpoch(row['created_at'] as int),

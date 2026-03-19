@@ -51,12 +51,60 @@ class TNewEvalPage extends StatelessWidget {
                         )),
                     const SizedBox(height: 18),
 
+                    // ── Curso ─────────────────────────────────────────────────
+                    _SectionLabel('CURSO'),
+                    const SizedBox(height: 8),
+                    Obx(() {
+                      final name  = ctrl.selectedCourseName.value;
+                      final empty = ctrl.courses.isEmpty;
+                      return GestureDetector(
+                        onTap: empty
+                            ? null
+                            : () => _showCoursePicker(context, ctrl),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 15, vertical: 13),
+                          decoration: BoxDecoration(
+                            color: tkSurfaceAlt,
+                            border: Border.all(color: tkBorder),
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  empty
+                                      ? 'Sin cursos creados'
+                                      : name.isEmpty
+                                          ? 'Seleccionar curso'
+                                          : name,
+                                  style: GoogleFonts.sora(
+                                      fontSize: 13,
+                                      color: (empty || name.isEmpty)
+                                          ? tkTextFaint
+                                          : tkTextMid),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const Icon(Icons.chevron_right_rounded,
+                                  size: 16, color: tkTextFaint),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 18),
+
                     // ── Categoría ────────────────────────────────────────────
                     _SectionLabel('CATEGORÍA DE GRUPOS'),
                     const SizedBox(height: 8),
                     Obx(() {
-                      final name = ctrl.selectedCategoryName.value;
-                      final empty = ctrl.categories.isEmpty;
+                      final name       = ctrl.selectedCategoryName.value;
+                      final hasCourse  = ctrl.selectedCourseId.value != null;
+                      final cats       = ctrl.categoriesForCourse;
+                      final empty      = !hasCourse || cats.isEmpty;
                       return GestureDetector(
                         onTap: empty
                             ? null
@@ -75,11 +123,13 @@ class TNewEvalPage extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: Text(
-                                  empty
-                                      ? 'Sin categorías importadas'
-                                      : name.isEmpty
-                                          ? 'Seleccionar categoría'
-                                          : name,
+                                  !hasCourse
+                                      ? 'Selecciona un curso primero'
+                                      : cats.isEmpty
+                                          ? 'Sin categorías para este curso'
+                                          : name.isEmpty
+                                              ? 'Seleccionar categoría'
+                                              : name,
                                   style: GoogleFonts.sora(
                                       fontSize: 13,
                                       color: (empty || name.isEmpty)
@@ -232,6 +282,83 @@ class TNewEvalPage extends StatelessWidget {
     );
   }
 
+  void _showCoursePicker(BuildContext context, TeacherController ctrl) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: tkSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Obx(() => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                  color: tkBorder,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                child: Text('Curso',
+                    style: GoogleFonts.sora(
+                      fontSize: 15, fontWeight: FontWeight.w700, color: tkText,
+                    )),
+              ),
+              const SizedBox(height: 10),
+              ...ctrl.courses.map((course) {
+                final selected = ctrl.selectedCourseId.value == course.id;
+                return GestureDetector(
+                  onTap: () {
+                    ctrl.selectedCategoryId.value   = null;
+                    ctrl.selectedCategoryName.value = '';
+                    ctrl.loadCategoriesForCourse(course.id);
+                    Get.back();
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 22, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: selected ? tkGoldLight : tkSurface,
+                      border: Border(bottom: BorderSide(color: tkBorder)),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(course.name,
+                                  style: GoogleFonts.sora(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: selected ? tkGold : tkText,
+                                  )),
+                              if (course.code.isNotEmpty)
+                                Text(course.code,
+                                    style: GoogleFonts.dmMono(
+                                        fontSize: 11, color: tkTextFaint)),
+                            ],
+                          ),
+                        ),
+                        if (selected)
+                          const Icon(Icons.check_circle_rounded,
+                              size: 18, color: tkGold),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+              const SizedBox(height: 20),
+            ],
+          )),
+    );
+  }
+
   void _showCategoryPicker(BuildContext context, TeacherController ctrl) {
     showModalBottomSheet(
       context: context,
@@ -259,7 +386,7 @@ class TNewEvalPage extends StatelessWidget {
                     )),
               ),
               const SizedBox(height: 10),
-              ...ctrl.categories.map((cat) {
+              ...ctrl.categoriesForCourse.map((cat) {
                 final selected = ctrl.selectedCategoryId.value == cat.id;
                 return GestureDetector(
                   onTap: () {

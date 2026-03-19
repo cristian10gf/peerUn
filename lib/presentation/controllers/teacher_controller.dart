@@ -2,17 +2,20 @@ import 'package:get/get.dart';
 import 'package:example/domain/models/teacher.dart';
 import 'package:example/domain/models/evaluation.dart';
 import 'package:example/domain/models/group_category.dart';
+import 'package:example/domain/models/course_model.dart';
 import 'package:example/domain/models/teacher_data.dart';
 import 'package:example/domain/repositories/i_teacher_auth_repository.dart';
 import 'package:example/domain/repositories/i_group_repository.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
+import 'package:example/domain/repositories/i_course_repository.dart';
 
 class TeacherController extends GetxController {
   final ITeacherAuthRepository _authRepo;
   final IGroupRepository       _groupRepo;
   final IEvaluationRepository  _evalRepo;
+  final ICourseRepository      _courseRepo;
 
-  TeacherController(this._authRepo, this._groupRepo, this._evalRepo);
+  TeacherController(this._authRepo, this._groupRepo, this._evalRepo, this._courseRepo);
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   final teacher   = Rx<Teacher?>(null);
@@ -27,6 +30,7 @@ class TeacherController extends GetxController {
     super.onInit();
     ever(teacher, (t) {
       if (t != null) {
+        loadCourses();
         loadCategories();
         loadEvaluations();
       }
@@ -62,6 +66,53 @@ class TeacherController extends GetxController {
     Get.offAllNamed('/login');
   }
 
+  // ── Courses ───────────────────────────────────────────────────────────────
+  final courses               = <CourseModel>[].obs;
+  final courseLoading         = false.obs;
+  final selectedCourseId      = Rx<int?>(null);
+  final selectedCourseName    = ''.obs;
+  final categoriesForCourse   = <GroupCategory>[].obs;
+
+  Future<void> loadCourses() async {
+    final tid = int.tryParse(teacher.value?.id ?? '') ?? 0;
+    courseLoading.value = true;
+    try {
+      final all = await _courseRepo.getAll(tid);
+      courses.assignAll(all);
+    } catch (_) {
+    } finally {
+      courseLoading.value = false;
+    }
+  }
+
+  Future<void> createCourse(String name, String code) async {
+    final tid = int.tryParse(teacher.value?.id ?? '') ?? 0;
+    final course = await _courseRepo.create(name: name, code: code, teacherId: tid);
+    courses.insert(0, course);
+  }
+
+  Future<void> deleteCourse(int courseId) async {
+    await _courseRepo.delete(courseId);
+    courses.removeWhere((c) => c.id == courseId);
+    if (selectedCourseId.value == courseId) {
+      selectedCourseId.value   = null;
+      selectedCourseName.value = '';
+      categoriesForCourse.clear();
+    }
+  }
+
+  Future<void> loadCategoriesForCourse(int courseId) async {
+    selectedCourseId.value = courseId;
+    final course = courses.firstWhereOrNull((c) => c.id == courseId);
+    selectedCourseName.value = course?.name ?? '';
+    try {
+      final cats = await _courseRepo.getCategoriesForCourse(courseId);
+      categoriesForCourse.assignAll(cats);
+    } catch (_) {
+      categoriesForCourse.clear();
+    }
+  }
+
   // ── Group categories (CSV import) ─────────────────────────────────────────
   final categories    = <GroupCategory>[].obs;
   final importLoading = false.obs;
@@ -82,12 +133,12 @@ class TeacherController extends GetxController {
     } catch (_) {}
   }
 
-  Future<void> importCsv(String csvContent, String categoryName) async {
+  Future<void> importCsv(String csvContent, String categoryName, int courseId) async {
     importLoading.value = true;
     importError.value   = '';
     final tid = int.tryParse(teacher.value?.id ?? '') ?? 0;
     try {
-      final cat = await _groupRepo.importCsv(csvContent, categoryName, tid);
+      final cat = await _groupRepo.importCsv(csvContent, categoryName, tid, courseId);
       categories.insert(0, cat);
       selectedCategoryId.value   ??= cat.id;
       if (selectedCategoryId.value == cat.id) {
@@ -131,6 +182,10 @@ class TeacherController extends GetxController {
   final evalError            = ''.obs;
 
   Future<void> createEvaluation() async {
+    if (selectedCourseId.value == null) {
+      evalError.value = 'Selecciona un curso';
+      return;
+    }
     final catId = selectedCategoryId.value;
     if (catId == null) {
       evalError.value = 'Selecciona una categoría de grupos';
@@ -174,6 +229,7 @@ class TeacherController extends GetxController {
         name:         newName,
         categoryId:   old.categoryId,
         categoryName: old.categoryName,
+        courseName:   old.courseName,
         hours:        old.hours,
         visibility:   old.visibility,
         createdAt:    old.createdAt,

@@ -162,10 +162,24 @@ class SCoursesPage extends StatelessWidget {
                           ),
                         );
                       }
+                      // Group by course name (preserving insertion order)
+                      final grouped = <String, List<Evaluation>>{};
+                      for (final e in active) {
+                        final key = e.courseName.isNotEmpty
+                            ? e.courseName
+                            : 'Sin curso';
+                        grouped.putIfAbsent(key, () => []).add(e);
+                      }
                       return Column(
-                        children: active
-                            .map((e) => _EvalCard(eval: e, ctrl: ctrl))
-                            .toList(),
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: grouped.entries.expand((entry) => [
+                          if (grouped.length > 1) ...[
+                            _CourseHeader(name: entry.key),
+                            const SizedBox(height: 8),
+                          ],
+                          ...entry.value.map(
+                              (e) => _EvalCard(eval: e, ctrl: ctrl)),
+                        ]).toList(),
                       );
                     }),
                   ],
@@ -276,6 +290,35 @@ class SCoursesPage extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Course header ──────────────────────────────────────────────────────────────
+
+class _CourseHeader extends StatelessWidget {
+  final String name;
+  const _CourseHeader({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, bottom: 2),
+      child: Row(
+        children: [
+          const Icon(Icons.school_rounded, size: 13, color: skPrimary),
+          const SizedBox(width: 6),
+          Text(
+            name.toUpperCase(),
+            style: GoogleFonts.sora(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: skPrimary,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ],
       ),
     );
   }

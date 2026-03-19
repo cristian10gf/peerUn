@@ -68,12 +68,30 @@ class SEvalListPage extends StatelessWidget {
                     ),
                   );
                 }
-                return ListView.separated(
+                // Group by course name
+                final grouped = <String, List<Evaluation>>{};
+                for (final e in evals) {
+                  final key = e.courseName.isNotEmpty
+                      ? e.courseName
+                      : 'Sin curso';
+                  grouped.putIfAbsent(key, () => []).add(e);
+                }
+                final sections = grouped.entries.toList();
+                // Build flat list of widgets: [header?, item, item, ...]
+                final widgets = <Widget>[];
+                for (final entry in sections) {
+                  if (sections.length > 1) {
+                    widgets.add(_CourseHeader(name: entry.key));
+                    widgets.add(const SizedBox(height: 8));
+                  }
+                  for (final e in entry.value) {
+                    widgets.add(_HistorialItem(eval: e, ctrl: ctrl));
+                    widgets.add(const SizedBox(height: 10));
+                  }
+                }
+                return ListView(
                   padding: const EdgeInsets.all(22),
-                  itemCount: evals.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (_, i) =>
-                      _HistorialItem(eval: evals[i], ctrl: ctrl),
+                  children: widgets,
                 );
               }),
             ),
@@ -82,6 +100,35 @@ class SEvalListPage extends StatelessWidget {
             _BottomNav(activeIndex: 1),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Course header ──────────────────────────────────────────────────────────────
+
+class _CourseHeader extends StatelessWidget {
+  final String name;
+  const _CourseHeader({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, bottom: 2),
+      child: Row(
+        children: [
+          const Icon(Icons.school_rounded, size: 13, color: skPrimary),
+          const SizedBox(width: 6),
+          Text(
+            name.toUpperCase(),
+            style: GoogleFonts.sora(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: skPrimary,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ],
       ),
     );
   }
