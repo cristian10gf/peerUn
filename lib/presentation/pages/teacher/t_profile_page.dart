@@ -10,6 +10,7 @@ class TProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    //:v
     final ctrl = Get.find<TeacherController>();
     return Scaffold(
       backgroundColor: tkBackground,
