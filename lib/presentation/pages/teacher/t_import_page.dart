@@ -114,26 +114,26 @@ class TImportPage extends StatelessWidget {
                         ),
                         const SizedBox(width: 10),
                         GestureDetector(
-                          onTap: () => ctrl.logout(),
+                          onTap: () => Get.toNamed('/teacher/courses'),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 8),
                             decoration: BoxDecoration(
-                              color: tkDanger.withValues(alpha: 0.1),
+                              color: tkGold.withValues(alpha: 0.1),
                               border: Border.all(
-                                  color: tkDanger.withValues(alpha: 0.3)),
+                                  color: tkGold.withValues(alpha: 0.3)),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.logout_rounded,
-                                    size: 13, color: tkDanger),
+                                const Icon(Icons.school_rounded,
+                                    size: 13, color: tkGold),
                                 const SizedBox(width: 6),
-                                Text('Salir',
+                                Text('Cursos',
                                     style: GoogleFonts.sora(
                                       fontSize: 12, fontWeight: FontWeight.w700,
-                                      color: tkDanger,
+                                      color: tkGold,
                                     )),
                               ],
                             ),
@@ -142,33 +142,11 @@ class TImportPage extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Importar grupos',
-                            style: GoogleFonts.sora(
-                              fontSize: 20, fontWeight: FontWeight.w800,
-                              letterSpacing: -0.5, color: tkText,
-                            )),
-                        GestureDetector(
-                          onTap: () => Get.toNamed('/teacher/courses'),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text('Gestionar cursos',
-                                  style: GoogleFonts.sora(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: tkGold,
-                                  )),
-                              const SizedBox(width: 3),
-                              const Icon(Icons.chevron_right_rounded,
-                                  size: 14, color: tkGold),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                    Text('Importar grupos',
+                        style: GoogleFonts.sora(
+                          fontSize: 20, fontWeight: FontWeight.w800,
+                          letterSpacing: -0.5, color: tkText,
+                        )),
                     const SizedBox(height: 2),
                     Text('Desde archivo CSV de Brightspace',
                         style: GoogleFonts.dmMono(
