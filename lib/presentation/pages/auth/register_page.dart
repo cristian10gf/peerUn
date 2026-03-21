@@ -6,6 +6,7 @@ import 'package:example/domain/models/auth_login_result.dart';
 import 'package:example/presentation/controllers/student_controller.dart';
 import 'package:example/presentation/controllers/teacher_controller.dart';
 import 'package:example/presentation/theme/app_colors.dart';
+import 'package:example/presentation/pages/auth/widgets/auth_field.dart';
 //import 'package:example/presentation/theme/teacher_colors.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -232,7 +233,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _AuthField(
+                  AuthField(
                     controller: _nameCtrl,
                     hint: 'Nombre completo',
                     icon: Icons.person_outline_rounded,
@@ -244,7 +245,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     keyboardType: TextInputType.name,
                   ),
                   const SizedBox(height: 10),
-                  _AuthField(
+                  AuthField(
                     controller: _emailCtrl,
                     hint: _selectedRole == AppUserRole.teacher
                         ? 'Correo institucional'
@@ -258,7 +259,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     keyboardType: TextInputType.emailAddress,
                   ),
                   const SizedBox(height: 10),
-                  _AuthField(
+                  AuthField(
                     controller: _passwordCtrl,
                     hint: 'Contraseña',
                     icon: Icons.lock_outline_rounded,
@@ -282,7 +283,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  _AuthField(
+                  AuthField(
                     controller: _confirmCtrl,
                     hint: 'Confirmar contraseña',
                     icon: Icons.lock_outline_rounded,
@@ -409,69 +410,6 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AuthField extends StatelessWidget {
-  final TextEditingController controller;
-  final String hint;
-  final IconData icon;
-  final bool obscure;
-  final Widget? suffixIcon;
-  final TextInputType keyboardType;
-  final Color textColor;
-  final Color mutedTextColor;
-  final Color borderColor;
-  final Color fieldColor;
-  final Color accentColor;
-
-  const _AuthField({
-    required this.controller,
-    required this.hint,
-    required this.icon,
-    required this.textColor,
-    required this.mutedTextColor,
-    required this.borderColor,
-    required this.fieldColor,
-    required this.accentColor,
-    this.obscure = false,
-    this.suffixIcon,
-    this.keyboardType = TextInputType.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      obscureText: obscure,
-      keyboardType: keyboardType,
-      style: GoogleFonts.sora(fontSize: 13, color: textColor),
-      cursorColor: accentColor,
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: GoogleFonts.sora(fontSize: 13, color: mutedTextColor),
-        prefixIcon: Icon(icon, size: 18, color: mutedTextColor),
-        suffixIcon: suffixIcon,
-        filled: true,
-        fillColor: fieldColor,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 13,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: borderColor),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: borderColor),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: accentColor, width: 1.5),
         ),
       ),
     );
