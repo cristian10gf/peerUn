@@ -91,3 +91,8 @@ coverage/
 .github/agents/
 /f_web_authentication
 skills-*
+
+# Environment variables
+.env
+.env.*
+!.env.example
