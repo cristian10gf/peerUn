@@ -1,0 +1,107 @@
+// =====================
+// USERS
+// =====================
+Table users {
+  id integer [primary key]
+  name varchar
+  email varchar [unique]
+  password varchar
+  role varchar // 'student' | 'teacher' | 'admin'
+  created_at timestamp [default: `now()`]
+}
+
+// =====================
+// COURSES
+// =====================
+Table courses {
+  id integer [primary key]
+  name varchar
+  description text
+  created_by integer [ref: > users.id, not null]
+  created_at timestamp [default: `now()`]
+}
+
+// =====================
+// GROUPS (equipos dentro de cursos)
+// =====================
+Table groups {
+  id integer [primary key]
+  name varchar
+  created_at timestamp
+  category_id integer [ref: > categories.id, not null]
+}
+
+// =====================
+// USER_COURSE (relación muchos a muchos)
+// =====================
+Table user_course {
+  id integer [primary key]
+  course_id integer [ref: > courses.id, not null]
+  user_id integer [ref: > users.id, not null]
+  role varchar [not null] // 'student' | 'teacher'
+}
+
+// =====================
+// USER_GROUP (miembros de equipos)
+// =====================
+Table user_group {
+  id integer [primary key]
+  user_id integer [ref: > users.id]
+  group_id integer [ref: > groups.id, not null]
+}
+
+// =====================
+// CATEGORIES (ej: Sprint, Proyecto final)
+// =====================
+Table categories {
+  id integer [primary key]
+  name varchar
+  description text
+  course_id integer [ref: > courses.id, not null]
+}
+
+// =====================
+// EVALUATIONS
+// =====================
+Table evaluations {
+  id integer [primary key]
+  created_by integer [ref: > users.id, not null]
+  category_id integer [ref: > categories.id, not null]
+  title varchar
+  description text
+  start_date timestamp
+  end_date timestamp
+}
+
+// =====================
+// CRITERIA (criterios de evaluación)
+// =====================
+Table criterium {
+  id integer [primary key]
+  name varchar
+  description text
+  max_score integer
+}
+
+// =====================
+// RESULT EVALUATION (una evaluación de A → B)
+// =====================
+Table resultEvaluation {
+  id integer [primary key]
+  evaluation_id integer [ref: > evaluations.id, not null]
+  evaluator_id integer [ref: > users.id, not null] // quien evalúa
+  evaluated_id integer [ref: > users.id, not null] // a quien evalúan
+  comment text
+  created_at timestamp [default: `now()`]
+  group_id integer [ref: > groups.id, not null]
+}
+
+// =====================
+// RESULT DETAILS (puntaje por criterio)
+// =====================
+Table result_criterium {
+  id integer [primary key]
+  result_id integer [ref: > resultEvaluation.id, not null]
+  criterium_id integer [ref: > criterium.id, not null]
+  score integer
+}
