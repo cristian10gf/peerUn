@@ -1,169 +1,157 @@
-import 'package:sqflite/sqflite.dart';
+import 'dart:convert';
+
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:roble_api_database/roble_api_database.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DatabaseService {
-  // Static so hot-reload doesn't create a new open attempt on an already-open DB.
-  static Database? _db;
+  static const String _studentSessionKey = 'session_student';
+  static const String _teacherSessionKey = 'session_teacher';
 
-  Future<Database> get database async {
-    _db ??= await _open();
-    return _db!;
-  }
+  late final RobleApiDataBase roble = RobleApiDataBase(
+    config: RobleApiConfig(
+      authUrl: '$_authBase/$_dbName',
+      dataUrl: '$_dataBase/$_dbName',
+    ),
+  );
 
-  Future<Database> _open() async {
-    final dir = await getDatabasesPath();
-    return openDatabase(
-      '$dir/peereval.db',
-      version: 6,
-      onCreate: (db, _) async {
-        await db.execute('''
-          CREATE TABLE students (
-            id       INTEGER PRIMARY KEY AUTOINCREMENT,
-            name     TEXT    NOT NULL,
-            email    TEXT    NOT NULL UNIQUE,
-            password TEXT    NOT NULL,
-            initials TEXT    NOT NULL
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE sessions (
-            id         INTEGER PRIMARY KEY,
-            student_id INTEGER,
-            FOREIGN KEY (student_id) REFERENCES students(id)
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE teachers (
-            id       INTEGER PRIMARY KEY AUTOINCREMENT,
-            name     TEXT    NOT NULL,
-            email    TEXT    NOT NULL UNIQUE,
-            password TEXT    NOT NULL,
-            initials TEXT    NOT NULL
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE teacher_sessions (
-            id         INTEGER PRIMARY KEY,
-            teacher_id INTEGER,
-            FOREIGN KEY (teacher_id) REFERENCES teachers(id)
-          )
-        ''');
-        await _createCoursesTable(db);
-        await _createGroupTables(db);
-        await _createEvalTables(db);
-      },
-      onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 2) {
-          await db.execute('''
-            CREATE TABLE IF NOT EXISTS teachers (
-              id       INTEGER PRIMARY KEY AUTOINCREMENT,
-              name     TEXT    NOT NULL,
-              email    TEXT    NOT NULL UNIQUE,
-              password TEXT    NOT NULL,
-              initials TEXT    NOT NULL
-            )
-          ''');
-          await db.execute('''
-            CREATE TABLE IF NOT EXISTS teacher_sessions (
-              id         INTEGER PRIMARY KEY,
-              teacher_id INTEGER,
-              FOREIGN KEY (teacher_id) REFERENCES teachers(id)
-            )
-          ''');
-        }
-        if (oldVersion < 3) {
-          await _createGroupTables(db);
-        }
-        if (oldVersion < 4) {
-          await _createEvalTables(db);
-        }
-        if (oldVersion < 5) {
-          // Columns may already exist if _createGroupTables was called in the
-          // < 3 migration after the schema was updated to include them.
-          try {
-            await db.execute(
-                'ALTER TABLE group_categories ADD COLUMN teacher_id INTEGER NOT NULL DEFAULT 0');
-          } catch (_) {}
-          try {
-            await db.execute(
-                'ALTER TABLE evaluations ADD COLUMN teacher_id INTEGER NOT NULL DEFAULT 0');
-          } catch (_) {}
-        }
-        if (oldVersion < 6) {
-          await _createCoursesTable(db);
-          try {
-            await db.execute(
-                'ALTER TABLE group_categories ADD COLUMN course_id INTEGER NOT NULL DEFAULT 0');
-          } catch (_) {}
-        }
-      },
+  String get _dbName {
+    final envDb = dotenv.isInitialized ? dotenv.env['ROBLE_DB_NAME'] : null;
+    if (envDb != null && envDb.isNotEmpty) return envDb;
+    return const String.fromEnvironment(
+      'ROBLE_DB_NAME',
     );
   }
 
-  static Future<void> _createCoursesTable(dynamic db) async {
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS courses (
-        id         INTEGER PRIMARY KEY AUTOINCREMENT,
-        teacher_id INTEGER NOT NULL DEFAULT 0,
-        name       TEXT    NOT NULL,
-        code       TEXT    NOT NULL DEFAULT '',
-        created_at INTEGER NOT NULL
-      )
-    ''');
+  String get _authBase {
+    final envUrl =
+        dotenv.isInitialized ? dotenv.env['ROBLE_AUTH_BASE_URL'] : null;
+    if (envUrl != null && envUrl.isNotEmpty) return envUrl;
+    return 'https://roble-api.openlab.uninorte.edu.co/auth';
   }
 
-  static Future<void> _createEvalTables(dynamic db) async {
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS evaluations (
-        id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        name        TEXT    NOT NULL,
-        category_id INTEGER NOT NULL,
-        hours       INTEGER NOT NULL,
-        visibility  TEXT    NOT NULL,
-        created_at  INTEGER NOT NULL,
-        closes_at   INTEGER NOT NULL,
-        teacher_id  INTEGER NOT NULL DEFAULT 0,
-        FOREIGN KEY (category_id) REFERENCES group_categories(id)
-      )
-    ''');
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS evaluation_responses (
-        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-        eval_id             INTEGER NOT NULL,
-        evaluator_id        INTEGER NOT NULL,
-        evaluated_member_id INTEGER NOT NULL,
-        criterion_id        TEXT    NOT NULL,
-        score               INTEGER NOT NULL,
-        FOREIGN KEY (eval_id) REFERENCES evaluations(id)
-      )
-    ''');
+  String get _dataBase {
+    final envUrl =
+        dotenv.isInitialized ? dotenv.env['ROBLE_DATA_BASE_URL'] : null;
+    if (envUrl != null && envUrl.isNotEmpty) return envUrl;
+    return 'https://roble-api.openlab.uninorte.edu.co/database';
   }
 
-  static Future<void> _createGroupTables(dynamic db) async {
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS group_categories (
-        id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        name        TEXT    NOT NULL,
-        imported_at INTEGER NOT NULL,
-        teacher_id  INTEGER NOT NULL DEFAULT 0,
-        course_id   INTEGER NOT NULL DEFAULT 0
-      )
-    ''');
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS groups (
-        id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        category_id INTEGER NOT NULL,
-        name        TEXT    NOT NULL,
-        FOREIGN KEY (category_id) REFERENCES group_categories(id)
-      )
-    ''');
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS group_members (
-        id       INTEGER PRIMARY KEY AUTOINCREMENT,
-        group_id INTEGER NOT NULL,
-        name     TEXT    NOT NULL,
-        username TEXT    NOT NULL,
-        FOREIGN KEY (group_id) REFERENCES groups(id)
-      )
-    ''');
+  Future<Map<String, dynamic>> robleLogin({
+    required String email,
+    required String password,
+  }) async {
+    return roble.login(email: email, password: password);
+  }
+
+  Future<Map<String, dynamic>> robleSignupDirect({
+    required String email,
+    required String password,
+    required String name,
+  }) async {
+    return roble.register(email: email, password: password, name: name);
+  }
+
+  Future<void> robleLogout(String accessToken) async {
+    await roble.logout(accessToken: accessToken);
+  }
+
+  Future<void> robleCreateTable(
+    String tableName,
+    List<Map<String, dynamic>> columns,
+  ) async {
+    await roble.createTable(tableName, columns);
+  }
+
+  Future<dynamic> robleGetTableData(String tableName) async {
+    return roble.getTableData(tableName);
+  }
+
+  Future<Map<String, dynamic>> robleCreate(
+    String tableName,
+    Map<String, dynamic> data,
+  ) async {
+    return roble.create(tableName, data);
+  }
+
+  Future<List<Map<String, dynamic>>> robleRead(
+    String tableName, {
+    Map<String, dynamic>? filters,
+  }) async {
+    return roble.read(tableName, filters: filters);
+  }
+
+  Future<Map<String, dynamic>> robleUpdate(
+    String tableName,
+    dynamic id,
+    Map<String, dynamic> updates,
+  ) async {
+    return roble.update(tableName, id, updates);
+  }
+
+  Future<Map<String, dynamic>> robleDelete(String tableName, dynamic id) async {
+    return roble.delete(tableName, id);
+  }
+
+  Map<String, dynamic> decodeJwtClaims(String accessToken) {
+    final parts = accessToken.split('.');
+    if (parts.length < 2) return const {};
+    final payload = base64Url.normalize(parts[1]);
+    final jsonMap = jsonDecode(utf8.decode(base64Url.decode(payload)));
+    if (jsonMap is Map<String, dynamic>) return jsonMap;
+    if (jsonMap is Map) return Map<String, dynamic>.from(jsonMap);
+    return const {};
+  }
+
+  String? roleFromAccessToken(String accessToken) {
+    final claims = decodeJwtClaims(accessToken);
+    final role = claims['role'];
+    return role?.toString();
+  }
+
+  static int stableNumericIdFromSeed(String seed) {
+    final parsed = int.tryParse(seed);
+    if (parsed != null) return parsed;
+    return seed.hashCode.abs();
+  }
+
+  Future<void> saveStudentSession(Map<String, dynamic> session) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_studentSessionKey, jsonEncode(session));
+  }
+
+  Future<void> saveTeacherSession(Map<String, dynamic> session) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_teacherSessionKey, jsonEncode(session));
+  }
+
+  Future<Map<String, dynamic>?> readStudentSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_studentSessionKey);
+    if (raw == null || raw.isEmpty) return null;
+    final json = jsonDecode(raw);
+    if (json is Map<String, dynamic>) return json;
+    if (json is Map) return Map<String, dynamic>.from(json);
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> readTeacherSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_teacherSessionKey);
+    if (raw == null || raw.isEmpty) return null;
+    final json = jsonDecode(raw);
+    if (json is Map<String, dynamic>) return json;
+    if (json is Map) return Map<String, dynamic>.from(json);
+    return null;
+  }
+
+  Future<void> clearStudentSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_studentSessionKey);
+  }
+
+  Future<void> clearTeacherSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_teacherSessionKey);
   }
 }

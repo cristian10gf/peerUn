@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 
 import 'package:example/data/repositories/auth_repository_impl.dart';
@@ -6,14 +7,18 @@ import 'package:example/data/repositories/teacher_auth_repository_impl.dart';
 import 'package:example/data/repositories/group_repository_impl.dart';
 import 'package:example/data/repositories/evaluation_repository_impl.dart';
 import 'package:example/data/repositories/course_repository_impl.dart';
+import 'package:example/data/repositories/connectivity_repository_impl.dart';
 import 'package:example/data/repositories/unified_auth_repository_impl.dart';
+import 'package:example/data/services/connectivity_service.dart';
 import 'package:example/data/services/database_service.dart';
 import 'package:example/domain/repositories/i_auth_repository.dart';
+import 'package:example/domain/repositories/i_connectivity_repository.dart';
 import 'package:example/domain/repositories/i_teacher_auth_repository.dart';
 import 'package:example/domain/repositories/i_group_repository.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
 import 'package:example/domain/repositories/i_course_repository.dart';
 import 'package:example/domain/repositories/i_unified_auth_repository.dart';
+import 'package:example/presentation/controllers/connectivity_controller.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 //import 'package:example/presentation/theme/teacher_colors.dart';
 
@@ -39,6 +44,11 @@ import 'package:example/presentation/pages/teacher/t_course_manage_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await dotenv.load(fileName: '.env', isOptional: true);
+  } catch (_) {
+    // Optional in local/dev. Fallback values are handled in app getters.
+  }
   runApp(const PeerEvalApp());
 }
 
@@ -48,7 +58,18 @@ class _AppBindings extends Bindings {
   @override
   void dependencies() {
     final db = DatabaseService();
+    final connectivityService = ConnectivityService();
+
     Get.put(db, permanent: true);
+    Get.put(connectivityService, permanent: true);
+    Get.put<IConnectivityRepository>(
+      ConnectivityRepositoryImpl(connectivityService),
+      permanent: true,
+    );
+    Get.put(
+      ConnectivityController(Get.find<IConnectivityRepository>()),
+      permanent: true,
+    );
     Get.put<IAuthRepository>(AuthRepositoryImpl(db), permanent: true);
     Get.put<ITeacherAuthRepository>(
       TeacherAuthRepositoryImpl(db),
@@ -96,10 +117,16 @@ class _AppBindings extends Bindings {
 class PeerEvalApp extends StatelessWidget {
   const PeerEvalApp({super.key});
 
+  String get _appName {
+    final fromEnv = dotenv.isInitialized ? dotenv.env['APP_NAME']?.trim() : null;
+    if (fromEnv != null && fromEnv.isNotEmpty) return fromEnv;
+    return 'Evalia';
+  }
+
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
-      title: 'Evalia',
+      title: _appName,
       debugShowCheckedModeBanner: false,
       initialBinding: _AppBindings(),
       theme: ThemeData(
