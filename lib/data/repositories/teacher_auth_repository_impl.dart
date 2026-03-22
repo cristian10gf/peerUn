@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'package:crypto/crypto.dart';
 import 'package:example/data/services/database_service.dart';
 import 'package:example/domain/models/teacher.dart';
 import 'package:example/domain/repositories/i_teacher_auth_repository.dart';
@@ -15,62 +13,91 @@ class TeacherAuthRepositoryImpl implements ITeacherAuthRepository {
     return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
   }
 
-  static String _hash(String password) =>
-      sha256.convert(utf8.encode(password)).toString();
-
-  Future<void> _saveSession(int teacherId) async {
-    final db = await _db.database;
-    await db.delete('teacher_sessions');
-    await db.insert('teacher_sessions', {'id': 1, 'teacher_id': teacherId});
+  String _displayNameFromEmail(String email) {
+    final local = email.split('@').first.trim();
+    if (local.isEmpty) return 'Teacher';
+    return local
+        .split(RegExp(r'[._-]+'))
+        .where((p) => p.isNotEmpty)
+        .map((p) => p[0].toUpperCase() + p.substring(1))
+        .join(' ');
   }
 
   @override
   Future<Teacher?> login(String email, String password) async {
-    final db = await _db.database;
-    final rows = await db.query(
-      'teachers',
-      where: 'email = ? AND password = ?',
-      whereArgs: [email.trim().toLowerCase(), _hash(password)],
+    final normalized = email.trim().toLowerCase();
+    final auth = await _db.robleLogin(email: normalized, password: password);
+
+    final accessToken = (auth['accessToken'] ?? '').toString();
+    final refreshToken = (auth['refreshToken'] ?? '').toString();
+    if (accessToken.isEmpty) return null;
+
+    final role = (_db.roleFromAccessToken(accessToken) ?? '').toLowerCase();
+    if (role != 'teacher' && role != 'admin') return null;
+
+    final claims = _db.decodeJwtClaims(accessToken);
+    final sub = claims['sub']?.toString() ?? normalized;
+    final id = DatabaseService.stableNumericIdFromSeed(sub).toString();
+
+    final name = claims['name']?.toString() ?? _displayNameFromEmail(normalized);
+    final teacher = Teacher(
+      id: id,
+      name: name,
+      email: normalized,
+      initials: _buildInitials(name),
     );
-    if (rows.isEmpty) return null;
-    await _saveSession(rows.first['id'] as int);
-    return Teacher.fromMap(rows.first);
+
+    await _db.saveTeacherSession({
+      'id': teacher.id,
+      'name': teacher.name,
+      'email': teacher.email,
+      'initials': teacher.initials,
+      'access_token': accessToken,
+      'refresh_token': refreshToken,
+      'role': role,
+    });
+
+    return teacher;
   }
 
   @override
   Future<Teacher> register(String name, String email, String password) async {
-    final db = await _db.database;
-    final initials = _buildInitials(name);
-    final id = await db.insert('teachers', {
-      'name':     name.trim(),
-      'email':    email.trim().toLowerCase(),
-      'password': _hash(password),
-      'initials': initials,
-    });
-    await _saveSession(id);
-    return Teacher(
-      id:       id.toString(),
-      name:     name.trim(),
-      email:    email.trim().toLowerCase(),
-      initials: initials,
+    final normalized = email.trim().toLowerCase();
+    await _db.robleSignupDirect(
+      email: normalized,
+      password: password,
+      name: name.trim(),
     );
+
+    final logged = await login(normalized, password);
+    if (logged == null) {
+      throw Exception('No se pudo iniciar sesión tras el registro');
+    }
+    return logged;
   }
 
   @override
   Future<void> logout() async {
-    final db = await _db.database;
-    await db.delete('teacher_sessions');
+    final session = await _db.readTeacherSession();
+    final accessToken = session?['access_token']?.toString();
+    if (accessToken != null && accessToken.isNotEmpty) {
+      try {
+        await _db.robleLogout(accessToken);
+      } catch (_) {}
+    }
+    await _db.clearTeacherSession();
   }
 
   @override
   Future<Teacher?> getCurrentSession() async {
-    final db = await _db.database;
-    final sessions = await db.query('teacher_sessions', where: 'id = 1');
-    if (sessions.isEmpty) return null;
-    final tid = sessions.first['teacher_id'];
-    final rows =
-        await db.query('teachers', where: 'id = ?', whereArgs: [tid]);
-    if (rows.isEmpty) return null;
-    return Teacher.fromMap(rows.first);
+    final session = await _db.readTeacherSession();
+    if (session == null) return null;
+
+    return Teacher(
+      id: session['id']?.toString() ?? '',
+      name: session['name']?.toString() ?? '',
+      email: session['email']?.toString() ?? '',
+      initials: session['initials']?.toString() ?? '?',
+    );
   }
 }

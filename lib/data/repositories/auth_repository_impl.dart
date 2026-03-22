@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'package:crypto/crypto.dart';
 import 'package:example/data/services/database_service.dart';
 import 'package:example/domain/models/student.dart';
 import 'package:example/domain/repositories/i_auth_repository.dart';
@@ -15,62 +13,91 @@ class AuthRepositoryImpl implements IAuthRepository {
     return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
   }
 
-  static String _hash(String password) =>
-      sha256.convert(utf8.encode(password)).toString();
-
-  Future<void> _saveSession(int studentId) async {
-    final db = await _db.database;
-    await db.delete('sessions');
-    await db.insert('sessions', {'id': 1, 'student_id': studentId});
+  String _displayNameFromEmail(String email) {
+    final local = email.split('@').first.trim();
+    if (local.isEmpty) return 'Student';
+    return local
+        .split(RegExp(r'[._-]+'))
+        .where((p) => p.isNotEmpty)
+        .map((p) => p[0].toUpperCase() + p.substring(1))
+        .join(' ');
   }
 
   @override
   Future<Student?> login(String email, String password) async {
-    final db = await _db.database;
-    final rows = await db.query(
-      'students',
-      where: 'email = ? AND password = ?',
-      whereArgs: [email.trim().toLowerCase(), _hash(password)],
+    final normalized = email.trim().toLowerCase();
+    final auth = await _db.robleLogin(email: normalized, password: password);
+
+    final accessToken = (auth['accessToken'] ?? '').toString();
+    final refreshToken = (auth['refreshToken'] ?? '').toString();
+    if (accessToken.isEmpty) return null;
+
+    final role = (_db.roleFromAccessToken(accessToken) ?? '').toLowerCase();
+    if (role != 'student') return null;
+
+    final claims = _db.decodeJwtClaims(accessToken);
+    final sub = claims['sub']?.toString() ?? normalized;
+    final id = DatabaseService.stableNumericIdFromSeed(sub).toString();
+
+    final name = claims['name']?.toString() ?? _displayNameFromEmail(normalized);
+    final student = Student(
+      id: id,
+      name: name,
+      email: normalized,
+      initials: _buildInitials(name),
     );
-    if (rows.isEmpty) return null;
-    await _saveSession(rows.first['id'] as int);
-    return Student.fromMap(rows.first);
+
+    await _db.saveStudentSession({
+      'id': student.id,
+      'name': student.name,
+      'email': student.email,
+      'initials': student.initials,
+      'access_token': accessToken,
+      'refresh_token': refreshToken,
+      'role': role,
+    });
+
+    return student;
   }
 
   @override
   Future<Student> register(String name, String email, String password) async {
-    final db = await _db.database;
-    final initials = _buildInitials(name);
-    final id = await db.insert('students', {
-      'name':     name.trim(),
-      'email':    email.trim().toLowerCase(),
-      'password': _hash(password),
-      'initials': initials,
-    });
-    await _saveSession(id);
-    return Student(
-      id: id.toString(),
+    final normalized = email.trim().toLowerCase();
+    await _db.robleSignupDirect(
+      email: normalized,
+      password: password,
       name: name.trim(),
-      email: email.trim().toLowerCase(),
-      initials: initials,
     );
+
+    final logged = await login(normalized, password);
+    if (logged == null) {
+      throw Exception('No se pudo iniciar sesión tras el registro');
+    }
+    return logged;
   }
 
   @override
   Future<void> logout() async {
-    final db = await _db.database;
-    await db.delete('sessions');
+    final session = await _db.readStudentSession();
+    final accessToken = session?['access_token']?.toString();
+    if (accessToken != null && accessToken.isNotEmpty) {
+      try {
+        await _db.robleLogout(accessToken);
+      } catch (_) {}
+    }
+    await _db.clearStudentSession();
   }
 
   @override
   Future<Student?> getCurrentSession() async {
-    final db = await _db.database;
-    final sessions = await db.query('sessions', where: 'id = 1');
-    if (sessions.isEmpty) return null;
-    final sid = sessions.first['student_id'];
-    final rows =
-        await db.query('students', where: 'id = ?', whereArgs: [sid]);
-    if (rows.isEmpty) return null;
-    return Student.fromMap(rows.first);
+    final session = await _db.readStudentSession();
+    if (session == null) return null;
+
+    return Student(
+      id: session['id']?.toString() ?? '',
+      name: session['name']?.toString() ?? '',
+      email: session['email']?.toString() ?? '',
+      initials: session['initials']?.toString() ?? '?',
+    );
   }
 }

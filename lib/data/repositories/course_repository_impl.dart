@@ -7,18 +7,37 @@ class CourseRepositoryImpl implements ICourseRepository {
   final DatabaseService _db;
   CourseRepositoryImpl(this._db);
 
+  int _asInt(dynamic value, {int fallback = 0}) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value == null) return fallback;
+    return int.tryParse(value.toString()) ?? value.toString().hashCode.abs();
+  }
+
+  int _rowId(Map<String, dynamic> row) => _asInt(row['id'] ?? row['_id']);
+
+  DateTime _asDate(dynamic value) {
+    final millis = _asInt(value, fallback: DateTime.now().millisecondsSinceEpoch);
+    return DateTime.fromMillisecondsSinceEpoch(millis);
+  }
+
   @override
   Future<List<CourseModel>> getAll(int teacherId) async {
-    final db   = await _db.database;
-    final rows = await db.query(
-      'courses',
-      where:   'teacher_id = ?',
-      whereArgs: [teacherId],
-      orderBy: 'created_at DESC',
-    );
-    return rows
-        .map((r) => CourseModel.fromMap(r.cast<String, dynamic>()))
+    final rows = await _db.robleRead('courses', filters: {'teacher_id': teacherId});
+    final courses = rows
+        .map(
+          (r) => CourseModel(
+            id: _rowId(r),
+            teacherId: _asInt(r['teacher_id']),
+            name: (r['name'] ?? '').toString(),
+            code: (r['code'] ?? '').toString(),
+            createdAt: _asDate(r['created_at']),
+          ),
+        )
         .toList();
+
+    courses.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return courses;
   }
 
   @override
@@ -27,76 +46,85 @@ class CourseRepositoryImpl implements ICourseRepository {
     required String code,
     required int teacherId,
   }) async {
-    final db  = await _db.database;
     final now = DateTime.now().millisecondsSinceEpoch;
-    final id  = await db.insert('courses', {
+    final row = await _db.robleCreate('courses', {
       'teacher_id': teacherId,
-      'name':       name,
-      'code':       code,
+      'name': name,
+      'code': code,
       'created_at': now,
     });
+
     return CourseModel(
-      id:        id,
+      id: _rowId(row),
       teacherId: teacherId,
-      name:      name,
-      code:      code,
-      createdAt: DateTime.fromMillisecondsSinceEpoch(now),
+      name: (row['name'] ?? name).toString(),
+      code: (row['code'] ?? code).toString(),
+      createdAt: _asDate(row['created_at'] ?? now),
     );
   }
 
   @override
   Future<void> delete(int courseId) async {
-    final db = await _db.database;
-    await db.delete('courses', where: 'id = ?', whereArgs: [courseId]);
+    final rows = await _db.robleRead('courses');
+    String? key;
+    for (final row in rows) {
+      if (_rowId(row) == courseId) {
+        key = row['_id']?.toString();
+        break;
+      }
+    }
+    if (key == null || key.isEmpty) {
+      throw Exception('No se encontro el curso a eliminar');
+    }
+    await _db.robleDelete('courses', key);
   }
 
   @override
   Future<List<GroupCategory>> getCategoriesForCourse(int courseId) async {
-    final db      = await _db.database;
-    final catRows = await db.query(
+    final catRows = await _db.robleRead(
       'group_categories',
-      where:   'course_id = ?',
-      whereArgs: [courseId],
-      orderBy: 'imported_at DESC',
+      filters: {'course_id': courseId},
     );
+
     final result = <GroupCategory>[];
     for (final cat in catRows) {
-      final catId   = cat['id'] as int;
-      final grpRows = await db.query(
-        'groups',
-        where:   'category_id = ?',
-        whereArgs: [catId],
-        orderBy: 'name ASC',
-      );
+      final catId = _rowId(cat);
+      final grpRows = await _db.robleRead('groups', filters: {'category_id': catId});
+
       final groups = <CourseGroup>[];
       for (final grp in grpRows) {
-        final grpId   = grp['id'] as int;
-        final memRows = await db.query(
-          'group_members',
-          where:   'group_id = ?',
-          whereArgs: [grpId],
-        );
+        final grpId = _rowId(grp);
+        final memRows = await _db.robleRead('group_members', filters: {'group_id': grpId});
+
         final members = memRows
-            .map((m) => GroupMember(
-                  id:       m['id']       as int,
-                  name:     m['name']     as String,
-                  username: m['username'] as String,
-                ))
+            .map(
+              (m) => GroupMember(
+                id: _rowId(m),
+                name: (m['name'] ?? '').toString(),
+                username: (m['username'] ?? '').toString(),
+              ),
+            )
             .toList();
+
         groups.add(CourseGroup(
-          id:      grpId,
-          name:    grp['name'] as String,
+          id: grpId,
+          name: (grp['name'] ?? '').toString(),
           members: members,
         ));
       }
-      result.add(GroupCategory(
-        id:         catId,
-        name:       cat['name']       as String,
-        importedAt: DateTime.fromMillisecondsSinceEpoch(cat['imported_at'] as int),
-        groups:     groups,
-        courseId:   cat['course_id']  as int? ?? 0,
-      ));
+
+      result.add(
+        GroupCategory(
+          id: catId,
+          name: (cat['name'] ?? '').toString(),
+          importedAt: _asDate(cat['imported_at']),
+          groups: groups,
+          courseId: _asInt(cat['course_id']),
+        ),
+      );
     }
+
+    result.sort((a, b) => b.importedAt.compareTo(a.importedAt));
     return result;
   }
 }

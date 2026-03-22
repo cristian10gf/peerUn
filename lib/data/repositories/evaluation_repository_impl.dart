@@ -16,6 +16,44 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
   }
 
+  int _asInt(dynamic value, {int fallback = 0}) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value == null) return fallback;
+    return int.tryParse(value.toString()) ?? value.toString().hashCode.abs();
+  }
+
+  double _asDouble(dynamic value, {double fallback = 0}) {
+    if (value is double) return value;
+    if (value is num) return value.toDouble();
+    if (value == null) return fallback;
+    return double.tryParse(value.toString()) ?? fallback;
+  }
+
+  String _asString(dynamic value) => value?.toString() ?? '';
+
+  int _rowId(Map<String, dynamic> row) => _asInt(row['id'] ?? row['_id']);
+
+  DateTime _asDate(dynamic value) {
+    if (value is String) {
+      final parsedInt = int.tryParse(value);
+      if (parsedInt != null) {
+        return DateTime.fromMillisecondsSinceEpoch(parsedInt);
+      }
+      final parsedDate = DateTime.tryParse(value);
+      if (parsedDate != null) return parsedDate;
+    }
+    final millis = _asInt(value, fallback: DateTime.now().millisecondsSinceEpoch);
+    return DateTime.fromMillisecondsSinceEpoch(millis);
+  }
+
+  Map<String, dynamic>? _findById(List<Map<String, dynamic>> rows, int id) {
+    for (final row in rows) {
+      if (_rowId(row) == id) return row;
+    }
+    return null;
+  }
+
   // ── Create ─────────────────────────────────────────────────────────────────
 
   @override
@@ -26,37 +64,39 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     required String visibility,
     required int teacherId,
   }) async {
-    final db = await _db.database;
-    // Duplicate name check
-    final dup = await db.query('evaluations',
-        where: 'LOWER(name) = ? AND teacher_id = ?',
-        whereArgs: [name.toLowerCase(), teacherId],
-        limit: 1);
-    if (dup.isNotEmpty) throw Exception('Ya existe una evaluación con ese nombre');
+    final existing = await _db.robleRead('evaluations', filters: {'teacher_id': teacherId});
+    final duplicate = existing.any(
+      (r) => _asString(r['name']).toLowerCase() == name.toLowerCase(),
+    );
+    if (duplicate) {
+      throw Exception('Ya existe una evaluación con ese nombre');
+    }
+
     final now = DateTime.now();
     final closesAt = now.add(Duration(hours: hours));
-    final id = await db.insert('evaluations', {
-      'name':        name,
+
+    final row = await _db.robleCreate('evaluations', {
+      'name': name,
       'category_id': categoryId,
-      'hours':       hours,
-      'visibility':  visibility,
-      'created_at':  now.millisecondsSinceEpoch,
-      'closes_at':   closesAt.millisecondsSinceEpoch,
-      'teacher_id':  teacherId,
+      'hours': hours,
+      'visibility': visibility,
+      'created_at': now.millisecondsSinceEpoch,
+      'closes_at': closesAt.millisecondsSinceEpoch,
+      'teacher_id': teacherId,
     });
-    final catRows = await db.query('group_categories',
-        where: 'id = ?', whereArgs: [categoryId]);
-    final catName =
-        catRows.isEmpty ? '' : catRows.first['name'] as String;
+
+    final catRows = await _db.robleRead('group_categories', filters: {'id': categoryId});
+    final catName = catRows.isNotEmpty ? _asString(catRows.first['name']) : '';
+
     return Evaluation(
-      id:           id,
-      name:         name,
-      categoryId:   categoryId,
+      id: _rowId(row),
+      name: _asString(row['name']).isEmpty ? name : _asString(row['name']),
+      categoryId: _asInt(row['category_id'], fallback: categoryId),
       categoryName: catName,
-      hours:        hours,
-      visibility:   visibility,
-      createdAt:    now,
-      closesAt:     closesAt,
+      hours: _asInt(row['hours'], fallback: hours),
+      visibility: _asString(row['visibility']).isEmpty ? visibility : _asString(row['visibility']),
+      createdAt: _asDate(row['created_at'] ?? now.millisecondsSinceEpoch),
+      closesAt: _asDate(row['closes_at'] ?? closesAt.millisecondsSinceEpoch),
     );
   }
 
@@ -64,237 +104,318 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
   @override
   Future<List<Evaluation>> getAll(int teacherId) async {
-    final db   = await _db.database;
-    final rows = await db.rawQuery('''
-      SELECT e.*, gc.name AS category_name, co.name AS course_name
-      FROM evaluations e
-      JOIN group_categories gc ON gc.id = e.category_id
-      LEFT JOIN courses co     ON co.id = gc.course_id
-      WHERE e.teacher_id = ?
-      ORDER BY e.created_at DESC
-    ''', [teacherId]);
-    return rows.map(_rowToEval).toList();
+    final evalRows = await _db.robleRead('evaluations', filters: {'teacher_id': teacherId});
+    final catRows = await _db.robleRead('group_categories');
+    final courseRows = await _db.robleRead('courses');
+
+    final courseById = <int, String>{};
+    for (final c in courseRows) {
+      courseById[_rowId(c)] = _asString(c['name']);
+    }
+
+    final catById = <int, Map<String, dynamic>>{};
+    for (final c in catRows) {
+      catById[_rowId(c)] = c;
+    }
+
+    final list = evalRows.map((row) {
+      final catId = _asInt(row['category_id']);
+      final cat = catById[catId];
+      final courseName = cat == null ? '' : (courseById[_asInt(cat['course_id'])] ?? '');
+
+      return Evaluation(
+        id: _rowId(row),
+        name: _asString(row['name']),
+        categoryId: catId,
+        categoryName: cat == null ? '' : _asString(cat['name']),
+        courseName: courseName,
+        hours: _asInt(row['hours']),
+        visibility: _asString(row['visibility']),
+        createdAt: _asDate(row['created_at']),
+        closesAt: _asDate(row['closes_at']),
+      );
+    }).toList();
+
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
   }
 
   @override
   Future<void> rename(int evalId, String newName, int teacherId) async {
-    final db = await _db.database;
-    final dup = await db.query('evaluations',
-        where: 'LOWER(name) = ? AND teacher_id = ? AND id != ?',
-        whereArgs: [newName.toLowerCase(), teacherId, evalId],
-        limit: 1);
-    if (dup.isNotEmpty) throw Exception('Ya existe una evaluación con ese nombre');
-    await db.update('evaluations', {'name': newName},
-        where: 'id = ?', whereArgs: [evalId]);
+    final evalRows = await _db.robleRead('evaluations', filters: {'teacher_id': teacherId});
+
+    for (final row in evalRows) {
+      if (_rowId(row) != evalId && _asString(row['name']).toLowerCase() == newName.toLowerCase()) {
+        throw Exception('Ya existe una evaluación con ese nombre');
+      }
+    }
+
+    final target = _findById(evalRows, evalId);
+    final key = target?['_id']?.toString();
+    if (key == null || key.isEmpty) {
+      throw Exception('No se encontró la evaluación');
+    }
+
+    await _db.robleUpdate('evaluations', key, {'name': newName});
   }
 
   @override
   Future<void> delete(int evalId) async {
-    final db = await _db.database;
-    await db.delete('evaluation_responses',
-        where: 'eval_id = ?', whereArgs: [evalId]);
-    await db.delete('evaluations', where: 'id = ?', whereArgs: [evalId]);
+    final responseRows = await _db.robleRead('evaluation_responses', filters: {'eval_id': evalId});
+    for (final row in responseRows) {
+      final key = row['_id']?.toString();
+      if (key != null && key.isNotEmpty) {
+        await _db.robleDelete('evaluation_responses', key);
+      }
+    }
+
+    final evalRows = await _db.robleRead('evaluations');
+    final target = _findById(evalRows, evalId);
+    final evalKey = target?['_id']?.toString();
+    if (evalKey != null && evalKey.isNotEmpty) {
+      await _db.robleDelete('evaluations', evalKey);
+    }
   }
 
   // ── Group results ──────────────────────────────────────────────────────────
 
   @override
   Future<List<GroupResult>> getGroupResults(int evalId) async {
-    final db = await _db.database;
+    final evalRows = await _db.robleRead('evaluations');
+    final eval = _findById(evalRows, evalId);
+    if (eval == null) return [];
 
-    // Per-member average scores
-    final memberRows = await db.rawQuery('''
-      SELECT g.id AS grp_id, g.name AS grp_name,
-             gm.id AS mem_id, gm.name AS mem_name,
-             COALESCE(
-               AVG(CASE WHEN er.score >= 2 THEN CAST(er.score AS REAL) END),
-               0.0
-             ) AS avg_score
-      FROM groups g
-      JOIN evaluations e    ON e.category_id = g.category_id
-      JOIN group_members gm ON gm.group_id = g.id
-      LEFT JOIN evaluation_responses er
-             ON er.eval_id = e.id
-            AND er.evaluated_member_id = gm.id
-            AND er.score >= 2
-      WHERE e.id = ?
-      GROUP BY g.id, gm.id
-      ORDER BY g.name, gm.name
-    ''', [evalId]);
+    final categoryId = _asInt(eval['category_id']);
+    final groups = await _db.robleRead('groups', filters: {'category_id': categoryId});
+    final responses = await _db.robleRead('evaluation_responses', filters: {'eval_id': evalId});
 
-    // Per-criterion averages per group
-    final critRows = await db.rawQuery('''
-      SELECT g.id AS grp_id, er.criterion_id,
-             AVG(CAST(er.score AS REAL)) AS avg_score
-      FROM groups g
-      JOIN evaluations e    ON e.category_id = g.category_id
-      JOIN group_members gm ON gm.group_id = g.id
-      JOIN evaluation_responses er
-             ON er.eval_id = e.id
-            AND er.evaluated_member_id = gm.id
-            AND er.score >= 2
-      WHERE e.id = ?
-      GROUP BY g.id, er.criterion_id
-    ''', [evalId]);
-
-    // Build criterion map: grp_id → { criterion_id → avg }
-    final critMap = <int, Map<String, double>>{};
-    for (final r in critRows) {
-      final gid = r['grp_id'] as int;
-      final cid = r['criterion_id'] as String;
-      critMap.putIfAbsent(gid, () => <String, double>{})[cid] = r['avg_score'] as double;
-    }
-
-    // Group rows by group id
-    final groupNames   = <int, String>{};
-    final groupMembers = <int, List<Map<String, Object?>>>{};
-    for (final r in memberRows) {
-      final gid = r['grp_id'] as int;
-      groupNames[gid] = r['grp_name'] as String;
-      groupMembers.putIfAbsent(gid, () => []).add(r);
-    }
-
+    final result = <GroupResult>[];
     const criterionIds = ['punct', 'contrib', 'commit', 'attitude'];
 
-    return groupNames.entries.map((entry) {
-      final gid     = entry.key;
-      final members = groupMembers[gid] ?? [];
+    for (final g in groups) {
+      final gid = _rowId(g);
+      final members = await _db.robleRead('group_members', filters: {'group_id': gid});
+      final memberIds = members.map(_rowId).toSet();
 
-      final students = members.map((m) {
-        final name = m['mem_name'] as String;
-        final avg  = m['avg_score'] as double;
-        return StudentResult(
-          initial: name.isNotEmpty ? name[0].toUpperCase() : '?',
-          name:    name,
-          score:   double.parse(avg.toStringAsFixed(1)),
+      final students = <StudentResult>[];
+      for (final m in members) {
+        final mid = _rowId(m);
+        final mName = _asString(m['name']);
+
+        final memberResponses = responses.where(
+          (r) => _asInt(r['evaluated_member_id']) == mid && _asInt(r['score']) >= 2,
         );
-      }).toList();
+        final values = memberResponses.map((r) => _asDouble(r['score'])).toList();
 
-      final cm       = critMap[gid] ?? {};
-      final criteria = criterionIds.map((id) {
-        final v = cm[id] ?? 0.0;
-        return double.parse(v.toStringAsFixed(1));
-      }).toList();
+        final avg = values.isEmpty
+            ? 0.0
+            : double.parse((values.reduce((a, b) => a + b) / values.length).toStringAsFixed(1));
 
-      final validScores = students
-          .where((s) => s.score > 0)
-          .map((s) => s.score)
-          .toList();
-      final average = validScores.isEmpty
+        students.add(
+          StudentResult(
+            initial: mName.isNotEmpty ? mName[0].toUpperCase() : '?',
+            name: mName,
+            score: avg,
+          ),
+        );
+      }
+
+      final criteria = <double>[];
+      for (final cid in criterionIds) {
+        final cResponses = responses.where(
+          (r) => memberIds.contains(_asInt(r['evaluated_member_id'])) &&
+              _asString(r['criterion_id']) == cid &&
+              _asInt(r['score']) >= 2,
+        );
+        final values = cResponses.map((r) => _asDouble(r['score'])).toList();
+        final avg = values.isEmpty
+            ? 0.0
+            : double.parse((values.reduce((a, b) => a + b) / values.length).toStringAsFixed(1));
+        criteria.add(avg);
+      }
+
+      final validScores = students.where((s) => s.score > 0).map((s) => s.score).toList();
+      final groupAvg = validScores.isEmpty
           ? 0.0
           : double.parse(
               (validScores.reduce((a, b) => a + b) / validScores.length)
-                  .toStringAsFixed(1));
+                  .toStringAsFixed(1),
+            );
 
-      return GroupResult(
-        name:     entry.value,
-        average:  average,
-        criteria: criteria,
-        students: students,
+      result.add(
+        GroupResult(
+          name: _asString(g['name']),
+          average: groupAvg,
+          criteria: criteria,
+          students: students,
+        ),
       );
-    }).toList();
+    }
+
+    return result;
   }
 
   // ── Queries ────────────────────────────────────────────────────────────────
 
   @override
   Future<List<Evaluation>> getEvaluationsForStudent(String email) async {
-    final db   = await _db.database;
-    final rows = await db.rawQuery('''
-      SELECT DISTINCT e.*, gc.name AS category_name, co.name AS course_name
-      FROM evaluations e
-      JOIN group_categories gc ON gc.id = e.category_id
-      LEFT JOIN courses co     ON co.id = gc.course_id
-      JOIN groups g            ON g.category_id = e.category_id
-      JOIN group_members gm    ON gm.group_id = g.id
-      WHERE LOWER(gm.username) = ?
-      ORDER BY e.created_at DESC
-    ''', [email.toLowerCase()]);
-    return rows.map(_rowToEval).toList();
+    final normalized = email.toLowerCase();
+    final members = await _db.robleRead('group_members');
+    final groups = await _db.robleRead('groups');
+    final categories = await _db.robleRead('group_categories');
+    final courses = await _db.robleRead('courses');
+    final evals = await _db.robleRead('evaluations');
+
+    final myGroupIds = members
+        .where((m) => _asString(m['username']).toLowerCase() == normalized)
+        .map(_rowId)
+        .toSet();
+
+    final myCategoryIds = groups
+        .where((g) => myGroupIds.contains(_rowId(g)))
+        .map((g) => _asInt(g['category_id']))
+        .toSet();
+
+    final catById = <int, Map<String, dynamic>>{};
+    for (final c in categories) {
+      catById[_rowId(c)] = c;
+    }
+
+    final courseById = <int, String>{};
+    for (final c in courses) {
+      courseById[_rowId(c)] = _asString(c['name']);
+    }
+
+    final list = evals
+        .where((e) => myCategoryIds.contains(_asInt(e['category_id'])))
+        .map((row) {
+          final catId = _asInt(row['category_id']);
+          final cat = catById[catId];
+          final courseName = cat == null ? '' : (courseById[_asInt(cat['course_id'])] ?? '');
+          return Evaluation(
+            id: _rowId(row),
+            name: _asString(row['name']),
+            categoryId: catId,
+            categoryName: cat == null ? '' : _asString(cat['name']),
+            courseName: courseName,
+            hours: _asInt(row['hours']),
+            visibility: _asString(row['visibility']),
+            createdAt: _asDate(row['created_at']),
+            closesAt: _asDate(row['closes_at']),
+          );
+        })
+        .toList();
+
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
   }
 
   @override
   Future<Evaluation?> getLatestForStudent(String email) async {
-    final db  = await _db.database;
-    final rows = await db.rawQuery('''
-      SELECT DISTINCT e.*, gc.name AS category_name, co.name AS course_name
-      FROM evaluations e
-      JOIN group_categories gc ON gc.id = e.category_id
-      LEFT JOIN courses co     ON co.id = gc.course_id
-      JOIN groups g            ON g.category_id = e.category_id
-      JOIN group_members gm    ON gm.group_id = g.id
-      WHERE LOWER(gm.username) = ?
-      ORDER BY e.created_at DESC
-      LIMIT 1
-    ''', [email.toLowerCase()]);
-    if (rows.isEmpty) return null;
-    return _rowToEval(rows.first);
+    final list = await getEvaluationsForStudent(email);
+    if (list.isEmpty) return null;
+    return list.first;
   }
 
   @override
   Future<String?> getGroupNameForStudent(int evalId, String email) async {
-    final db  = await _db.database;
-    final rows = await db.rawQuery('''
-      SELECT g.name
-      FROM groups g
-      JOIN group_members gm ON gm.group_id = g.id
-      JOIN evaluations e    ON e.category_id = g.category_id
-      WHERE e.id = ? AND LOWER(gm.username) = ?
-      LIMIT 1
-    ''', [evalId, email.toLowerCase()]);
-    if (rows.isEmpty) return null;
-    return rows.first['name'] as String;
+    final normalized = email.toLowerCase();
+
+    final evalRows = await _db.robleRead('evaluations');
+    final eval = _findById(evalRows, evalId);
+    if (eval == null) return null;
+
+    final categoryId = _asInt(eval['category_id']);
+    final groups = await _db.robleRead('groups', filters: {'category_id': categoryId});
+
+    for (final g in groups) {
+      final members = await _db.robleRead('group_members', filters: {'group_id': _rowId(g)});
+      final found = members.any((m) => _asString(m['username']).toLowerCase() == normalized);
+      if (found) return _asString(g['name']);
+    }
+
+    return null;
   }
 
   @override
   Future<List<Peer>> getPeersForStudent(int evalId, String email) async {
-    final db = await _db.database;
-    // Find this student's group within the eval's category
-    final groupRows = await db.rawQuery('''
-      SELECT g.id
-      FROM groups g
-      JOIN group_members gm ON gm.group_id = g.id
-      JOIN evaluations e    ON e.category_id = g.category_id
-      WHERE e.id = ? AND LOWER(gm.username) = ?
-      LIMIT 1
-    ''', [evalId, email.toLowerCase()]);
-    if (groupRows.isEmpty) return [];
-    final groupId = groupRows.first['id'] as int;
-    // All group members except self
-    final memberRows = await db.query(
-      'group_members',
-      where: 'group_id = ? AND LOWER(username) != ?',
-      whereArgs: [groupId, email.toLowerCase()],
-    );
-    return memberRows.map((m) {
-      final name = m['name'] as String;
-      return Peer(
-        id:       (m['id'] as int).toString(),
-        name:     name,
-        initials: _buildInitials(name),
-      );
-    }).toList();
+    final normalized = email.toLowerCase();
+
+    final evalRows = await _db.robleRead('evaluations');
+    final eval = _findById(evalRows, evalId);
+    if (eval == null) return [];
+
+    final categoryId = _asInt(eval['category_id']);
+    final groups = await _db.robleRead('groups', filters: {'category_id': categoryId});
+
+    int? groupId;
+    for (final g in groups) {
+      final gid = _rowId(g);
+      final members = await _db.robleRead('group_members', filters: {'group_id': gid});
+      final isInGroup = members.any((m) => _asString(m['username']).toLowerCase() == normalized);
+      if (isInGroup) {
+        groupId = gid;
+        break;
+      }
+    }
+
+    if (groupId == null) return [];
+
+    final rows = await _db.robleRead('group_members', filters: {'group_id': groupId});
+    return rows
+        .where((m) => _asString(m['username']).toLowerCase() != normalized)
+        .map((m) {
+          final name = _asString(m['name']);
+          return Peer(
+            id: _rowId(m).toString(),
+            name: name,
+            initials: _buildInitials(name),
+          );
+        })
+        .toList();
   }
 
   @override
   Future<List<Course>> getCoursesForStudent(String email) async {
-    final db  = await _db.database;
-    final rows = await db.rawQuery('''
-      SELECT g.id, gc.name AS cat_name, g.name AS grp_name,
-             COUNT(gm2.id) AS member_count
-      FROM group_members gm
-      JOIN groups g            ON g.id = gm.group_id
-      JOIN group_categories gc ON gc.id = g.category_id
-      JOIN group_members gm2   ON gm2.group_id = g.id
-      WHERE LOWER(gm.username) = ?
-      GROUP BY g.id
-    ''', [email.toLowerCase()]);
-    return rows.map((r) => Course(
-      id:          (r['id'] as int).toString(),
-      name:        r['cat_name'] as String,
-      groupName:   r['grp_name'] as String,
-      memberCount: r['member_count'] as int,
-    )).toList();
+    final normalized = email.toLowerCase();
+    final members = await _db.robleRead('group_members');
+    final groups = await _db.robleRead('groups');
+    final categories = await _db.robleRead('group_categories');
+
+    final groupsById = <int, Map<String, dynamic>>{};
+    for (final g in groups) {
+      groupsById[_rowId(g)] = g;
+    }
+
+    final categoryById = <int, Map<String, dynamic>>{};
+    for (final c in categories) {
+      categoryById[_rowId(c)] = c;
+    }
+
+    final myMemberships = members
+        .where((m) => _asString(m['username']).toLowerCase() == normalized)
+        .toList();
+
+    final result = <Course>[];
+    for (final m in myMemberships) {
+      final groupId = _asInt(m['group_id']);
+      final group = groupsById[groupId];
+      if (group == null) continue;
+
+      final category = categoryById[_asInt(group['category_id'])];
+      final memberCount = members.where((x) => _asInt(x['group_id']) == groupId).length;
+
+      result.add(
+        Course(
+          id: groupId.toString(),
+          name: category == null ? '' : _asString(category['name']),
+          groupName: _asString(group['name']),
+          memberCount: memberCount,
+        ),
+      );
+    }
+
+    return result;
   }
 
   // ── Responses ──────────────────────────────────────────────────────────────
@@ -306,18 +427,15 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     required int evaluatedMemberId,
     required Map<String, int> scores,
   }) async {
-    final db = await _db.database;
-    await db.transaction((txn) async {
-      for (final entry in scores.entries) {
-        await txn.insert('evaluation_responses', {
-          'eval_id':              evalId,
-          'evaluator_id':         evaluatorStudentId,
-          'evaluated_member_id':  evaluatedMemberId,
-          'criterion_id':         entry.key,
-          'score':                entry.value,
-        });
-      }
-    });
+    for (final entry in scores.entries) {
+      await _db.robleCreate('evaluation_responses', {
+        'eval_id': evalId,
+        'evaluator_id': evaluatorStudentId,
+        'evaluated_member_id': evaluatedMemberId,
+        'criterion_id': entry.key,
+        'score': entry.value,
+      });
+    }
   }
 
   @override
@@ -326,43 +444,56 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     required int evaluatorStudentId,
     required int evaluatedMemberId,
   }) async {
-    final db   = await _db.database;
-    final rows = await db.query(
-      'evaluation_responses',
-      where: 'eval_id = ? AND evaluator_id = ? AND evaluated_member_id = ?',
-      whereArgs: [evalId, evaluatorStudentId, evaluatedMemberId],
-      limit: 1,
-    );
+    final rows = await _db.robleRead('evaluation_responses', filters: {
+      'eval_id': evalId,
+      'evaluator_id': evaluatorStudentId,
+      'evaluated_member_id': evaluatedMemberId,
+    });
     return rows.isNotEmpty;
   }
 
   @override
-  Future<List<CriterionResult>> getMyResults(
-      int evalId, String email) async {
-    final db = await _db.database;
-    // Find group_member ids for this student in this eval's category
-    final memberRows = await db.rawQuery('''
-      SELECT gm.id
-      FROM group_members gm
-      JOIN groups g         ON g.id = gm.group_id
-      JOIN evaluations e    ON e.category_id = g.category_id
-      WHERE e.id = ? AND LOWER(gm.username) = ?
-    ''', [evalId, email.toLowerCase()]);
-    if (memberRows.isEmpty) return [];
-    final memberIds   = memberRows.map((r) => r['id'] as int).toList();
-    final placeholders = List.filled(memberIds.length, '?').join(',');
-    final rows = await db.rawQuery('''
-      SELECT criterion_id, AVG(CAST(score AS REAL)) AS avg_score
-      FROM evaluation_responses
-      WHERE eval_id = ? AND evaluated_member_id IN ($placeholders) AND score >= 2
-      GROUP BY criterion_id
-    ''', [evalId, ...memberIds]);
-    final avgMap = <String, double>{};
-    for (final r in rows) {
-      avgMap[r['criterion_id'] as String] = r['avg_score'] as double;
+  Future<List<CriterionResult>> getMyResults(int evalId, String email) async {
+    final normalized = email.toLowerCase();
+
+    final evalRows = await _db.robleRead('evaluations');
+    final eval = _findById(evalRows, evalId);
+    if (eval == null) return [];
+
+    final categoryId = _asInt(eval['category_id']);
+    final groups = await _db.robleRead('groups', filters: {'category_id': categoryId});
+
+    final myMemberIds = <int>{};
+    for (final g in groups) {
+      final gid = _rowId(g);
+      final members = await _db.robleRead('group_members', filters: {'group_id': gid});
+      for (final m in members) {
+        if (_asString(m['username']).toLowerCase() == normalized) {
+          myMemberIds.add(_rowId(m));
+        }
+      }
     }
+
+    if (myMemberIds.isEmpty) return [];
+
+    final rows = await _db.robleRead('evaluation_responses', filters: {'eval_id': evalId});
+
+    final sums = <String, double>{};
+    final counts = <String, int>{};
+
+    for (final r in rows) {
+      final targetId = _asInt(r['evaluated_member_id']);
+      final score = _asInt(r['score']);
+      if (!myMemberIds.contains(targetId) || score < 2) continue;
+
+      final cid = _asString(r['criterion_id']);
+      sums[cid] = (sums[cid] ?? 0) + score;
+      counts[cid] = (counts[cid] ?? 0) + 1;
+    }
+
     return EvalCriterion.defaults.map((c) {
-      final val = avgMap[c.id] ?? 0.0;
+      final count = counts[c.id] ?? 0;
+      final val = count == 0 ? 0.0 : (sums[c.id]! / count);
       return CriterionResult(
         label: c.label,
         value: double.parse(val.toStringAsFixed(1)),
@@ -376,59 +507,47 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     required String email,
     required int studentId,
   }) async {
-    final db = await _db.database;
+    final normalized = email.toLowerCase();
 
-    // Get student's group in this eval's category
-    final groupRows = await db.rawQuery('''
-      SELECT g.id
-      FROM groups g
-      JOIN group_members gm ON gm.group_id = g.id
-      JOIN evaluations e    ON e.category_id = g.category_id
-      WHERE e.id = ? AND LOWER(gm.username) = ?
-      LIMIT 1
-    ''', [evalId, email.toLowerCase()]);
-    if (groupRows.isEmpty) return false;
+    final evalRows = await _db.robleRead('evaluations');
+    final eval = _findById(evalRows, evalId);
+    if (eval == null) return false;
 
-    final groupId = groupRows.first['id'] as int;
+    final categoryId = _asInt(eval['category_id']);
+    final groups = await _db.robleRead('groups', filters: {'category_id': categoryId});
 
-    // All peer member ids (excluding self)
-    final peerRows = await db.query(
-      'group_members',
-      columns: ['id'],
-      where: 'group_id = ? AND LOWER(username) != ?',
-      whereArgs: [groupId, email.toLowerCase()],
-    );
-    final total = peerRows.length;
-    if (total == 0) return false;
+    int? groupId;
+    for (final g in groups) {
+      final gid = _rowId(g);
+      final members = await _db.robleRead('group_members', filters: {'group_id': gid});
+      final found = members.any((m) => _asString(m['username']).toLowerCase() == normalized);
+      if (found) {
+        groupId = gid;
+        break;
+      }
+    }
 
-    final peerIds = peerRows.map((r) => r['id'] as int).toList();
-    final placeholders = List.filled(peerIds.length, '?').join(',');
+    if (groupId == null) return false;
 
-    // How many of those peers has the student already evaluated
-    final doneRows = await db.rawQuery('''
-      SELECT COUNT(DISTINCT evaluated_member_id) AS cnt
-      FROM evaluation_responses
-      WHERE eval_id = ? AND evaluator_id = ?
-        AND evaluated_member_id IN ($placeholders)
-    ''', [evalId, studentId, ...peerIds]);
+    final groupMembers = await _db.robleRead('group_members', filters: {'group_id': groupId});
+    final peerIds = groupMembers
+        .where((m) => _asString(m['username']).toLowerCase() != normalized)
+        .map(_rowId)
+        .toSet();
 
-    final done = (doneRows.first['cnt'] as int?) ?? 0;
-    return done >= total;
-  }
+    if (peerIds.isEmpty) return false;
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
+    final responses = await _db.robleRead('evaluation_responses', filters: {
+      'eval_id': evalId,
+      'evaluator_id': studentId,
+    });
 
-  Evaluation _rowToEval(Map<String, Object?> row) {
-    return Evaluation(
-      id:           row['id']          as int,
-      name:         row['name']        as String,
-      categoryId:   row['category_id'] as int,
-      categoryName: row['category_name'] as String,
-      courseName:   (row['course_name'] as String?) ?? '',
-      hours:        row['hours']       as int,
-      visibility:   row['visibility']  as String,
-      createdAt:    DateTime.fromMillisecondsSinceEpoch(row['created_at'] as int),
-      closesAt:     DateTime.fromMillisecondsSinceEpoch(row['closes_at']  as int),
-    );
+    final doneIds = <int>{};
+    for (final r in responses) {
+      final target = _asInt(r['evaluated_member_id']);
+      if (peerIds.contains(target)) doneIds.add(target);
+    }
+
+    return doneIds.length >= peerIds.length;
   }
 }
