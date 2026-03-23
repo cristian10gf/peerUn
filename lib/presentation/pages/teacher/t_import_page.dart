@@ -5,18 +5,21 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/teacher_colors.dart';
 import 'package:example/presentation/controllers/teacher_controller.dart';
-import 'package:example/domain/models/group_category.dart';
+import 'package:example/presentation/pages/teacher/widgets/teacher_bottom_nav.dart';
+import 'package:example/presentation/pages/teacher/widgets/teacher_category_card.dart';
 
 class TImportPage extends StatelessWidget {
   const TImportPage({super.key});
 
   Future<void> _pickAndImport(
-      BuildContext context, TeacherController ctrl) async {
+    BuildContext context,
+    TeacherController ctrl,
+  ) async {
     final result = await FilePicker.platform.pickFiles(
-      type:              FileType.custom,
+      type: FileType.custom,
       allowedExtensions: ['csv'],
-      withData:          false,
-      withReadStream:    false,
+      withData: false,
+      withReadStream: false,
     );
     if (result == null || result.files.isEmpty) return;
 
@@ -24,8 +27,11 @@ class TImportPage extends StatelessWidget {
     final path = file.path;
     if (path == null) return;
 
-    final content      = await File(path).readAsString();
-    final rawName      = file.name.replaceAll(RegExp(r'\.csv$', caseSensitive: false), '');
+    final content = await File(path).readAsString();
+    final rawName = file.name.replaceAll(
+      RegExp(r'\.csv$', caseSensitive: false),
+      '',
+    );
     // Strip trailing Brightspace timestamp pattern e.g. _20260217225843
     final categoryName = rawName.replaceAll(RegExp(r'_\d{14}'), '');
 
@@ -39,7 +45,9 @@ class TImportPage extends StatelessWidget {
   /// Shows a bottom sheet to pick (or quick-create) a course.
   /// Returns the selected courseId (0 = sin curso), or null if cancelled.
   Future<int?> _showCoursePicker(
-      BuildContext context, TeacherController ctrl) async {
+    BuildContext context,
+    TeacherController ctrl,
+  ) async {
     return showModalBottomSheet<int>(
       context: context,
       isScrollControlled: true,
@@ -75,7 +83,8 @@ class TImportPage extends StatelessWidget {
                     Row(
                       children: [
                         Container(
-                          width: 52, height: 52,
+                          width: 52,
+                          height: 52,
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
                               colors: [tkGold, Color(0xFFE3C26E)],
@@ -85,30 +94,41 @@ class TImportPage extends StatelessWidget {
                             borderRadius: BorderRadius.circular(16),
                           ),
                           alignment: Alignment.center,
-                          child: Text(t.initials,
-                              style: GoogleFonts.dmMono(
-                                fontSize: 14, fontWeight: FontWeight.w800,
-                                color: tkBackground,
-                              )),
+                          child: Text(
+                            t.initials,
+                            style: GoogleFonts.dmMono(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: tkBackground,
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(t.name,
-                                  style: GoogleFonts.sora(
-                                    fontSize: 17, fontWeight: FontWeight.w800,
-                                    letterSpacing: -0.3, color: tkText,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis),
+                              Text(
+                                t.name,
+                                style: GoogleFonts.sora(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.3,
+                                  color: tkText,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                               const SizedBox(height: 2),
-                              Text(t.email,
-                                  style: GoogleFonts.dmMono(
-                                      fontSize: 11, color: tkTextFaint),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis),
+                              Text(
+                                t.email,
+                                style: GoogleFonts.dmMono(
+                                  fontSize: 11,
+                                  color: tkTextFaint,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ],
                           ),
                         ),
@@ -117,24 +137,33 @@ class TImportPage extends StatelessWidget {
                           onTap: () => Get.toNamed('/teacher/courses'),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
                               color: tkGold.withValues(alpha: 0.1),
                               border: Border.all(
-                                  color: tkGold.withValues(alpha: 0.3)),
+                                color: tkGold.withValues(alpha: 0.3),
+                              ),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.school_rounded,
-                                    size: 13, color: tkGold),
+                                const Icon(
+                                  Icons.school_rounded,
+                                  size: 13,
+                                  color: tkGold,
+                                ),
                                 const SizedBox(width: 6),
-                                Text('Cursos',
-                                    style: GoogleFonts.sora(
-                                      fontSize: 12, fontWeight: FontWeight.w700,
-                                      color: tkGold,
-                                    )),
+                                Text(
+                                  'Cursos',
+                                  style: GoogleFonts.sora(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: tkGold,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -142,15 +171,23 @@ class TImportPage extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    Text('Importar grupos',
-                        style: GoogleFonts.sora(
-                          fontSize: 20, fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5, color: tkText,
-                        )),
+                    Text(
+                      'Importar grupos',
+                      style: GoogleFonts.sora(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                        color: tkText,
+                      ),
+                    ),
                     const SizedBox(height: 2),
-                    Text('Desde archivo CSV de Brightspace',
-                        style: GoogleFonts.dmMono(
-                            fontSize: 11, color: tkTextFaint)),
+                    Text(
+                      'Desde archivo CSV de Brightspace',
+                      style: GoogleFonts.dmMono(
+                        fontSize: 11,
+                        color: tkTextFaint,
+                      ),
+                    ),
                   ],
                 );
               }),
@@ -168,7 +205,9 @@ class TImportPage extends StatelessWidget {
                     Obx(() {
                       final loading = ctrl.importLoading.value;
                       return GestureDetector(
-                        onTap: loading ? null : () => _pickAndImport(context, ctrl),
+                        onTap: loading
+                            ? null
+                            : () => _pickAndImport(context, ctrl),
                         child: Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 14),
@@ -179,22 +218,30 @@ class TImportPage extends StatelessWidget {
                           alignment: Alignment.center,
                           child: loading
                               ? const SizedBox(
-                                  width: 18, height: 18,
+                                  width: 18,
+                                  height: 18,
                                   child: CircularProgressIndicator(
-                                      color: tkBackground, strokeWidth: 2),
+                                    color: tkBackground,
+                                    strokeWidth: 2,
+                                  ),
                                 )
                               : Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.upload_file_rounded,
-                                        size: 16, color: tkBackground),
+                                    const Icon(
+                                      Icons.upload_file_rounded,
+                                      size: 16,
+                                      color: tkBackground,
+                                    ),
                                     const SizedBox(width: 8),
-                                    Text('Importar CSV',
-                                        style: GoogleFonts.sora(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: tkBackground,
-                                        )),
+                                    Text(
+                                      'Importar CSV',
+                                      style: GoogleFonts.sora(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: tkBackground,
+                                      ),
+                                    ),
                                   ],
                                 ),
                         ),
@@ -207,20 +254,28 @@ class TImportPage extends StatelessWidget {
                       if (err.isEmpty) return const SizedBox(height: 16);
                       return Padding(
                         padding: const EdgeInsets.only(top: 10),
-                        child: Text(err,
-                            style: GoogleFonts.sora(
-                                fontSize: 12, color: tkDanger)),
+                        child: Text(
+                          err,
+                          style: GoogleFonts.sora(
+                            fontSize: 12,
+                            color: tkDanger,
+                          ),
+                        ),
                       );
                     }),
 
                     const SizedBox(height: 18),
 
                     // Section label
-                    Text('CATEGORÍAS IMPORTADAS',
-                        style: GoogleFonts.sora(
-                          fontSize: 11, fontWeight: FontWeight.w700,
-                          color: tkTextFaint, letterSpacing: 1.5,
-                        )),
+                    Text(
+                      'CATEGORÍAS IMPORTADAS',
+                      style: GoogleFonts.sora(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: tkTextFaint,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
                     const SizedBox(height: 10),
 
                     // Category list or empty state
@@ -230,7 +285,9 @@ class TImportPage extends StatelessWidget {
                         return Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(
-                              vertical: 32, horizontal: 20),
+                            vertical: 32,
+                            horizontal: 20,
+                          ),
                           decoration: BoxDecoration(
                             color: tkSurface,
                             border: Border.all(color: tkBorder),
@@ -238,28 +295,40 @@ class TImportPage extends StatelessWidget {
                           ),
                           child: Column(
                             children: [
-                              const Icon(Icons.folder_open_rounded,
-                                  size: 32, color: tkTextFaint),
+                              const Icon(
+                                Icons.folder_open_rounded,
+                                size: 32,
+                                color: tkTextFaint,
+                              ),
                               const SizedBox(height: 10),
-                              Text('Sin categorías importadas',
-                                  style: GoogleFonts.sora(
-                                    fontSize: 13, color: tkTextFaint,
-                                    fontWeight: FontWeight.w600,
-                                  )),
+                              Text(
+                                'Sin categorías importadas',
+                                style: GoogleFonts.sora(
+                                  fontSize: 13,
+                                  color: tkTextFaint,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                               const SizedBox(height: 4),
-                              Text('Usa el botón de arriba para cargar un CSV',
-                                  style: GoogleFonts.sora(
-                                      fontSize: 11, color: tkTextFaint)),
+                              Text(
+                                'Usa el botón de arriba para cargar un CSV',
+                                style: GoogleFonts.sora(
+                                  fontSize: 11,
+                                  color: tkTextFaint,
+                                ),
+                              ),
                             ],
                           ),
                         );
                       }
                       return Column(
                         children: cats
-                            .map((c) => _CategoryCard(
-                                  category: c,
-                                  onDelete: () => ctrl.deleteCategory(c.id),
-                                ))
+                            .map(
+                              (c) => TeacherCategoryCard(
+                                category: c,
+                                onDelete: () => ctrl.deleteCategory(c.id),
+                              ),
+                            )
                             .toList(),
                       );
                     }),
@@ -269,7 +338,7 @@ class TImportPage extends StatelessWidget {
             ),
 
             // ── Bottom nav ─────────────────────────────────────────────────
-            _TBottomNav(activeIndex: 3),
+            TeacherBottomNav(activeIndex: 3),
           ],
         ),
       ),
@@ -278,141 +347,6 @@ class TImportPage extends StatelessWidget {
 }
 
 // ── Category card ──────────────────────────────────────────────────────────────
-
-class _CategoryCard extends StatefulWidget {
-  final GroupCategory category;
-  final VoidCallback  onDelete;
-  const _CategoryCard({required this.category, required this.onDelete});
-
-  @override
-  State<_CategoryCard> createState() => _CategoryCardState();
-}
-
-class _CategoryCardState extends State<_CategoryCard> {
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final cat  = widget.category;
-    final date = '${cat.importedAt.day}/${cat.importedAt.month}/${cat.importedAt.year}';
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: tkSurface,
-        border: Border.all(color: tkBorder),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          GestureDetector(
-            onTap: () => setState(() => _expanded = !_expanded),
-            behavior: HitTestBehavior.opaque,
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                children: [
-                  Icon(
-                    _expanded
-                        ? Icons.keyboard_arrow_up_rounded
-                        : Icons.keyboard_arrow_down_rounded,
-                    size: 18, color: tkTextMid,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(cat.name,
-                            style: GoogleFonts.sora(
-                              fontSize: 13, fontWeight: FontWeight.w700,
-                              color: tkText,
-                            )),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${cat.groupCount} grupos · ${cat.studentCount} estudiantes · $date',
-                          style: GoogleFonts.dmMono(
-                              fontSize: 11, color: tkTextFaint),
-                        ),
-                      ],
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: widget.onDelete,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: tkDanger.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.delete_outline_rounded,
-                          size: 16, color: tkDanger),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Expandable group list
-          if (_expanded) ...[
-            const Divider(height: 1, color: tkBorder),
-            ...cat.groups.map((g) => _GroupRow(group: g)),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _GroupRow extends StatelessWidget {
-  final CourseGroup group;
-  const _GroupRow({required this.group});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.group_outlined, size: 14, color: tkGold),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(group.name,
-                    style: GoogleFonts.sora(
-                      fontSize: 12, fontWeight: FontWeight.w700,
-                      color: tkText,
-                    )),
-              ),
-              const SizedBox(width: 8),
-              Text('${group.members.length} estudiantes',
-                  style: GoogleFonts.dmMono(
-                      fontSize: 10, color: tkTextFaint)),
-            ],
-          ),
-          const SizedBox(height: 6),
-          ...group.members.map((m) => Padding(
-                padding: const EdgeInsets.only(left: 20, bottom: 3),
-                child: Text(
-                  _toTitleCase(m.name),
-                  style: GoogleFonts.sora(
-                      fontSize: 11, color: tkTextMid),
-                ),
-              )),
-        ],
-      ),
-    );
-  }
-
-  String _toTitleCase(String s) => s
-      .split(' ')
-      .map((w) =>
-          w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}')
-      .join(' ');
-}
 
 // ── Course picker sheet ────────────────────────────────────────────────────────
 
@@ -441,20 +375,28 @@ class _CoursePickerSheetState extends State<_CoursePickerSheet> {
     final ctrl = widget.ctrl;
     return Padding(
       padding: EdgeInsets.fromLTRB(
-          22, 20, 22, MediaQuery.of(context).viewInsets.bottom + 24),
+        22,
+        20,
+        22,
+        MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Asignar a curso',
-              style: GoogleFonts.sora(
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-                color: tkText,
-              )),
+          Text(
+            'Asignar a curso',
+            style: GoogleFonts.sora(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: tkText,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text('Selecciona el curso al que pertenece esta importación',
-              style: GoogleFonts.sora(fontSize: 12, color: tkTextFaint)),
+          Text(
+            'Selecciona el curso al que pertenece esta importación',
+            style: GoogleFonts.sora(fontSize: 12, color: tkTextFaint),
+          ),
           const SizedBox(height: 16),
 
           // Existing courses
@@ -463,47 +405,58 @@ class _CoursePickerSheetState extends State<_CoursePickerSheet> {
             if (courses.isEmpty && !_creating) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: Text('No tienes cursos. Crea uno abajo.',
-                    style: GoogleFonts.sora(
-                        fontSize: 12, color: tkTextFaint)),
+                child: Text(
+                  'No tienes cursos. Crea uno abajo.',
+                  style: GoogleFonts.sora(fontSize: 12, color: tkTextFaint),
+                ),
               );
             }
             return Column(
               children: courses
-                  .map((c) => GestureDetector(
-                        onTap: () => Navigator.pop(context, c.id),
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: tkSurfaceAlt,
-                            border: Border.all(color: tkBorder),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.school_rounded,
-                                  size: 16, color: tkGold),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  c.code.isNotEmpty
-                                      ? '${c.name}  ·  ${c.code}'
-                                      : c.name,
-                                  style: GoogleFonts.sora(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: tkText,
-                                  ),
+                  .map(
+                    (c) => GestureDetector(
+                      onTap: () => Navigator.pop(context, c.id),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: tkSurfaceAlt,
+                          border: Border.all(color: tkBorder),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.school_rounded,
+                              size: 16,
+                              color: tkGold,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                c.code.isNotEmpty
+                                    ? '${c.name}  ·  ${c.code}'
+                                    : c.name,
+                                style: GoogleFonts.sora(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: tkText,
                                 ),
                               ),
-                              const Icon(Icons.chevron_right_rounded,
-                                  size: 16, color: tkTextFaint),
-                            ],
-                          ),
+                            ),
+                            const Icon(
+                              Icons.chevron_right_rounded,
+                              size: 16,
+                              color: tkTextFaint,
+                            ),
+                          ],
                         ),
-                      ))
+                      ),
+                    ),
+                  )
                   .toList(),
             );
           }),
@@ -516,21 +469,25 @@ class _CoursePickerSheetState extends State<_CoursePickerSheet> {
               style: GoogleFonts.sora(fontSize: 14, color: tkText),
               decoration: InputDecoration(
                 hintText: 'Nombre del curso',
-                hintStyle:
-                    GoogleFonts.sora(fontSize: 14, color: tkTextFaint),
+                hintStyle: GoogleFonts.sora(fontSize: 14, color: tkTextFaint),
                 filled: true,
                 fillColor: tkSurfaceAlt,
                 contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 12),
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: tkBorder)),
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: tkBorder),
+                ),
                 enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: tkBorder)),
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: tkBorder),
+                ),
                 focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: tkGold)),
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: tkGold),
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -539,49 +496,85 @@ class _CoursePickerSheetState extends State<_CoursePickerSheet> {
               style: GoogleFonts.sora(fontSize: 14, color: tkText),
               decoration: InputDecoration(
                 hintText: 'Código (opcional)',
-                hintStyle:
-                    GoogleFonts.sora(fontSize: 14, color: tkTextFaint),
+                hintStyle: GoogleFonts.sora(fontSize: 14, color: tkTextFaint),
                 filled: true,
                 fillColor: tkSurfaceAlt,
                 contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 12),
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: tkBorder)),
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: tkBorder),
+                ),
                 enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: tkBorder)),
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: tkBorder),
+                ),
                 focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: tkGold)),
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: tkGold),
+                ),
               ),
             ),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
-              child: GestureDetector(
-                onTap: () async {
-                  final name = _nameCtrl.text.trim();
-                  if (name.isEmpty) return;
-                  final nav = Navigator.of(context);
-                  await ctrl.createCourse(name, _codeCtrl.text.trim());
-                  // pick the newly created course
-                  final newId = ctrl.courses.first.id;
-                  if (mounted) nav.pop(newId);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                  decoration: BoxDecoration(
-                    color: tkGold,
-                    borderRadius: BorderRadius.circular(12),
+              child: Obx(
+                () => GestureDetector(
+                  onTap: ctrl.courseCreateLoading.value
+                      ? null
+                      : () async {
+                          final name = _nameCtrl.text.trim();
+                          if (name.isEmpty) return;
+
+                          final nav = Navigator.of(context);
+                          final ok = await ctrl.createCourse(
+                            name,
+                            _codeCtrl.text.trim(),
+                          );
+                          if (!ok) {
+                            if (!mounted) return;
+                            Get.snackbar(
+                              'No se pudo crear',
+                              ctrl.courseCreateError.value,
+                              snackPosition: SnackPosition.BOTTOM,
+                            );
+                            return;
+                          }
+
+                          final newId = ctrl.courses.isNotEmpty
+                              ? ctrl.courses.first.id
+                              : null;
+                          if (mounted) nav.pop(newId);
+                        },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    decoration: BoxDecoration(
+                      color: ctrl.courseCreateLoading.value
+                          ? tkGold.withValues(alpha: 0.45)
+                          : tkGold,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    alignment: Alignment.center,
+                    child: ctrl.courseCreateLoading.value
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: tkBackground,
+                            ),
+                          )
+                        : Text(
+                            'Crear y seleccionar',
+                            style: GoogleFonts.sora(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: tkBackground,
+                            ),
+                          ),
                   ),
-                  alignment: Alignment.center,
-                  child: Text('Crear y seleccionar',
-                      style: GoogleFonts.sora(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: tkBackground,
-                      )),
                 ),
               ),
             ),
@@ -592,15 +585,20 @@ class _CoursePickerSheetState extends State<_CoursePickerSheet> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.add_circle_outline_rounded,
-                      size: 16, color: tkGold),
+                  const Icon(
+                    Icons.add_circle_outline_rounded,
+                    size: 16,
+                    color: tkGold,
+                  ),
                   const SizedBox(width: 6),
-                  Text('Crear nuevo curso',
-                      style: GoogleFonts.sora(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: tkGold,
-                      )),
+                  Text(
+                    'Crear nuevo curso',
+                    style: GoogleFonts.sora(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: tkGold,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -623,12 +621,14 @@ class _CoursePickerSheetState extends State<_CoursePickerSheet> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 alignment: Alignment.center,
-                child: Text('Cancelar importación',
-                    style: GoogleFonts.sora(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: tkTextMid,
-                    )),
+                child: Text(
+                  'Cancelar importación',
+                  style: GoogleFonts.sora(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: tkTextMid,
+                  ),
+                ),
               ),
             ),
           ),
@@ -639,62 +639,3 @@ class _CoursePickerSheetState extends State<_CoursePickerSheet> {
 }
 
 // ── Bottom nav ─────────────────────────────────────────────────────────────────
-
-class _TBottomNav extends StatelessWidget {
-  final int activeIndex;
-  const _TBottomNav({required this.activeIndex});
-
-  @override
-  Widget build(BuildContext context) {
-    final items = [
-      _NavItem(icon: Icons.home_rounded,        label: 'INICIO',   route: '/teacher/dash'),
-      _NavItem(icon: Icons.rate_review_rounded, label: 'EVALUAR',  route: '/teacher/new-eval'),
-      _NavItem(icon: Icons.bar_chart_rounded,   label: 'DATOS',    route: '/teacher/results'),
-      _NavItem(icon: Icons.upload_file_rounded, label: 'IMPORTAR', route: '/teacher/import'),
-    ];
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: tkSurface,
-        border: Border(top: BorderSide(color: tkBorder)),
-      ),
-      padding: const EdgeInsets.fromLTRB(0, 10, 0, 20),
-      child: Row(
-        children: items.asMap().entries.map((e) {
-          final isActive = e.key == activeIndex;
-          return Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                if (!Get.currentRoute.endsWith(e.value.route)) {
-                  Get.offNamed(e.value.route);
-                }
-              },
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(e.value.icon, size: 18,
-                      color: isActive ? tkGold : tkTextFaint),
-                  const SizedBox(height: 3),
-                  Text(e.value.label,
-                      style: GoogleFonts.sora(
-                        fontSize: 9, letterSpacing: 0.3,
-                        fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                        color: isActive ? tkGold : tkTextFaint,
-                      )),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
-
-class _NavItem {
-  final IconData icon;
-  final String label;
-  final String route;
-  const _NavItem({required this.icon, required this.label, required this.route});
-}

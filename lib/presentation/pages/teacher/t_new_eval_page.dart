@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/teacher_colors.dart';
 import 'package:example/presentation/controllers/teacher_controller.dart';
+import 'package:example/presentation/pages/teacher/widgets/teacher_back_button.dart';
 
 class TNewEvalPage extends StatelessWidget {
   const TNewEvalPage({super.key});
@@ -23,13 +24,17 @@ class TNewEvalPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _BackButton(label: 'Volver', route: '/teacher/dash'),
+                  TeacherBackButton(label: 'Volver', route: '/teacher/dash'),
                   const SizedBox(height: 16),
-                  Text('Nueva evaluación',
-                      style: GoogleFonts.sora(
-                        fontSize: 20, fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5, color: tkText,
-                      )),
+                  Text(
+                    'Nueva evaluación',
+                    style: GoogleFonts.sora(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                      color: tkText,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -45,17 +50,19 @@ class TNewEvalPage extends StatelessWidget {
                     // ── Nombre ──────────────────────────────────────────────
                     _SectionLabel('NOMBRE'),
                     const SizedBox(height: 8),
-                    Obx(() => _GoldTextField(
-                          value: ctrl.evalName.value,
-                          onChanged: (v) => ctrl.evalName.value = v,
-                        )),
+                    Obx(
+                      () => _GoldTextField(
+                        value: ctrl.evalName.value,
+                        onChanged: (v) => ctrl.evalName.value = v,
+                      ),
+                    ),
                     const SizedBox(height: 18),
 
                     // ── Curso ─────────────────────────────────────────────────
                     _SectionLabel('CURSO'),
                     const SizedBox(height: 8),
                     Obx(() {
-                      final name  = ctrl.selectedCourseName.value;
+                      final name = ctrl.selectedCourseName.value;
                       final empty = ctrl.courses.isEmpty;
                       return GestureDetector(
                         onTap: empty
@@ -64,7 +71,9 @@ class TNewEvalPage extends StatelessWidget {
                         child: Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 15, vertical: 13),
+                            horizontal: 15,
+                            vertical: 13,
+                          ),
                           decoration: BoxDecoration(
                             color: tkSurfaceAlt,
                             border: Border.all(color: tkBorder),
@@ -78,18 +87,22 @@ class TNewEvalPage extends StatelessWidget {
                                   empty
                                       ? 'Sin cursos creados'
                                       : name.isEmpty
-                                          ? 'Seleccionar curso'
-                                          : name,
+                                      ? 'Seleccionar curso'
+                                      : name,
                                   style: GoogleFonts.sora(
-                                      fontSize: 13,
-                                      color: (empty || name.isEmpty)
-                                          ? tkTextFaint
-                                          : tkTextMid),
+                                    fontSize: 13,
+                                    color: (empty || name.isEmpty)
+                                        ? tkTextFaint
+                                        : tkTextMid,
+                                  ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              const Icon(Icons.chevron_right_rounded,
-                                  size: 16, color: tkTextFaint),
+                              const Icon(
+                                Icons.chevron_right_rounded,
+                                size: 16,
+                                color: tkTextFaint,
+                              ),
                             ],
                           ),
                         ),
@@ -101,10 +114,10 @@ class TNewEvalPage extends StatelessWidget {
                     _SectionLabel('CATEGORÍA DE GRUPOS'),
                     const SizedBox(height: 8),
                     Obx(() {
-                      final name       = ctrl.selectedCategoryName.value;
-                      final hasCourse  = ctrl.selectedCourseId.value != null;
-                      final cats       = ctrl.categoriesForCourse;
-                      final empty      = !hasCourse || cats.isEmpty;
+                      final name = ctrl.selectedCategoryName.value;
+                      final hasCourse = ctrl.selectedCourseId.value != null;
+                      final cats = ctrl.categoriesForCourse;
+                      final empty = !hasCourse || cats.isEmpty;
                       return GestureDetector(
                         onTap: empty
                             ? null
@@ -112,7 +125,9 @@ class TNewEvalPage extends StatelessWidget {
                         child: Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 15, vertical: 13),
+                            horizontal: 15,
+                            vertical: 13,
+                          ),
                           decoration: BoxDecoration(
                             color: tkSurfaceAlt,
                             border: Border.all(color: tkBorder),
@@ -126,20 +141,24 @@ class TNewEvalPage extends StatelessWidget {
                                   !hasCourse
                                       ? 'Selecciona un curso primero'
                                       : cats.isEmpty
-                                          ? 'Sin categorías para este curso'
-                                          : name.isEmpty
-                                              ? 'Seleccionar categoría'
-                                              : name,
+                                      ? 'Sin categorías para este curso'
+                                      : name.isEmpty
+                                      ? 'Seleccionar categoría'
+                                      : name,
                                   style: GoogleFonts.sora(
-                                      fontSize: 13,
-                                      color: (empty || name.isEmpty)
-                                          ? tkTextFaint
-                                          : tkTextMid),
+                                    fontSize: 13,
+                                    color: (empty || name.isEmpty)
+                                        ? tkTextFaint
+                                        : tkTextMid,
+                                  ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              const Icon(Icons.chevron_right_rounded,
-                                  size: 16, color: tkTextFaint),
+                              const Icon(
+                                Icons.chevron_right_rounded,
+                                size: 16,
+                                color: tkTextFaint,
+                              ),
                             ],
                           ),
                         ),
@@ -150,75 +169,79 @@ class TNewEvalPage extends StatelessWidget {
                     // ── Ventana de tiempo ────────────────────────────────────
                     _SectionLabel('VENTANA DE TIEMPO'),
                     const SizedBox(height: 8),
-                    Obx(() => Row(
-                          children: [24, 48, 72, 168].map((h) {
-                            final selected = ctrl.selectedHours.value == h;
-                            return Expanded(
-                              child: Padding(
-                                padding: EdgeInsets.only(
-                                    right: h != 168 ? 6 : 0),
-                                child: GestureDetector(
-                                  onTap: () =>
-                                      ctrl.selectedHours.value = h,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 10),
-                                    decoration: BoxDecoration(
-                                      color: selected
-                                          ? tkGold
-                                          : tkSurfaceAlt,
-                                      border: Border.all(
-                                          color: selected
-                                              ? tkGold
-                                              : tkBorder),
-                                      borderRadius:
-                                          BorderRadius.circular(10),
+                    Obx(
+                      () => Row(
+                        children: [24, 48, 72, 168].map((h) {
+                          final selected = ctrl.selectedHours.value == h;
+                          return Expanded(
+                            child: Padding(
+                              padding: EdgeInsets.only(right: h != 168 ? 6 : 0),
+                              child: GestureDetector(
+                                onTap: () => ctrl.selectedHours.value = h,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: selected ? tkGold : tkSurfaceAlt,
+                                    border: Border.all(
+                                      color: selected ? tkGold : tkBorder,
                                     ),
-                                    alignment: Alignment.center,
-                                    child: Text('${h}h',
-                                        style: GoogleFonts.dmMono(
-                                          fontSize: 12,
-                                          fontWeight: selected
-                                              ? FontWeight.w700
-                                              : FontWeight.w500,
-                                          color: selected
-                                              ? tkBackground
-                                              : tkTextMid,
-                                        )),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    '${h}h',
+                                    style: GoogleFonts.dmMono(
+                                      fontSize: 12,
+                                      fontWeight: selected
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                      color: selected
+                                          ? tkBackground
+                                          : tkTextMid,
+                                    ),
                                   ),
                                 ),
                               ),
-                            );
-                          }).toList(),
-                        )),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
                     const SizedBox(height: 18),
 
                     // ── Visibilidad ──────────────────────────────────────────
                     _SectionLabel('VISIBILIDAD DE RESULTADOS'),
                     const SizedBox(height: 8),
-                    Obx(() => Column(
-                          children: [
-                            _VisibilityCard(
-                              icon:        Icons.people_outline_rounded,
-                              label:       'Pública',
-                              description: 'Estudiantes ven sus promedios recibidos por criterio',
-                              value:       'public',
-                              selected:    ctrl.selectedVisibility.value == 'public',
-                              onTap: () =>
-                                  ctrl.selectedVisibility.value = 'public',
-                            ),
-                            const SizedBox(height: 8),
-                            _VisibilityCard(
-                              icon:        Icons.lock_outline_rounded,
-                              label:       'Privada',
-                              description: 'Solo el docente accede a los resultados detallados',
-                              value:       'private',
-                              selected:    ctrl.selectedVisibility.value == 'private',
-                              onTap: () =>
-                                  ctrl.selectedVisibility.value = 'private',
-                            ),
-                          ],
-                        )),
+                    Obx(
+                      () => Column(
+                        children: [
+                          _VisibilityCard(
+                            icon: Icons.people_outline_rounded,
+                            label: 'Pública',
+                            description:
+                                'Estudiantes ven sus promedios recibidos por criterio',
+                            value: 'public',
+                            selected: ctrl.selectedVisibility.value == 'public',
+                            onTap: () =>
+                                ctrl.selectedVisibility.value = 'public',
+                          ),
+                          const SizedBox(height: 8),
+                          _VisibilityCard(
+                            icon: Icons.lock_outline_rounded,
+                            label: 'Privada',
+                            description:
+                                'Solo el docente accede a los resultados detallados',
+                            value: 'private',
+                            selected:
+                                ctrl.selectedVisibility.value == 'private',
+                            onTap: () =>
+                                ctrl.selectedVisibility.value = 'private',
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 20),
 
                     // ── Launch ───────────────────────────────────────────────
@@ -229,35 +252,41 @@ class TNewEvalPage extends StatelessWidget {
                           child: Text(
                             ctrl.evalError.value,
                             style: GoogleFonts.sora(
-                                fontSize: 12,
-                                color: const Color(0xFFEF4444)),
+                              fontSize: 12,
+                              color: const Color(0xFFEF4444),
+                            ),
                             textAlign: TextAlign.center,
                           ),
                         );
                       }
                       return const SizedBox.shrink();
                     }),
-                    Obx(() => GestureDetector(
-                      onTap: ctrl.isLoading.value
-                          ? null
-                          : () => ctrl.createEvaluation(),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        decoration: BoxDecoration(
-                          color: ctrl.isLoading.value
-                              ? tkGold.withValues(alpha: 0.5)
-                              : tkGold,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text('Lanzar evaluación',
+                    Obx(
+                      () => GestureDetector(
+                        onTap: ctrl.isLoading.value
+                            ? null
+                            : () => ctrl.createEvaluation(),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          decoration: BoxDecoration(
+                            color: ctrl.isLoading.value
+                                ? tkGold.withValues(alpha: 0.5)
+                                : tkGold,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Lanzar evaluación',
                             style: GoogleFonts.sora(
-                              fontSize: 14, fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
                               color: tkBackground,
-                            )),
+                            ),
+                          ),
+                        ),
                       ),
-                    )),
+                    ),
                     const SizedBox(height: 10),
                     Obx(() {
                       final name = ctrl.selectedCategoryName.value;
@@ -267,7 +296,9 @@ class TNewEvalPage extends StatelessWidget {
                               ? 'Selecciona una categoría primero'
                               : 'Se notificará a todos los estudiantes de $name',
                           style: GoogleFonts.dmMono(
-                              fontSize: 11, color: tkTextFaint),
+                            fontSize: 11,
+                            color: tkTextFaint,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       );
@@ -289,73 +320,91 @@ class TNewEvalPage extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => Obx(() => Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 36, height: 4,
-                decoration: BoxDecoration(
-                  color: tkBorder,
-                  borderRadius: BorderRadius.circular(99),
+      builder: (_) => Obx(
+        () => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: tkBorder,
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              child: Text(
+                'Curso',
+                style: GoogleFonts.sora(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: tkText,
                 ),
               ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 22),
-                child: Text('Curso',
-                    style: GoogleFonts.sora(
-                      fontSize: 15, fontWeight: FontWeight.w700, color: tkText,
-                    )),
-              ),
-              const SizedBox(height: 10),
-              ...ctrl.courses.map((course) {
-                final selected = ctrl.selectedCourseId.value == course.id;
-                return GestureDetector(
-                  onTap: () {
-                    ctrl.selectedCategoryId.value   = null;
-                    ctrl.selectedCategoryName.value = '';
-                    ctrl.loadCategoriesForCourse(course.id);
-                    Get.back();
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 22, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: selected ? tkGoldLight : tkSurface,
-                      border: Border(bottom: BorderSide(color: tkBorder)),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(course.name,
-                                  style: GoogleFonts.sora(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: selected ? tkGold : tkText,
-                                  )),
-                              if (course.code.isNotEmpty)
-                                Text(course.code,
-                                    style: GoogleFonts.dmMono(
-                                        fontSize: 11, color: tkTextFaint)),
-                            ],
-                          ),
-                        ),
-                        if (selected)
-                          const Icon(Icons.check_circle_rounded,
-                              size: 18, color: tkGold),
-                      ],
-                    ),
+            ),
+            const SizedBox(height: 10),
+            ...ctrl.courses.map((course) {
+              final selected = ctrl.selectedCourseId.value == course.id;
+              return GestureDetector(
+                onTap: () {
+                  ctrl.selectedCategoryId.value = null;
+                  ctrl.selectedCategoryName.value = '';
+                  ctrl.loadCategoriesForCourse(course.id);
+                  Get.back();
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 22,
+                    vertical: 14,
                   ),
-                );
-              }),
-              const SizedBox(height: 20),
-            ],
-          )),
+                  decoration: BoxDecoration(
+                    color: selected ? tkGoldLight : tkSurface,
+                    border: Border(bottom: BorderSide(color: tkBorder)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              course.name,
+                              style: GoogleFonts.sora(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: selected ? tkGold : tkText,
+                              ),
+                            ),
+                            if (course.code.isNotEmpty)
+                              Text(
+                                course.code,
+                                style: GoogleFonts.dmMono(
+                                  fontSize: 11,
+                                  color: tkTextFaint,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (selected)
+                        const Icon(
+                          Icons.check_circle_rounded,
+                          size: 18,
+                          color: tkGold,
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
     );
   }
 
@@ -366,75 +415,89 @@ class TNewEvalPage extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => Obx(() => Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 36, height: 4,
-                decoration: BoxDecoration(
-                  color: tkBorder,
-                  borderRadius: BorderRadius.circular(99),
+      builder: (_) => Obx(
+        () => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: tkBorder,
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              child: Text(
+                'Categoría de grupos',
+                style: GoogleFonts.sora(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: tkText,
                 ),
               ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 22),
-                child: Text('Categoría de grupos',
-                    style: GoogleFonts.sora(
-                      fontSize: 15, fontWeight: FontWeight.w700, color: tkText,
-                    )),
-              ),
-              const SizedBox(height: 10),
-              ...ctrl.categoriesForCourse.map((cat) {
-                final selected = ctrl.selectedCategoryId.value == cat.id;
-                return GestureDetector(
-                  onTap: () {
-                    ctrl.selectedCategoryId.value   = cat.id;
-                    ctrl.selectedCategoryName.value = cat.name;
-                    Get.back();
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 22, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: selected ? tkGoldLight : tkSurface,
-                      border: Border(
-                        bottom: BorderSide(color: tkBorder),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(cat.name,
-                                  style: GoogleFonts.sora(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: selected ? tkGold : tkText,
-                                  )),
-                              Text(
-                                '${cat.groupCount} grupos · ${cat.studentCount} estudiantes',
-                                style: GoogleFonts.dmMono(
-                                    fontSize: 11, color: tkTextFaint),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (selected)
-                          const Icon(Icons.check_circle_rounded,
-                              size: 18, color: tkGold),
-                      ],
-                    ),
+            ),
+            const SizedBox(height: 10),
+            ...ctrl.categoriesForCourse.map((cat) {
+              final selected = ctrl.selectedCategoryId.value == cat.id;
+              return GestureDetector(
+                onTap: () {
+                  ctrl.selectedCategoryId.value = cat.id;
+                  ctrl.selectedCategoryName.value = cat.name;
+                  Get.back();
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 22,
+                    vertical: 14,
                   ),
-                );
-              }),
-              const SizedBox(height: 20),
-            ],
-          )),
+                  decoration: BoxDecoration(
+                    color: selected ? tkGoldLight : tkSurface,
+                    border: Border(bottom: BorderSide(color: tkBorder)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              cat.name,
+                              style: GoogleFonts.sora(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: selected ? tkGold : tkText,
+                              ),
+                            ),
+                            Text(
+                              '${cat.groupCount} grupos · ${cat.studentCount} estudiantes',
+                              style: GoogleFonts.dmMono(
+                                fontSize: 11,
+                                color: tkTextFaint,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (selected)
+                        const Icon(
+                          Icons.check_circle_rounded,
+                          size: 18,
+                          color: tkGold,
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -445,11 +508,15 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(text,
-        style: GoogleFonts.sora(
-          fontSize: 11, fontWeight: FontWeight.w700,
-          color: tkTextFaint, letterSpacing: 1.5,
-        ));
+    return Text(
+      text,
+      style: GoogleFonts.sora(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: tkTextFaint,
+        letterSpacing: 1.5,
+      ),
+    );
   }
 }
 
@@ -481,15 +548,20 @@ class _GoldTextFieldState extends State<_GoldTextField> {
   Widget build(BuildContext context) {
     return TextField(
       controller: _ctrl,
-      onChanged:  widget.onChanged,
+      onChanged: widget.onChanged,
       style: GoogleFonts.sora(
-          fontSize: 14, fontWeight: FontWeight.w600, color: tkText),
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: tkText,
+      ),
       cursorColor: tkGold,
       decoration: InputDecoration(
         filled: true,
         fillColor: tkSurfaceAlt,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 15,
+          vertical: 13,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(13),
           borderSide: const BorderSide(color: tkBorder),
@@ -538,65 +610,35 @@ class _VisibilityCard extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 36, height: 36,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 color: selected ? tkGoldBorder : tkSurfaceAlt,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, size: 16,
-                  color: selected ? tkGold : tkTextMid),
+              child: Icon(icon, size: 16, color: selected ? tkGold : tkTextMid),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label,
-                      style: GoogleFonts.sora(
-                        fontSize: 13, fontWeight: FontWeight.w700,
-                        color: selected ? tkGold : tkText,
-                      )),
+                  Text(
+                    label,
+                    style: GoogleFonts.sora(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: selected ? tkGold : tkText,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(description,
-                      style: GoogleFonts.sora(
-                          fontSize: 11, color: tkTextFaint)),
+                  Text(
+                    description,
+                    style: GoogleFonts.sora(fontSize: 11, color: tkTextFaint),
+                  ),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BackButton extends StatelessWidget {
-  final String label;
-  final String route;
-  const _BackButton({required this.label, required this.route});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Get.offNamed(route),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(8, 7, 12, 7),
-        decoration: BoxDecoration(
-          color: tkSurfaceAlt,
-          border: Border.all(color: tkBorder),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.chevron_left_rounded,
-                size: 14, color: tkTextMid),
-            const SizedBox(width: 6),
-            Text(label,
-                style: GoogleFonts.sora(
-                  fontSize: 12, fontWeight: FontWeight.w600,
-                  color: tkTextMid,
-                )),
           ],
         ),
       ),

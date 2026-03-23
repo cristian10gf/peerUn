@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/teacher_colors.dart';
 import 'package:example/presentation/controllers/teacher_controller.dart';
 import 'package:example/domain/models/teacher_data.dart';
+import 'package:example/presentation/pages/teacher/widgets/teacher_back_button.dart';
 // ignore_for_file: unused_import
 
 Color _tkScore(double v) => v >= 4.0 ? tkSuccess : tkWarning;
@@ -30,7 +31,8 @@ class TResultsPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    GestureDetector(
+                    TeacherBackButton(
+                      label: drill != null ? 'Grupos' : 'Volver',
                       onTap: () {
                         if (drill != null) {
                           ctrl.drill.value = null;
@@ -38,29 +40,6 @@ class TResultsPage extends StatelessWidget {
                           Get.offNamed('/teacher/dash');
                         }
                       },
-                      child: Container(
-                        padding:
-                            const EdgeInsets.fromLTRB(8, 7, 12, 7),
-                        decoration: BoxDecoration(
-                          color: tkSurfaceAlt,
-                          border: Border.all(color: tkBorder),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.chevron_left_rounded,
-                                size: 14, color: tkTextMid),
-                            const SizedBox(width: 6),
-                            Text(drill != null ? 'Grupos' : 'Volver',
-                                style: GoogleFonts.sora(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: tkTextMid,
-                                )),
-                          ],
-                        ),
-                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -68,8 +47,10 @@ class TResultsPage extends StatelessWidget {
                           ? ctrl.groupResults[drill].name
                           : 'Resultados',
                       style: GoogleFonts.sora(
-                        fontSize: 20, fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5, color: tkText,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                        color: tkText,
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -78,7 +59,9 @@ class TResultsPage extends StatelessWidget {
                       return Text(
                         '$evalName · ${drill != null ? 'Desglose completo' : 'Vista general'}',
                         style: GoogleFonts.dmMono(
-                            fontSize: 11, color: tkTextFaint),
+                          fontSize: 11,
+                          color: tkTextFaint,
+                        ),
                       );
                     }),
                   ],
@@ -92,15 +75,15 @@ class TResultsPage extends StatelessWidget {
                   if (ctrl.resultsLoading.value) {
                     return const Center(
                       child: CircularProgressIndicator(
-                          color: tkGold, strokeWidth: 2),
+                        color: tkGold,
+                        strokeWidth: 2,
+                      ),
                     );
                   }
                   final d = ctrl.drill.value;
                   return d == null
                       ? _OverviewBody(ctrl: ctrl)
-                      : _DetailBody(
-                          ctrl: ctrl,
-                          group: ctrl.groupResults[d]);
+                      : _DetailBody(ctrl: ctrl, group: ctrl.groupResults[d]);
                 }),
               ),
             ],
@@ -125,34 +108,40 @@ class _OverviewBody extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Stats
-          Obx(() => Row(
-                children: [
-                  Expanded(
-                    child: _StatCard(
-                      value: ctrl.groupResults.isEmpty
-                          ? '—'
-                          : ctrl.overallAverage.toStringAsFixed(1),
-                      label: 'PROMEDIO GENERAL',
-                      valueColor: tkGold,
-                    ),
+          Obx(
+            () => Row(
+              children: [
+                Expanded(
+                  child: _StatCard(
+                    value: ctrl.groupResults.isEmpty
+                        ? '—'
+                        : ctrl.overallAverage.toStringAsFixed(1),
+                    label: 'PROMEDIO GENERAL',
+                    valueColor: tkGold,
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _StatCard(
-                      value: ctrl.groupResults.length.toString(),
-                      label: 'GRUPOS',
-                      valueColor: tkSuccess,
-                    ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _StatCard(
+                    value: ctrl.groupResults.length.toString(),
+                    label: 'GRUPOS',
+                    valueColor: tkSuccess,
                   ),
-                ],
-              )),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 20),
 
-          Text('GRUPOS — toca para detalle',
-              style: GoogleFonts.sora(
-                fontSize: 11, fontWeight: FontWeight.w700,
-                color: tkTextFaint, letterSpacing: 1.5,
-              )),
+          Text(
+            'GRUPOS — toca para detalle',
+            style: GoogleFonts.sora(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: tkTextFaint,
+              letterSpacing: 1.5,
+            ),
+          ),
           const SizedBox(height: 10),
 
           Obx(() {
@@ -167,30 +156,41 @@ class _OverviewBody extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    const Icon(Icons.inbox_outlined,
-                        size: 32, color: tkTextFaint),
+                    const Icon(
+                      Icons.inbox_outlined,
+                      size: 32,
+                      color: tkTextFaint,
+                    ),
                     const SizedBox(height: 10),
-                    Text('Sin respuestas aún',
-                        style: GoogleFonts.sora(
-                          fontSize: 13, fontWeight: FontWeight.w600,
-                          color: tkTextMid,
-                        )),
+                    Text(
+                      'Sin respuestas aún',
+                      style: GoogleFonts.sora(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: tkTextMid,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    Text('Los resultados aparecerán cuando los\nestudiantes envíen sus evaluaciones',
-                        style: GoogleFonts.sora(
-                            fontSize: 11, color: tkTextFaint),
-                        textAlign: TextAlign.center),
+                    Text(
+                      'Los resultados aparecerán cuando los\nestudiantes envíen sus evaluaciones',
+                      style: GoogleFonts.sora(fontSize: 11, color: tkTextFaint),
+                      textAlign: TextAlign.center,
+                    ),
                   ],
                 ),
               );
             }
             return Column(
-              children: ctrl.groupResults.asMap().entries.map(
+              children: ctrl.groupResults
+                  .asMap()
+                  .entries
+                  .map(
                     (e) => _GroupCard(
                       group: e.value,
                       onTap: () => ctrl.drill.value = e.key,
                     ),
-                  ).toList(),
+                  )
+                  .toList(),
             );
           }),
         ],
@@ -222,17 +222,24 @@ class _StatCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(value,
-              style: GoogleFonts.dmMono(
-                fontSize: 28, fontWeight: FontWeight.w800,
-                color: valueColor,
-              )),
+          Text(
+            value,
+            style: GoogleFonts.dmMono(
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              color: valueColor,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text(label,
-              style: GoogleFonts.sora(
-                fontSize: 10, fontWeight: FontWeight.w500,
-                color: tkTextFaint, letterSpacing: 0.4,
-              )),
+          Text(
+            label,
+            style: GoogleFonts.sora(
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+              color: tkTextFaint,
+              letterSpacing: 0.4,
+            ),
+          ),
         ],
       ),
     );
@@ -262,23 +269,31 @@ class _GroupCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(group.name,
-                    style: GoogleFonts.sora(
-                      fontSize: 13, fontWeight: FontWeight.w700,
-                      color: tkText,
-                    )),
+                Text(
+                  group.name,
+                  style: GoogleFonts.sora(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: tkText,
+                  ),
+                ),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: _tkScore(group.average).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(group.average.toStringAsFixed(1),
-                      style: GoogleFonts.dmMono(
-                        fontSize: 15, fontWeight: FontWeight.w800,
-                        color: _tkScore(group.average),
-                      )),
+                  child: Text(
+                    group.average.toStringAsFixed(1),
+                    style: GoogleFonts.dmMono(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: _tkScore(group.average),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -288,8 +303,7 @@ class _GroupCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: group.barFraction,
                 backgroundColor: tkBorder,
-                valueColor:
-                    AlwaysStoppedAnimation(_tkScore(group.average)),
+                valueColor: AlwaysStoppedAnimation(_tkScore(group.average)),
                 minHeight: 3,
               ),
             ),
@@ -327,27 +341,35 @@ class _DetailBody extends StatelessWidget {
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: List.generate(4, (i) => _CriterionRing(
-                    value: group.criteria[i],
-                    label: TeacherController.criteriaLabels[i],
-                    color: _ringColors[i],
-                  )),
+              children: List.generate(
+                4,
+                (i) => _CriterionRing(
+                  value: group.criteria[i],
+                  label: TeacherController.criteriaLabels[i],
+                  color: _ringColors[i],
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 20),
 
-          Text('ESTUDIANTES',
-              style: GoogleFonts.sora(
-                fontSize: 11, fontWeight: FontWeight.w700,
-                color: tkTextFaint, letterSpacing: 1.5,
-              )),
+          Text(
+            'ESTUDIANTES',
+            style: GoogleFonts.sora(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: tkTextFaint,
+              letterSpacing: 1.5,
+            ),
+          ),
           const SizedBox(height: 10),
 
           ...group.students.asMap().entries.map(
-                (e) => _StudentCard(
-                  student:     e.value,
-                  avatarColor: _kAvatarColors[e.key % 4],
-                )),
+            (e) => _StudentCard(
+              student: e.value,
+              avatarColor: _kAvatarColors[e.key % 4],
+            ),
+          ),
         ],
       ),
     );
@@ -369,7 +391,8 @@ class _CriterionRing extends StatelessWidget {
     return Column(
       children: [
         SizedBox(
-          width: 60, height: 60,
+          width: 60,
+          height: 60,
           child: Stack(
             alignment: Alignment.center,
             children: [
@@ -379,20 +402,27 @@ class _CriterionRing extends StatelessWidget {
                 valueColor: AlwaysStoppedAnimation(color),
                 strokeWidth: 4,
               ),
-              Text(value.toStringAsFixed(1),
-                  style: GoogleFonts.dmMono(
-                    fontSize: 13, fontWeight: FontWeight.w800,
-                    color: tkText,
-                  )),
+              Text(
+                value.toStringAsFixed(1),
+                style: GoogleFonts.dmMono(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: tkText,
+                ),
+              ),
             ],
           ),
         ),
         const SizedBox(height: 6),
-        Text(label,
-            style: GoogleFonts.sora(
-              fontSize: 8, fontWeight: FontWeight.w500,
-              color: tkTextFaint, letterSpacing: 0.5,
-            )),
+        Text(
+          label,
+          style: GoogleFonts.sora(
+            fontSize: 8,
+            fontWeight: FontWeight.w500,
+            color: tkTextFaint,
+            letterSpacing: 0.5,
+          ),
+        ),
       ],
     );
   }
@@ -416,31 +446,41 @@ class _StudentCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 34, height: 34,
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
               color: avatarColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             alignment: Alignment.center,
-            child: Text(student.initial,
-                style: GoogleFonts.sora(
-                  fontSize: 12, fontWeight: FontWeight.w800,
-                  color: avatarColor,
-                )),
+            child: Text(
+              student.initial,
+              style: GoogleFonts.sora(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: avatarColor,
+              ),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(student.name,
-                style: GoogleFonts.sora(
-                  fontSize: 13, fontWeight: FontWeight.w600,
-                  color: tkText,
-                )),
+            child: Text(
+              student.name,
+              style: GoogleFonts.sora(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: tkText,
+              ),
+            ),
           ),
-          Text(student.score.toStringAsFixed(1),
-              style: GoogleFonts.dmMono(
-                fontSize: 18, fontWeight: FontWeight.w800,
-                color: _tkScore(student.score),
-              )),
+          Text(
+            student.score.toStringAsFixed(1),
+            style: GoogleFonts.dmMono(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: _tkScore(student.score),
+            ),
+          ),
         ],
       ),
     );
