@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:example/domain/models/student.dart';
 import 'package:example/domain/models/evaluation.dart';
@@ -5,6 +6,13 @@ import 'package:example/domain/models/peer_evaluation.dart';
 import 'package:example/domain/repositories/i_auth_repository.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
 import 'package:example/domain/services/evaluation_domain_service.dart';
+import 'package:example/presentation/theme/app_colors.dart';
+
+typedef StudentStatusBadge = ({
+  String label,
+  Color textColor,
+  Color backgroundColor,
+});
 
 class StudentController extends GetxController {
   final IAuthRepository        _authRepo;
@@ -97,6 +105,88 @@ class StudentController extends GetxController {
   final peerLoadError    = ''.obs;
   final myResultsError   = ''.obs;
   final submitError      = ''.obs;
+
+  List<Evaluation> get pendingEvaluationsSorted {
+    return evaluations
+        .where((e) => evalStatuses[e.id] == EvalStudentStatus.activePending)
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  List<Evaluation> get activeEvaluations {
+    return evaluations.where((e) => e.isActive).toList();
+  }
+
+  Map<String, List<Evaluation>> get groupedAllEvaluationsByCourse {
+    return _groupEvaluationsByCourse(evaluations);
+  }
+
+  Map<String, List<Evaluation>> get groupedActiveEvaluationsByCourse {
+    return _groupEvaluationsByCourse(activeEvaluations);
+  }
+
+  EvalStudentStatus? statusFor(Evaluation eval) => evalStatuses[eval.id];
+
+  bool canEvaluate(Evaluation eval) {
+    return statusFor(eval) == EvalStudentStatus.activePending;
+  }
+
+  StudentStatusBadge statusBadgeInfoFor(Evaluation eval) {
+    final status = statusFor(eval);
+    return switch (status) {
+      EvalStudentStatus.activePending => (
+        label: 'ACTIVA',
+        textColor: skPrimary,
+        backgroundColor: skPrimaryLight,
+      ),
+      EvalStudentStatus.activeCompleted => (
+        label: 'ACTIVA · REALIZADA',
+        textColor: critGreen,
+        backgroundColor: const Color(0xFFD1FAE5),
+      ),
+      EvalStudentStatus.closedNotDone => (
+        label: 'FINALIZADA · NO REALIZADA',
+        textColor: const Color(0xFFEF4444),
+        backgroundColor: const Color(0xFFFEF2F2),
+      ),
+      EvalStudentStatus.closedCompleted => (
+        label: 'FINALIZADA',
+        textColor: skTextFaint,
+        backgroundColor: skSurfaceAlt,
+      ),
+      null => eval.isActive
+          ? (
+              label: 'ACTIVA',
+              textColor: skPrimary,
+              backgroundColor: skPrimaryLight,
+            )
+          : (
+              label: 'CERRADA',
+              textColor: skTextFaint,
+              backgroundColor: skSurfaceAlt,
+            ),
+    };
+  }
+
+  Color statusBorderColorFor(Evaluation eval) {
+    return switch (statusFor(eval)) {
+      EvalStudentStatus.activePending => skPrimaryMid,
+      EvalStudentStatus.activeCompleted => critGreen,
+      EvalStudentStatus.closedNotDone => const Color(0xFFFECACA),
+      _ => skBorder,
+    };
+  }
+
+  Map<String, List<Evaluation>> _groupEvaluationsByCourse(
+    List<Evaluation> source,
+  ) {
+    final grouped = <String, List<Evaluation>>{};
+    for (final e in source) {
+      final key = e.courseName.isNotEmpty ? e.courseName : 'Sin curso';
+      grouped.putIfAbsent(key, () => []).add(e);
+    }
+    return grouped;
+  }
 
   Future<void> loadEvalData() async {
     final s = student.value;
