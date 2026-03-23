@@ -9,6 +9,20 @@ import 'package:example/domain/repositories/i_group_repository.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
 import 'package:example/domain/repositories/i_course_repository.dart';
 
+class CsvImportSummary {
+  final String categoryName;
+  final int groupsCreated;
+  final int studentsCreated;
+  final int courseId;
+
+  const CsvImportSummary({
+    required this.categoryName,
+    required this.groupsCreated,
+    required this.studentsCreated,
+    required this.courseId,
+  });
+}
+
 class TeacherController extends GetxController {
   final ITeacherAuthRepository _authRepo;
   final IGroupRepository       _groupRepo;
@@ -144,6 +158,8 @@ class TeacherController extends GetxController {
   final categories    = <GroupCategory>[].obs;
   final importLoading = false.obs;
   final importError   = ''.obs;
+  final importProgress = ''.obs;
+  final lastImportSummary = Rxn<CsvImportSummary>();
 
   int get totalGroups =>
       categories.fold(0, (s, c) => s + c.groupCount);
@@ -163,18 +179,29 @@ class TeacherController extends GetxController {
   Future<void> importCsv(String csvContent, String categoryName, int courseId) async {
     importLoading.value = true;
     importError.value   = '';
+    importProgress.value = 'Preparando importación...';
+    lastImportSummary.value = null;
     final tid = int.tryParse(teacher.value?.id ?? '') ?? 0;
     try {
+      importProgress.value = 'Creando grupos y estudiantes...';
       final cat = await _groupRepo.importCsv(csvContent, categoryName, tid, courseId);
       categories.insert(0, cat);
       selectedCategoryId.value   ??= cat.id;
       if (selectedCategoryId.value == cat.id) {
         selectedCategoryName.value = cat.name;
       }
+      lastImportSummary.value = CsvImportSummary(
+        categoryName: cat.name,
+        groupsCreated: cat.groupCount,
+        studentsCreated: cat.studentCount,
+        courseId: courseId,
+      );
     } catch (e) {
       importError.value = 'Error al importar: $e';
+      lastImportSummary.value = null;
     } finally {
       importLoading.value = false;
+      importProgress.value = '';
     }
   }
 

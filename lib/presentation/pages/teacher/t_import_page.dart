@@ -40,6 +40,118 @@ class TImportPage extends StatelessWidget {
     if (courseId == null) return; // user cancelled
 
     await ctrl.importCsv(content, categoryName, courseId);
+
+    if (!context.mounted) return;
+    final summary = ctrl.lastImportSummary.value;
+    if (summary == null) return;
+
+    await _showImportSummaryDialog(context, summary);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Importación lista: ${summary.studentsCreated} estudiantes y ${summary.groupsCreated} grupos creados.',
+          style: GoogleFonts.sora(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+        duration: const Duration(seconds: 4),
+        backgroundColor: tkSurface,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _showImportSummaryDialog(
+    BuildContext context,
+    CsvImportSummary summary,
+  ) {
+    return showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: tkSurface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: tkGold.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.check_rounded,
+                        size: 18,
+                        color: tkGold,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Importación completada',
+                        style: GoogleFonts.sora(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: tkText,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  summary.categoryName,
+                  style: GoogleFonts.sora(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: tkText,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Se crearon ${summary.studentsCreated} estudiantes y ${summary.groupsCreated} grupos.',
+                  style: GoogleFonts.sora(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: tkTextMid,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(ctx).pop(),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 11),
+                      decoration: BoxDecoration(
+                        color: tkGold,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Entendido',
+                        style: GoogleFonts.sora(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: tkBackground,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   /// Shows a bottom sheet to pick (or quick-create) a course.
@@ -248,10 +360,54 @@ class TImportPage extends StatelessWidget {
                       );
                     }),
 
+                    Obx(() {
+                      final loading = ctrl.importLoading.value;
+                      final status = ctrl.importProgress.value;
+                      if (!loading || status.isEmpty) {
+                        return const SizedBox(height: 12);
+                      }
+                      return Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(top: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: tkSurface,
+                          border: Border.all(color: tkBorder),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: tkGold,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                status,
+                                style: GoogleFonts.sora(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: tkTextMid,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+
                     // Error message
                     Obx(() {
                       final err = ctrl.importError.value;
-                      if (err.isEmpty) return const SizedBox(height: 16);
+                      if (err.isEmpty) return const SizedBox(height: 6);
                       return Padding(
                         padding: const EdgeInsets.only(top: 10),
                         child: Text(
