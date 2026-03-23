@@ -1,4 +1,5 @@
 import 'package:example/data/services/database_service.dart';
+import 'package:example/data/services/roble_schema.dart';
 import 'package:example/domain/models/course.dart';
 import 'package:example/domain/models/evaluation.dart';
 import 'package:example/domain/models/peer_evaluation.dart';
@@ -64,7 +65,10 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     required String visibility,
     required int teacherId,
   }) async {
-    final existing = await _db.robleRead('evaluations', filters: {'teacher_id': teacherId});
+    final existing = await _db.robleRead(
+      RobleTables.evaluation,
+      filters: {'teacher_id': teacherId},
+    );
     final duplicate = existing.any(
       (r) => _asString(r['name']).toLowerCase() == name.toLowerCase(),
     );
@@ -75,7 +79,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     final now = DateTime.now();
     final closesAt = now.add(Duration(hours: hours));
 
-    final row = await _db.robleCreate('evaluations', {
+    final row = await _db.robleCreate(RobleTables.evaluation, {
       'name': name,
       'category_id': categoryId,
       'hours': hours,
@@ -85,7 +89,10 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       'teacher_id': teacherId,
     });
 
-    final catRows = await _db.robleRead('group_categories', filters: {'id': categoryId});
+    final catRows = await _db.robleRead(
+      RobleTables.category,
+      filters: {'id': categoryId},
+    );
     final catName = catRows.isNotEmpty ? _asString(catRows.first['name']) : '';
 
     return Evaluation(
@@ -104,9 +111,12 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
   @override
   Future<List<Evaluation>> getAll(int teacherId) async {
-    final evalRows = await _db.robleRead('evaluations', filters: {'teacher_id': teacherId});
-    final catRows = await _db.robleRead('group_categories');
-    final courseRows = await _db.robleRead('courses');
+    final evalRows = await _db.robleRead(
+      RobleTables.evaluation,
+      filters: {'teacher_id': teacherId},
+    );
+    final catRows = await _db.robleRead(RobleTables.category);
+    final courseRows = await _db.robleRead(RobleTables.course);
 
     final courseById = <int, String>{};
     for (final c in courseRows) {
@@ -142,7 +152,10 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
   @override
   Future<void> rename(int evalId, String newName, int teacherId) async {
-    final evalRows = await _db.robleRead('evaluations', filters: {'teacher_id': teacherId});
+    final evalRows = await _db.robleRead(
+      RobleTables.evaluation,
+      filters: {'teacher_id': teacherId},
+    );
 
     for (final row in evalRows) {
       if (_rowId(row) != evalId && _asString(row['name']).toLowerCase() == newName.toLowerCase()) {
@@ -156,24 +169,27 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       throw Exception('No se encontró la evaluación');
     }
 
-    await _db.robleUpdate('evaluations', key, {'name': newName});
+    await _db.robleUpdate(RobleTables.evaluation, key, {'name': newName});
   }
 
   @override
   Future<void> delete(int evalId) async {
-    final responseRows = await _db.robleRead('evaluation_responses', filters: {'eval_id': evalId});
+    final responseRows = await _db.robleRead(
+      RobleTables.evaluationCriterium,
+      filters: {'eval_id': evalId},
+    );
     for (final row in responseRows) {
       final key = row['_id']?.toString();
       if (key != null && key.isNotEmpty) {
-        await _db.robleDelete('evaluation_responses', key);
+        await _db.robleDelete(RobleTables.evaluationCriterium, key);
       }
     }
 
-    final evalRows = await _db.robleRead('evaluations');
+    final evalRows = await _db.robleRead(RobleTables.evaluation);
     final target = _findById(evalRows, evalId);
     final evalKey = target?['_id']?.toString();
     if (evalKey != null && evalKey.isNotEmpty) {
-      await _db.robleDelete('evaluations', evalKey);
+      await _db.robleDelete(RobleTables.evaluation, evalKey);
     }
   }
 
@@ -181,20 +197,29 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
   @override
   Future<List<GroupResult>> getGroupResults(int evalId) async {
-    final evalRows = await _db.robleRead('evaluations');
+    final evalRows = await _db.robleRead(RobleTables.evaluation);
     final eval = _findById(evalRows, evalId);
     if (eval == null) return [];
 
     final categoryId = _asInt(eval['category_id']);
-    final groups = await _db.robleRead('groups', filters: {'category_id': categoryId});
-    final responses = await _db.robleRead('evaluation_responses', filters: {'eval_id': evalId});
+    final groups = await _db.robleRead(
+      RobleTables.groups,
+      filters: {'category_id': categoryId},
+    );
+    final responses = await _db.robleRead(
+      RobleTables.evaluationCriterium,
+      filters: {'eval_id': evalId},
+    );
 
     final result = <GroupResult>[];
     const criterionIds = ['punct', 'contrib', 'commit', 'attitude'];
 
     for (final g in groups) {
       final gid = _rowId(g);
-      final members = await _db.robleRead('group_members', filters: {'group_id': gid});
+      final members = await _db.robleRead(
+        RobleTables.userGroup,
+        filters: {'group_id': gid},
+      );
       final memberIds = members.map(_rowId).toSet();
 
       final students = <StudentResult>[];
@@ -260,11 +285,11 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
   @override
   Future<List<Evaluation>> getEvaluationsForStudent(String email) async {
     final normalized = email.toLowerCase();
-    final members = await _db.robleRead('group_members');
-    final groups = await _db.robleRead('groups');
-    final categories = await _db.robleRead('group_categories');
-    final courses = await _db.robleRead('courses');
-    final evals = await _db.robleRead('evaluations');
+    final members = await _db.robleRead(RobleTables.userGroup);
+    final groups = await _db.robleRead(RobleTables.groups);
+    final categories = await _db.robleRead(RobleTables.category);
+    final courses = await _db.robleRead(RobleTables.course);
+    final evals = await _db.robleRead(RobleTables.evaluation);
 
     final myGroupIds = members
         .where((m) => _asString(m['username']).toLowerCase() == normalized)
@@ -321,15 +346,21 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
   Future<String?> getGroupNameForStudent(int evalId, String email) async {
     final normalized = email.toLowerCase();
 
-    final evalRows = await _db.robleRead('evaluations');
+    final evalRows = await _db.robleRead(RobleTables.evaluation);
     final eval = _findById(evalRows, evalId);
     if (eval == null) return null;
 
     final categoryId = _asInt(eval['category_id']);
-    final groups = await _db.robleRead('groups', filters: {'category_id': categoryId});
+    final groups = await _db.robleRead(
+      RobleTables.groups,
+      filters: {'category_id': categoryId},
+    );
 
     for (final g in groups) {
-      final members = await _db.robleRead('group_members', filters: {'group_id': _rowId(g)});
+      final members = await _db.robleRead(
+        RobleTables.userGroup,
+        filters: {'group_id': _rowId(g)},
+      );
       final found = members.any((m) => _asString(m['username']).toLowerCase() == normalized);
       if (found) return _asString(g['name']);
     }
@@ -341,17 +372,23 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
   Future<List<Peer>> getPeersForStudent(int evalId, String email) async {
     final normalized = email.toLowerCase();
 
-    final evalRows = await _db.robleRead('evaluations');
+    final evalRows = await _db.robleRead(RobleTables.evaluation);
     final eval = _findById(evalRows, evalId);
     if (eval == null) return [];
 
     final categoryId = _asInt(eval['category_id']);
-    final groups = await _db.robleRead('groups', filters: {'category_id': categoryId});
+    final groups = await _db.robleRead(
+      RobleTables.groups,
+      filters: {'category_id': categoryId},
+    );
 
     int? groupId;
     for (final g in groups) {
       final gid = _rowId(g);
-      final members = await _db.robleRead('group_members', filters: {'group_id': gid});
+      final members = await _db.robleRead(
+        RobleTables.userGroup,
+        filters: {'group_id': gid},
+      );
       final isInGroup = members.any((m) => _asString(m['username']).toLowerCase() == normalized);
       if (isInGroup) {
         groupId = gid;
@@ -361,7 +398,10 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
     if (groupId == null) return [];
 
-    final rows = await _db.robleRead('group_members', filters: {'group_id': groupId});
+    final rows = await _db.robleRead(
+      RobleTables.userGroup,
+      filters: {'group_id': groupId},
+    );
     return rows
         .where((m) => _asString(m['username']).toLowerCase() != normalized)
         .map((m) {
@@ -378,9 +418,9 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
   @override
   Future<List<Course>> getCoursesForStudent(String email) async {
     final normalized = email.toLowerCase();
-    final members = await _db.robleRead('group_members');
-    final groups = await _db.robleRead('groups');
-    final categories = await _db.robleRead('group_categories');
+    final members = await _db.robleRead(RobleTables.userGroup);
+    final groups = await _db.robleRead(RobleTables.groups);
+    final categories = await _db.robleRead(RobleTables.category);
 
     final groupsById = <int, Map<String, dynamic>>{};
     for (final g in groups) {
@@ -428,7 +468,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     required Map<String, int> scores,
   }) async {
     for (final entry in scores.entries) {
-      await _db.robleCreate('evaluation_responses', {
+      await _db.robleCreate(RobleTables.evaluationCriterium, {
         'eval_id': evalId,
         'evaluator_id': evaluatorStudentId,
         'evaluated_member_id': evaluatedMemberId,
@@ -444,7 +484,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     required int evaluatorStudentId,
     required int evaluatedMemberId,
   }) async {
-    final rows = await _db.robleRead('evaluation_responses', filters: {
+    final rows = await _db.robleRead(RobleTables.evaluationCriterium, filters: {
       'eval_id': evalId,
       'evaluator_id': evaluatorStudentId,
       'evaluated_member_id': evaluatedMemberId,
@@ -456,17 +496,23 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
   Future<List<CriterionResult>> getMyResults(int evalId, String email) async {
     final normalized = email.toLowerCase();
 
-    final evalRows = await _db.robleRead('evaluations');
+    final evalRows = await _db.robleRead(RobleTables.evaluation);
     final eval = _findById(evalRows, evalId);
     if (eval == null) return [];
 
     final categoryId = _asInt(eval['category_id']);
-    final groups = await _db.robleRead('groups', filters: {'category_id': categoryId});
+    final groups = await _db.robleRead(
+      RobleTables.groups,
+      filters: {'category_id': categoryId},
+    );
 
     final myMemberIds = <int>{};
     for (final g in groups) {
       final gid = _rowId(g);
-      final members = await _db.robleRead('group_members', filters: {'group_id': gid});
+      final members = await _db.robleRead(
+        RobleTables.userGroup,
+        filters: {'group_id': gid},
+      );
       for (final m in members) {
         if (_asString(m['username']).toLowerCase() == normalized) {
           myMemberIds.add(_rowId(m));
@@ -476,7 +522,10 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
     if (myMemberIds.isEmpty) return [];
 
-    final rows = await _db.robleRead('evaluation_responses', filters: {'eval_id': evalId});
+    final rows = await _db.robleRead(
+      RobleTables.evaluationCriterium,
+      filters: {'eval_id': evalId},
+    );
 
     final sums = <String, double>{};
     final counts = <String, int>{};
@@ -509,17 +558,23 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
   }) async {
     final normalized = email.toLowerCase();
 
-    final evalRows = await _db.robleRead('evaluations');
+    final evalRows = await _db.robleRead(RobleTables.evaluation);
     final eval = _findById(evalRows, evalId);
     if (eval == null) return false;
 
     final categoryId = _asInt(eval['category_id']);
-    final groups = await _db.robleRead('groups', filters: {'category_id': categoryId});
+    final groups = await _db.robleRead(
+      RobleTables.groups,
+      filters: {'category_id': categoryId},
+    );
 
     int? groupId;
     for (final g in groups) {
       final gid = _rowId(g);
-      final members = await _db.robleRead('group_members', filters: {'group_id': gid});
+      final members = await _db.robleRead(
+        RobleTables.userGroup,
+        filters: {'group_id': gid},
+      );
       final found = members.any((m) => _asString(m['username']).toLowerCase() == normalized);
       if (found) {
         groupId = gid;
@@ -529,7 +584,10 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
     if (groupId == null) return false;
 
-    final groupMembers = await _db.robleRead('group_members', filters: {'group_id': groupId});
+    final groupMembers = await _db.robleRead(
+      RobleTables.userGroup,
+      filters: {'group_id': groupId},
+    );
     final peerIds = groupMembers
         .where((m) => _asString(m['username']).toLowerCase() != normalized)
         .map(_rowId)
@@ -537,7 +595,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
     if (peerIds.isEmpty) return false;
 
-    final responses = await _db.robleRead('evaluation_responses', filters: {
+    final responses = await _db.robleRead(RobleTables.evaluationCriterium, filters: {
       'eval_id': evalId,
       'evaluator_id': studentId,
     });

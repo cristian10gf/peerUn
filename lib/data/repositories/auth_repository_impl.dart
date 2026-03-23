@@ -1,4 +1,5 @@
 import 'package:example/data/services/database_service.dart';
+import 'package:example/data/services/roble_schema.dart';
 import 'package:example/domain/models/student.dart';
 import 'package:example/domain/repositories/i_auth_repository.dart';
 
@@ -32,14 +33,26 @@ class AuthRepositoryImpl implements IAuthRepository {
     final refreshToken = (auth['refreshToken'] ?? '').toString();
     if (accessToken.isEmpty) return null;
 
-    final role = (_db.roleFromAccessToken(accessToken) ?? '').toLowerCase();
-    if (role != 'student') return null;
+    _db.setSessionTokens(accessToken: accessToken, refreshToken: refreshToken);
+
+    Map<String, dynamic>? userRow;
+    try {
+      userRow = await _db.robleFindUserByEmail(normalized);
+    } catch (_) {
+      // Keep login available while table permissions are being configured.
+    }
 
     final claims = _db.decodeJwtClaims(accessToken);
-    final sub = claims['sub']?.toString() ?? normalized;
-    final id = DatabaseService.stableNumericIdFromSeed(sub).toString();
+    final fallbackRole = (claims['role'] ?? '').toString().trim().toLowerCase();
+    final role = (userRow?['role'] ?? fallbackRole).toString().trim().toLowerCase();
+    if (role != 'student') return null;
 
-    final name = claims['name']?.toString() ?? _displayNameFromEmail(normalized);
+    final idSeed = (userRow?['id'] ?? userRow?['_id'] ?? claims['sub'] ?? normalized)
+        .toString();
+    final id = DatabaseService.stableNumericIdFromSeed(idSeed).toString();
+
+    final name = (userRow?['name'] ?? claims['name'] ?? _displayNameFromEmail(normalized))
+        .toString();
     final student = Student(
       id: id,
       name: name,
@@ -63,11 +76,44 @@ class AuthRepositoryImpl implements IAuthRepository {
   @override
   Future<Student> register(String name, String email, String password) async {
     final normalized = email.trim().toLowerCase();
+    final cleanName = name.trim();
+
     await _db.robleSignupDirect(
       email: normalized,
       password: password,
-      name: name.trim(),
+      name: cleanName,
     );
+
+    // Create/sync user profile row used by app role resolution.
+    final auth = await _db.robleLogin(email: normalized, password: password);
+    final accessToken = (auth['accessToken'] ?? '').toString();
+    final refreshToken = (auth['refreshToken'] ?? '').toString();
+    if (accessToken.isNotEmpty) {
+      _db.setSessionTokens(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+      );
+    }
+
+    final userPayload = {
+      'name': cleanName,
+      'email': normalized,
+      'role': 'student',
+    };
+
+    try {
+      await _db.robleCreate(RobleTables.users, userPayload);
+    } catch (e) {
+      final existing = await _db.robleFindUserByEmail(normalized);
+      final key = existing?['_id']?.toString() ?? '';
+      if (key.isNotEmpty) {
+        await _db.robleUpdate(RobleTables.users, key, userPayload);
+      } else {
+        throw Exception(
+          'Registro en auth completado, pero no se pudo sincronizar users: $e',
+        );
+      }
+    }
 
     final logged = await login(normalized, password);
     if (logged == null) {
@@ -92,6 +138,15 @@ class AuthRepositoryImpl implements IAuthRepository {
   Future<Student?> getCurrentSession() async {
     final session = await _db.readStudentSession();
     if (session == null) return null;
+
+    final accessToken = session['access_token']?.toString() ?? '';
+    final refreshToken = session['refresh_token']?.toString() ?? '';
+    if (accessToken.isNotEmpty) {
+      _db.setSessionTokens(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+      );
+    }
 
     return Student(
       id: session['id']?.toString() ?? '',

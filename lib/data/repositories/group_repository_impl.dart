@@ -1,10 +1,144 @@
 import 'package:example/data/services/database_service.dart';
+import 'package:example/data/services/roble_schema.dart';
 import 'package:example/domain/models/group_category.dart';
 import 'package:example/domain/repositories/i_group_repository.dart';
 
 class GroupRepositoryImpl implements IGroupRepository {
   final DatabaseService _db;
   GroupRepositoryImpl(this._db);
+
+  bool _looksLikeAlreadyRegistered(Object error) {
+    final msg = error.toString().toLowerCase();
+    return msg.contains('409') ||
+        msg.contains('registrado') ||
+        msg.contains('already') ||
+        msg.contains('duplicate');
+  }
+
+  Future<bool> _tableExists(String tableName) async {
+    try {
+      await _db.robleRead(tableName);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  String _normalizeEmail(String username) {
+    final value = username.trim().toLowerCase();
+    if (value.contains('@')) return value;
+    return '$value@uninorte.edu.co';
+  }
+
+  Future<Map<String, dynamic>> _upsertUserProfile({
+    required String authUserId,
+    required String email,
+    required String name,
+    required String role,
+  }) async {
+    final payload = {
+      'user_id': authUserId,
+      'email': email,
+      'name': name,
+      'role': role,
+    };
+
+    try {
+      return await _db.robleCreate(RobleTables.users, payload);
+    } catch (_) {
+      final existing = await _db.robleFindUserByEmail(email);
+      if (existing == null) rethrow;
+
+      final key = existing['_id']?.toString() ?? '';
+      if (key.isEmpty) rethrow;
+
+      await _db.robleUpdate(RobleTables.users, key, payload);
+      final refreshed = await _db.robleFindUserByEmail(email);
+      return refreshed ?? existing;
+    }
+  }
+
+  Future<void> _ensureUserCourseRelation({
+    required int courseId,
+    required int userId,
+    required String role,
+  }) async {
+    if (!await _tableExists(RobleTables.userCourse)) return;
+
+    final existing = await _db.robleRead(
+      RobleTables.userCourse,
+      filters: {
+        'course_id': courseId,
+        'user_id': userId,
+      },
+    );
+    if (existing.isNotEmpty) return;
+
+    await _db.robleCreate(RobleTables.userCourse, {
+      'course_id': courseId,
+      'user_id': userId,
+      'role': role,
+    });
+  }
+
+  Future<void> _ensureUserGroupRelation({
+    required int groupId,
+    required int userId,
+  }) async {
+    if (!await _tableExists(RobleTables.userGroup)) return;
+
+    final existing = await _db.robleRead(
+      RobleTables.userGroup,
+      filters: {
+        'group_id': groupId,
+        'user_id': userId,
+      },
+    );
+    if (existing.isNotEmpty) return;
+
+    await _db.robleCreate(RobleTables.userGroup, {
+      'group_id': groupId,
+      'user_id': userId,
+    });
+  }
+
+  Future<String> _resolveStudentAuthId({
+    required String email,
+    required String name,
+    required String sharedPassword,
+    required String teacherAccessToken,
+    required String teacherRefreshToken,
+  }) async {
+    try {
+      await _db.robleSignupDirect(
+        email: email,
+        password: sharedPassword,
+        name: name,
+      );
+    } catch (e) {
+      if (!_looksLikeAlreadyRegistered(e)) rethrow;
+    }
+
+    final login = await _db.robleLogin(email: email, password: sharedPassword);
+    final accessToken = (login['accessToken'] ?? '').toString();
+    if (accessToken.isEmpty) {
+      throw Exception('No se pudo autenticar estudiante: $email');
+    }
+
+    final claims = _db.decodeJwtClaims(accessToken);
+    final authUserId = claims['sub']?.toString() ?? '';
+    if (authUserId.isEmpty) {
+      throw Exception('No se pudo obtener user_id auth para: $email');
+    }
+
+    // Restore teacher token context to continue data writes.
+    _db.setSessionTokens(
+      accessToken: teacherAccessToken,
+      refreshToken: teacherRefreshToken,
+    );
+
+    return authUserId;
+  }
 
   int _asInt(dynamic value, {int fallback = 0}) {
     if (value is int) return value;
@@ -16,36 +150,91 @@ class GroupRepositoryImpl implements IGroupRepository {
   int _rowId(Map<String, dynamic> row) => _asInt(row['id'] ?? row['_id']);
 
   DateTime _asDate(dynamic value) {
+    if (value is DateTime) return value;
+    if (value is String) {
+      final parsedDate = DateTime.tryParse(value);
+      if (parsedDate != null) return parsedDate;
+      final parsedInt = int.tryParse(value);
+      if (parsedInt != null) {
+        return DateTime.fromMillisecondsSinceEpoch(parsedInt);
+      }
+    }
     final millis = _asInt(value, fallback: DateTime.now().millisecondsSinceEpoch);
     return DateTime.fromMillisecondsSinceEpoch(millis);
   }
 
   @override
   Future<List<GroupCategory>> getAll(int teacherId) async {
-    final catRows = await _db.robleRead(
-      'group_categories',
-      filters: {'teacher_id': teacherId},
-    );
+    final catRows = await _db.robleRead(RobleTables.category);
+    final courseRows = await _db.robleRead(RobleTables.course);
+    final usersRows = await _db.robleRead(RobleTables.users);
+
+    final usersById = <int, Map<String, dynamic>>{};
+    for (final u in usersRows) {
+      usersById[_asInt(u['id'] ?? u['_id'])] = u;
+    }
+
+    final teacherCourseIds = <int>{};
+    if (await _tableExists(RobleTables.userCourse)) {
+      final claims = await _db.readAuthTokenClaims();
+      final email = (claims['email'] ?? '').toString().trim().toLowerCase();
+      if (email.isNotEmpty) {
+        final teacherUser = await _db.robleFindUserByEmail(email);
+        final teacherUserId = _asInt(teacherUser?['id'] ?? teacherUser?['_id']);
+        if (teacherUserId > 0) {
+          final relations = await _db.robleRead(
+            RobleTables.userCourse,
+            filters: {'user_id': teacherUserId, 'role': 'teacher'},
+          );
+          for (final rel in relations) {
+            teacherCourseIds.add(_asInt(rel['course_id']));
+          }
+        }
+      }
+    }
+
+    if (teacherCourseIds.isEmpty) {
+      for (final c in courseRows) {
+        final createdBy = _asInt(c['created_by'] ?? c['teacher_id']);
+        if (createdBy == teacherId) teacherCourseIds.add(_rowId(c));
+      }
+    }
 
     final result = <GroupCategory>[];
     for (final cat in catRows) {
+      final courseId = _asInt(cat['course_id']);
+      if (teacherCourseIds.isNotEmpty && !teacherCourseIds.contains(courseId)) {
+        continue;
+      }
+
       final catId = _rowId(cat);
-      final grpRows = await _db.robleRead('groups', filters: {'category_id': catId});
+      final grpRows = await _db.robleRead(
+        RobleTables.groups,
+        filters: {'category_id': catId},
+      );
 
       final groups = <CourseGroup>[];
       for (final grp in grpRows) {
         final grpId = _rowId(grp);
-        final memRows = await _db.robleRead('group_members', filters: {'group_id': grpId});
+        final memberRows = await _db.robleRead(
+          RobleTables.userGroup,
+          filters: {'group_id': grpId},
+        );
 
-        final members = memRows
-            .map(
-              (m) => GroupMember(
-                id: _rowId(m),
-                name: (m['name'] ?? '').toString(),
-                username: (m['username'] ?? '').toString(),
-              ),
-            )
-            .toList();
+        final members = <GroupMember>[];
+        for (final membership in memberRows) {
+          final userId = _asInt(membership['user_id']);
+          final user = usersById[userId];
+          if (user == null) continue;
+
+          members.add(
+            GroupMember(
+              id: userId,
+              name: (user['name'] ?? '').toString(),
+              username: (user['email'] ?? '').toString(),
+            ),
+          );
+        }
 
         groups.add(CourseGroup(
           id: grpId,
@@ -58,9 +247,9 @@ class GroupRepositoryImpl implements IGroupRepository {
         GroupCategory(
           id: catId,
           name: (cat['name'] ?? '').toString(),
-          importedAt: _asDate(cat['imported_at']),
+          importedAt: _asDate(cat['created_at'] ?? cat['imported_at']),
           groups: groups,
-          courseId: _asInt(cat['course_id']),
+          courseId: courseId,
         ),
       );
     }
@@ -76,6 +265,13 @@ class GroupRepositoryImpl implements IGroupRepository {
     int teacherId,
     int courseId,
   ) async {
+    final teacherTokens = await _db.readAuthTokens();
+    final teacherAccessToken = teacherTokens?['access_token']?.toString() ?? '';
+    final teacherRefreshToken = teacherTokens?['refresh_token']?.toString() ?? '';
+    if (teacherAccessToken.isEmpty || teacherRefreshToken.isEmpty) {
+      throw Exception('Sesion de profesor no valida para aprovisionar datos');
+    }
+
     final content = csvContent.startsWith('\uFEFF') ? csvContent.substring(1) : csvContent;
     final lines = content
         .split('\n')
@@ -103,10 +299,9 @@ class GroupRepositoryImpl implements IGroupRepository {
     if (groupMap.isEmpty) throw Exception('Sin datos de grupos');
 
     final now = DateTime.now().millisecondsSinceEpoch;
-    final catRow = await _db.robleCreate('group_categories', {
+    final catRow = await _db.robleCreate(RobleTables.category, {
       'name': categoryName,
-      'imported_at': now,
-      'teacher_id': teacherId,
+      'description': 'Importado desde CSV',
       'course_id': courseId,
     });
 
@@ -114,7 +309,7 @@ class GroupRepositoryImpl implements IGroupRepository {
     final groups = <CourseGroup>[];
 
     for (final entry in groupMap.entries) {
-      final grpRow = await _db.robleCreate('groups', {
+      final grpRow = await _db.robleCreate(RobleTables.groups, {
         'category_id': catId,
         'name': entry.key,
       });
@@ -122,16 +317,35 @@ class GroupRepositoryImpl implements IGroupRepository {
       final grpId = _rowId(grpRow);
       final members = <GroupMember>[];
       for (final m in entry.value) {
-        final memberRow = await _db.robleCreate('group_members', {
-          'group_id': grpId,
-          'name': m.name,
-          'username': m.username,
-        });
+        final studentEmail = _normalizeEmail(m.username);
+        final studentAuthId = await _resolveStudentAuthId(
+          email: studentEmail,
+          name: m.name,
+          sharedPassword: _db.studentDefaultPassword,
+          teacherAccessToken: teacherAccessToken,
+          teacherRefreshToken: teacherRefreshToken,
+        );
+
+        final userRow = await _upsertUserProfile(
+          authUserId: studentAuthId,
+          email: studentEmail,
+          name: m.name,
+          role: 'student',
+        );
+        final userId = _asInt(userRow['id'] ?? userRow['_id']);
+
+        await _ensureUserGroupRelation(groupId: grpId, userId: userId);
+        await _ensureUserCourseRelation(
+          courseId: courseId,
+          userId: userId,
+          role: 'student',
+        );
+
         members.add(
           GroupMember(
-            id: _rowId(memberRow),
-            name: (memberRow['name'] ?? m.name).toString(),
-            username: (memberRow['username'] ?? m.username).toString(),
+            id: userId,
+            name: m.name,
+            username: studentEmail,
           ),
         );
       }
@@ -150,7 +364,7 @@ class GroupRepositoryImpl implements IGroupRepository {
 
   @override
   Future<void> delete(int categoryId) async {
-    final catRows = await _db.robleRead('group_categories');
+    final catRows = await _db.robleRead(RobleTables.category);
     Map<String, dynamic>? target;
     for (final row in catRows) {
       if (_rowId(row) == categoryId) {
@@ -160,25 +374,31 @@ class GroupRepositoryImpl implements IGroupRepository {
     }
     if (target == null) return;
 
-    final grpRows = await _db.robleRead('groups', filters: {'category_id': categoryId});
+    final grpRows = await _db.robleRead(
+      RobleTables.groups,
+      filters: {'category_id': categoryId},
+    );
     for (final grp in grpRows) {
       final grpId = _rowId(grp);
       final grpKey = grp['_id']?.toString();
-      final memRows = await _db.robleRead('group_members', filters: {'group_id': grpId});
+      final memRows = await _db.robleRead(
+        RobleTables.userGroup,
+        filters: {'group_id': grpId},
+      );
       for (final m in memRows) {
         final mk = m['_id']?.toString();
         if (mk != null && mk.isNotEmpty) {
-          await _db.robleDelete('group_members', mk);
+          await _db.robleDelete(RobleTables.userGroup, mk);
         }
       }
       if (grpKey != null && grpKey.isNotEmpty) {
-        await _db.robleDelete('groups', grpKey);
+        await _db.robleDelete(RobleTables.groups, grpKey);
       }
     }
 
     final catKey = target['_id']?.toString();
     if (catKey != null && catKey.isNotEmpty) {
-      await _db.robleDelete('group_categories', catKey);
+      await _db.robleDelete(RobleTables.category, catKey);
     }
   }
 }
