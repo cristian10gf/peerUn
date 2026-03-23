@@ -46,11 +46,11 @@ class LoginController extends GetxController {
       }
 
       if (result.role == AppUserRole.teacher) {
-        await _teacherController.checkSession();
-        _studentController.student.value = null;
+        _studentController.clearSessionStateForRoleSwitch();
+        await _teacherController.activateSessionFromLogin();
       } else {
-        await _studentController.checkSession();
-        _teacherController.teacher.value = null;
+        _teacherController.clearSessionStateForRoleSwitch();
+        await _studentController.activateSessionFromLogin();
       }
 
       Get.offAllNamed(result.homeRoute);

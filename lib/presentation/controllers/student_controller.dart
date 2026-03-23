@@ -52,6 +52,20 @@ class StudentController extends GetxController {
     }
   }
 
+  Future<void> activateSessionFromLogin() async {
+    await checkSession();
+  }
+
+  void clearSessionStateForRoleSwitch() {
+    student.value = null;
+    authError.value = '';
+    evalLoadError.value = '';
+    peerLoadError.value = '';
+    myResultsError.value = '';
+    submitError.value = '';
+    _resetEvalState();
+  }
+
   Future<void> register(String name, String email, String password) async {
     isLoading.value = true;
     authError.value = '';
@@ -79,18 +93,29 @@ class StudentController extends GetxController {
   final hasActiveEval    = false.obs;
   final evaluations      = <Evaluation>[].obs;
   final evalStatuses     = <int, EvalStudentStatus>{}.obs;
+  final evalLoadError    = ''.obs;
+  final peerLoadError    = ''.obs;
+  final myResultsError   = ''.obs;
+  final submitError      = ''.obs;
 
   Future<void> loadEvalData() async {
     final s = student.value;
     if (s == null) return;
     final studentId = int.parse(s.id);
+    evalLoadError.value = '';
+    peerLoadError.value = '';
+    myResultsError.value = '';
+    submitError.value = '';
 
     // Load all evaluations this student is part of
     List<Evaluation> evalList = [];
     try {
       evalList = await _evalRepo.getEvaluationsForStudent(s.email);
       evaluations.assignAll(evalList);
-    } catch (_) {}
+    } catch (e) {
+      evalLoadError.value = 'Error al cargar evaluaciones: $e';
+      evaluations.clear();
+    }
 
     // Compute per-eval completion status
     await _computeStatuses(evalList, s.email, studentId);
@@ -135,21 +160,26 @@ class StudentController extends GetxController {
               ? EvalStudentStatus.closedCompleted
               : EvalStudentStatus.closedNotDone;
         }
-      } catch (_) {
+      } catch (e) {
         statuses[eval.id] = eval.isActive
             ? EvalStudentStatus.activePending
             : EvalStudentStatus.closedNotDone;
+        if (evalLoadError.value.isEmpty) {
+          evalLoadError.value = 'No se pudo calcular el estado de algunas evaluaciones: $e';
+        }
       }
     }
     evalStatuses.assignAll(statuses);
   }
 
   Future<void> _loadGroupAndPeers(Evaluation eval, dynamic s) async {
+    peerLoadError.value = '';
     try {
       final gName = await _evalRepo.getGroupNameForStudent(eval.id, s.email);
       currentGroupName.value = gName ?? eval.categoryName;
-    } catch (_) {
+    } catch (e) {
       currentGroupName.value = eval.categoryName;
+      peerLoadError.value = 'Error al cargar el grupo: $e';
     }
 
     final studentId = int.parse(s.id);
@@ -163,7 +193,9 @@ class StudentController extends GetxController {
           evaluatedMemberId:  int.parse(p.id),
         );
       }
-    } catch (_) {}
+    } catch (e) {
+      peerLoadError.value = 'Error al cargar pares: $e';
+    }
     peers.assignAll(peerList);
   }
 
@@ -183,20 +215,26 @@ class StudentController extends GetxController {
     final s = student.value;
     if (s == null) return;
     activeEvalDb.value = eval;
+    peerLoadError.value = '';
     try {
       final gName = await _evalRepo.getGroupNameForStudent(eval.id, s.email);
       currentGroupName.value = gName ?? eval.categoryName;
-    } catch (_) {
+    } catch (e) {
       currentGroupName.value = eval.categoryName;
+      peerLoadError.value = 'Error al cargar el grupo: $e';
     }
     await _loadMyResultsInternal(eval.id, s.email);
   }
 
   Future<void> _loadMyResultsInternal(int evalId, String email) async {
+    myResultsError.value = '';
     try {
       final results = await _evalRepo.getMyResults(evalId, email);
       myResults.assignAll(results);
-    } catch (_) {}
+    } catch (e) {
+      myResultsError.value = 'Error al cargar resultados: $e';
+      myResults.clear();
+    }
   }
 
   // ── Eval list ─────────────────────────────────────────────────────────────
@@ -235,7 +273,9 @@ class StudentController extends GetxController {
     final eval = activeEvalDb.value;
     if (s == null || eval == null) return;
 
+    submitError.value = '';
     final studentId = int.parse(s.id);
+    var failedSaves = 0;
     for (final peer in peers) {
       if (peer.evaluated && peer.scores.isNotEmpty) {
         try {
@@ -245,8 +285,16 @@ class StudentController extends GetxController {
             evaluatedMemberId:  int.parse(peer.id),
             scores:             peer.scores,
           );
-        } catch (_) {}
+        } catch (e) {
+          failedSaves++;
+          if (submitError.value.isEmpty) {
+            submitError.value = 'Error al guardar algunas evaluaciones: $e';
+          }
+        }
       }
+    }
+    if (failedSaves > 0) {
+      submitError.value = 'No se pudieron guardar $failedSaves evaluaciones';
     }
     await _loadMyResultsInternal(eval.id, s.email);
 
@@ -260,7 +308,11 @@ class StudentController extends GetxController {
       evalStatuses[eval.id] = eval.isActive
           ? (completed ? EvalStudentStatus.activeCompleted : EvalStudentStatus.activePending)
           : (completed ? EvalStudentStatus.closedCompleted : EvalStudentStatus.closedNotDone);
-    } catch (_) {}
+    } catch (e) {
+      submitError.value = submitError.value.isEmpty
+          ? 'No se pudo actualizar el estado: $e'
+          : submitError.value;
+    }
   }
 
   // ── My results ────────────────────────────────────────────────────────────

@@ -8,20 +8,7 @@ import 'package:example/domain/repositories/i_teacher_auth_repository.dart';
 import 'package:example/domain/repositories/i_group_repository.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
 import 'package:example/domain/repositories/i_course_repository.dart';
-
-class CsvImportSummary {
-  final String categoryName;
-  final int groupsCreated;
-  final int studentsCreated;
-  final int courseId;
-
-  const CsvImportSummary({
-    required this.categoryName,
-    required this.groupsCreated,
-    required this.studentsCreated,
-    required this.courseId,
-  });
-}
+import 'package:example/presentation/models/csv_import_summary.dart';
 
 class TeacherController extends GetxController {
   final ITeacherAuthRepository _authRepo;
@@ -69,6 +56,16 @@ class TeacherController extends GetxController {
     }
   }
 
+  Future<void> activateSessionFromLogin() async {
+    await checkSession();
+  }
+
+  void clearSessionStateForRoleSwitch() {
+    teacher.value = null;
+    authError.value = '';
+    _resetTeacherState();
+  }
+
   Future<void> register(String name, String email, String password) async {
     isLoading.value = true;
     authError.value = '';
@@ -85,7 +82,7 @@ class TeacherController extends GetxController {
 
   Future<void> logout() async {
     await _authRepo.logout();
-    teacher.value = null;
+    clearSessionStateForRoleSwitch();
     Get.offAllNamed('/login');
   }
 
@@ -94,17 +91,21 @@ class TeacherController extends GetxController {
   final courseLoading         = false.obs;
   final courseCreateLoading   = false.obs;
   final courseCreateError     = ''.obs;
+  final courseLoadError       = ''.obs;
   final selectedCourseId      = Rx<int?>(null);
   final selectedCourseName    = ''.obs;
   final categoriesForCourse   = <GroupCategory>[].obs;
+  final categoriesForCourseError = ''.obs;
 
   Future<void> loadCourses() async {
     final tid = int.tryParse(teacher.value?.id ?? '') ?? 0;
     courseLoading.value = true;
+    courseLoadError.value = '';
     try {
       final all = await _courseRepo.getAll(tid);
       courses.assignAll(all);
-    } catch (_) {
+    } catch (e) {
+      courseLoadError.value = 'Error al cargar cursos: $e';
     } finally {
       courseLoading.value = false;
     }
@@ -146,11 +147,13 @@ class TeacherController extends GetxController {
     selectedCourseId.value = courseId;
     final course = courses.firstWhereOrNull((c) => c.id == courseId);
     selectedCourseName.value = course?.name ?? '';
+    categoriesForCourseError.value = '';
     try {
       final cats = await _courseRepo.getCategoriesForCourse(courseId);
       categoriesForCourse.assignAll(cats);
-    } catch (_) {
+    } catch (e) {
       categoriesForCourse.clear();
+      categoriesForCourseError.value = 'Error al cargar categorías del curso: $e';
     }
   }
 
@@ -158,6 +161,7 @@ class TeacherController extends GetxController {
   final categories    = <GroupCategory>[].obs;
   final importLoading = false.obs;
   final importError   = ''.obs;
+  final categoriesLoadError = ''.obs;
   final importProgress = ''.obs;
   final lastImportSummary = Rxn<CsvImportSummary>();
 
@@ -166,6 +170,7 @@ class TeacherController extends GetxController {
 
   Future<void> loadCategories() async {
     final tid = int.tryParse(teacher.value?.id ?? '') ?? 0;
+    categoriesLoadError.value = '';
     try {
       final cats = await _groupRepo.getAll(tid);
       categories.assignAll(cats);
@@ -173,7 +178,9 @@ class TeacherController extends GetxController {
         selectedCategoryId.value   = cats.first.id;
         selectedCategoryName.value = cats.first.name;
       }
-    } catch (_) {}
+    } catch (e) {
+      categoriesLoadError.value = 'Error al cargar categorías: $e';
+    }
   }
 
   Future<void> importCsv(String csvContent, String categoryName, int courseId) async {
@@ -217,14 +224,18 @@ class TeacherController extends GetxController {
   // ── Evaluations ───────────────────────────────────────────────────────────
   final evaluations  = <Evaluation>[].obs;
   final activeEval   = Rx<Evaluation?>(null);
+  final evaluationsLoadError = ''.obs;
 
   Future<void> loadEvaluations() async {
     final tid = int.tryParse(teacher.value?.id ?? '') ?? 0;
+    evaluationsLoadError.value = '';
     try {
       final all = await _evalRepo.getAll(tid);
       evaluations.assignAll(all);
       activeEval.value = all.firstWhereOrNull((e) => e.isActive);
-    } catch (_) {}
+    } catch (e) {
+      evaluationsLoadError.value = 'Error al cargar evaluaciones: $e';
+    }
   }
 
   // ── New evaluation ────────────────────────────────────────────────────────
@@ -308,16 +319,19 @@ class TeacherController extends GetxController {
   final groupResults       = <GroupResult>[].obs;
   final resultsLoading     = false.obs;
   final selectedEval       = Rx<Evaluation?>(null);
+  final resultsError       = ''.obs;
 
   Future<void> loadGroupResults(Evaluation eval) async {
     selectedEval.value  = eval;
     drill.value         = null;
     resultsLoading.value = true;
+    resultsError.value = '';
     try {
       final results = await _evalRepo.getGroupResults(eval.id);
       groupResults.assignAll(results);
-    } catch (_) {
+    } catch (e) {
       groupResults.clear();
+      resultsError.value = 'Error al cargar resultados: $e';
     } finally {
       resultsLoading.value = false;
     }
@@ -331,10 +345,27 @@ class TeacherController extends GetxController {
         nonZero.length;
   }
 
-  static const List<String> criteriaLabels = [
-    'PUNTU', 'CONTRIB', 'COMPRO', 'ACTITU',
-  ];
-  static const List<double> criteriaColors = [
-    0xFF60A5FA, 0xFFA78BFA, 0xFF34D399, 0xFFF9A8D4,
-  ];
+  void _resetTeacherState() {
+    courses.clear();
+    categoriesForCourse.clear();
+    categories.clear();
+    evaluations.clear();
+    activeEval.value = null;
+    selectedCourseId.value = null;
+    selectedCourseName.value = '';
+    selectedCategoryId.value = null;
+    selectedCategoryName.value = '';
+    importError.value = '';
+    importProgress.value = '';
+    evalError.value = '';
+    courseLoadError.value = '';
+    categoriesForCourseError.value = '';
+    categoriesLoadError.value = '';
+    evaluationsLoadError.value = '';
+    resultsError.value = '';
+    groupResults.clear();
+    drill.value = null;
+    selectedEval.value = null;
+    lastImportSummary.value = null;
+  }
 }
