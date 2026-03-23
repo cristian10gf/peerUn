@@ -4,19 +4,19 @@ import 'package:example/domain/models/evaluation.dart';
 import 'package:example/domain/models/peer_evaluation.dart';
 import 'package:example/domain/repositories/i_auth_repository.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
-
-enum EvalStudentStatus {
-  activePending,    // activa, el estudiante aún no la completó
-  activeCompleted,  // activa, el estudiante ya evaluó a todos
-  closedNotDone,    // cerrada, el estudiante no la realizó
-  closedCompleted,  // cerrada, el estudiante la realizó
-}
+import 'package:example/domain/services/evaluation_domain_service.dart';
 
 class StudentController extends GetxController {
   final IAuthRepository        _authRepo;
   final IEvaluationRepository  _evalRepo;
+  final EvaluationDomainService _evaluationDomainService;
 
-  StudentController(this._authRepo, this._evalRepo);
+  StudentController(
+    this._authRepo,
+    this._evalRepo, {
+    EvaluationDomainService? evaluationDomainService,
+  }) : _evaluationDomainService =
+           evaluationDomainService ?? const EvaluationDomainService();
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   final student    = Rx<Student?>(null);
@@ -121,10 +121,10 @@ class StudentController extends GetxController {
     await _computeStatuses(evalList, s.email, studentId);
 
     // Pick first active+pending eval as default context, fallback to first active
-    final Evaluation? eval =
-        evalList.firstWhereOrNull((e) => evalStatuses[e.id] == EvalStudentStatus.activePending) ??
-        evalList.firstWhereOrNull((e) => e.isActive) ??
-        (evalList.isNotEmpty ? evalList.first : null);
+    final eval = _evaluationDomainService.selectDefaultEvaluation(
+      evalList,
+      evalStatuses,
+    );
 
     activeEvalDb.value = eval;
 
@@ -151,19 +151,15 @@ class StudentController extends GetxController {
           email:     email,
           studentId: studentId,
         );
-        if (eval.isActive) {
-          statuses[eval.id] = completed
-              ? EvalStudentStatus.activeCompleted
-              : EvalStudentStatus.activePending;
-        } else {
-          statuses[eval.id] = completed
-              ? EvalStudentStatus.closedCompleted
-              : EvalStudentStatus.closedNotDone;
-        }
+        statuses[eval.id] = _evaluationDomainService.statusForEvaluation(
+          evaluation: eval,
+          completed: completed,
+        );
       } catch (e) {
-        statuses[eval.id] = eval.isActive
-            ? EvalStudentStatus.activePending
-            : EvalStudentStatus.closedNotDone;
+        statuses[eval.id] = _evaluationDomainService.statusForEvaluation(
+          evaluation: eval,
+          completed: false,
+        );
         if (evalLoadError.value.isEmpty) {
           evalLoadError.value = 'No se pudo calcular el estado de algunas evaluaciones: $e';
         }
@@ -240,10 +236,10 @@ class StudentController extends GetxController {
   // ── Eval list ─────────────────────────────────────────────────────────────
   final peers = <Peer>[].obs;
 
-  int get doneCount   => peers.where((p) => p.evaluated).length;
-  int get totalPeers  => peers.length;
-  double get evalProgress => totalPeers == 0 ? 0 : doneCount / totalPeers;
-  bool get allEvaluated   => totalPeers > 0 && doneCount == totalPeers;
+  int get doneCount => _evaluationDomainService.donePeers(peers);
+  int get totalPeers => _evaluationDomainService.totalPeers(peers);
+  double get evalProgress => _evaluationDomainService.evalProgress(peers);
+  bool get allEvaluated => _evaluationDomainService.allEvaluated(peers);
 
   // ── Peer scoring ──────────────────────────────────────────────────────────
   final currentPeer = Rx<Peer?>(null);
@@ -305,9 +301,10 @@ class StudentController extends GetxController {
         email:     s.email,
         studentId: studentId,
       );
-      evalStatuses[eval.id] = eval.isActive
-          ? (completed ? EvalStudentStatus.activeCompleted : EvalStudentStatus.activePending)
-          : (completed ? EvalStudentStatus.closedCompleted : EvalStudentStatus.closedNotDone);
+      evalStatuses[eval.id] = _evaluationDomainService.statusForEvaluation(
+        evaluation: eval,
+        completed: completed,
+      );
     } catch (e) {
       submitError.value = submitError.value.isEmpty
           ? 'No se pudo actualizar el estado: $e'
@@ -318,18 +315,11 @@ class StudentController extends GetxController {
   // ── My results ────────────────────────────────────────────────────────────
   final myResults = <CriterionResult>[].obs;
 
-  double get myAverage => myResults.isEmpty
-      ? 0
-      : myResults.map((r) => r.value).reduce((a, b) => a + b) /
-            myResults.length;
+  double get myAverage =>
+      _evaluationDomainService.averageFromCriterionResults(myResults);
 
-  String get performanceBadge {
-    final avg = myAverage;
-    if (avg >= 4.5) return 'Excelente desempeño';
-    if (avg >= 3.5) return 'Buen desempeño';
-    if (avg >= 2.5) return 'Desempeño adecuado';
-    return 'Necesita mejorar';
-  }
+  String get performanceBadge =>
+      _evaluationDomainService.performanceBadge(myAverage);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   void _refreshActiveEvalCard() {
