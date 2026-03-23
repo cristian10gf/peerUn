@@ -4,9 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 import 'package:example/presentation/controllers/student_controller.dart';
 import 'package:example/domain/models/evaluation.dart';
-import 'package:example/domain/services/evaluation_domain_service.dart';
 import 'package:example/presentation/pages/student/widgets/student_bottom_nav.dart';
 import 'package:example/presentation/pages/student/widgets/student_course_header.dart';
+import 'package:example/presentation/pages/student/widgets/student_profile_sheet.dart';
 
 class SCoursesPage extends StatelessWidget {
   const SCoursesPage({super.key});
@@ -63,7 +63,7 @@ class SCoursesPage extends StatelessWidget {
                     final s = ctrl.student.value;
                     if (s == null) return const SizedBox.shrink();
                     return GestureDetector(
-                      onTap: () => _showProfileSheet(context, ctrl),
+                      onTap: () => StudentProfileSheet.show(context, ctrl),
                       child: Container(
                         width: 40,
                         height: 40,
@@ -100,17 +100,7 @@ class SCoursesPage extends StatelessWidget {
                   children: [
                     // ── Destacado: evaluación pendiente más reciente ───────
                     Obx(() {
-                      final pending =
-                          ctrl.evaluations
-                              .where(
-                                (e) =>
-                                    ctrl.evalStatuses[e.id] ==
-                                    EvalStudentStatus.activePending,
-                              )
-                              .toList()
-                            ..sort(
-                              (a, b) => b.createdAt.compareTo(a.createdAt),
-                            );
+                      final pending = ctrl.pendingEvaluationsSorted;
                       if (pending.isEmpty) return const SizedBox.shrink();
                       return Column(
                         children: [
@@ -132,9 +122,7 @@ class SCoursesPage extends StatelessWidget {
                     const SizedBox(height: 10),
 
                     Obx(() {
-                      final active = ctrl.evaluations
-                          .where((e) => e.isActive)
-                          .toList();
+                      final active = ctrl.activeEvaluations;
                       if (active.isEmpty) {
                         return Container(
                           width: double.infinity,
@@ -176,14 +164,7 @@ class SCoursesPage extends StatelessWidget {
                           ),
                         );
                       }
-                      // Group by course name (preserving insertion order)
-                      final grouped = <String, List<Evaluation>>{};
-                      for (final e in active) {
-                        final key = e.courseName.isNotEmpty
-                            ? e.courseName
-                            : 'Sin curso';
-                        grouped.putIfAbsent(key, () => []).add(e);
-                      }
+                      final grouped = ctrl.groupedActiveEvaluationsByCourse;
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: grouped.entries
@@ -208,116 +189,6 @@ class SCoursesPage extends StatelessWidget {
 
             // ── Bottom nav ─────────────────────────────────────────────────
             StudentBottomNav(activeIndex: 0),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showProfileSheet(BuildContext context, StudentController ctrl) {
-    final student = ctrl.currentStudent;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: skSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: skBorder,
-                borderRadius: BorderRadius.circular(99),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: skPrimaryLight,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    student.initials,
-                    style: GoogleFonts.sora(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: skPrimary,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        student.name,
-                        style: GoogleFonts.sora(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: skText,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        student.email,
-                        style: GoogleFonts.dmMono(
-                          fontSize: 11,
-                          color: skTextFaint,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            const Divider(color: skBorder, height: 1),
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: () {
-                Get.back();
-                ctrl.logout();
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF2F2),
-                  border: Border.all(color: const Color(0xFFFECACA)),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.logout_rounded,
-                      size: 16,
-                      color: Color(0xFFEF4444),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Cerrar sesión',
-                      style: GoogleFonts.sora(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFFEF4444),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
           ],
         ),
       ),
@@ -479,15 +350,9 @@ class _EvalCard extends StatelessWidget {
     final timeLabel = _fmt(closesIn);
 
     return Obx(() {
-      final status =
-          ctrl.evalStatuses[eval.id] ?? EvalStudentStatus.activePending;
-      final isPending = status == EvalStudentStatus.activePending;
-
-      final (badgeLabel, badgeColor, badgeBg) = isPending
-          ? ('ACTIVA', skPrimary, skPrimaryLight)
-          : ('ACTIVA · REALIZADA', critGreen, const Color(0xFFD1FAE5));
-
-      final borderColor = isPending ? skPrimaryMid : critGreen;
+      final isPending = ctrl.canEvaluate(eval);
+      final badge = ctrl.statusBadgeInfoFor(eval);
+      final borderColor = ctrl.statusBorderColorFor(eval);
 
       return Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -516,15 +381,15 @@ class _EvalCard extends StatelessWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: badgeBg,
+                    color: badge.backgroundColor,
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: Text(
-                    badgeLabel,
+                    badge.label,
                     style: GoogleFonts.sora(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
-                      color: badgeColor,
+                      color: badge.textColor,
                       letterSpacing: 1.1,
                     ),
                   ),

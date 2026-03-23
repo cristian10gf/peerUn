@@ -100,7 +100,7 @@ class SPeerScorePage extends StatelessWidget {
                       (e) => _CriterionCard(
                         criterion: e.value,
                         ctrl: ctrl,
-                        color: _critColors[e.key],
+                        color: _critColors[e.key % _critColors.length],
                       ),
                     ),
                     const SizedBox(height: 4),

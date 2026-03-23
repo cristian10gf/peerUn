@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 import 'package:example/presentation/controllers/student_controller.dart';
 import 'package:example/domain/models/evaluation.dart';
-import 'package:example/domain/services/evaluation_domain_service.dart';
 import 'package:example/presentation/pages/student/widgets/student_bottom_nav.dart';
 import 'package:example/presentation/pages/student/widgets/student_course_header.dart';
 
@@ -75,14 +74,7 @@ class SEvalListPage extends StatelessWidget {
                     ),
                   );
                 }
-                // Group by course name
-                final grouped = <String, List<Evaluation>>{};
-                for (final e in evals) {
-                  final key = e.courseName.isNotEmpty
-                      ? e.courseName
-                      : 'Sin curso';
-                  grouped.putIfAbsent(key, () => []).add(e);
-                }
+                final grouped = ctrl.groupedAllEvaluationsByCourse;
                 final sections = grouped.entries.toList();
                 // Build flat list of widgets: [header?, item, item, ...]
                 final widgets = <Widget>[];
@@ -123,42 +115,9 @@ class _HistorialItem extends StatelessWidget {
         '${eval.createdAt.day}/${eval.createdAt.month}/${eval.createdAt.year}';
 
     return Obx(() {
-      final status = ctrl.evalStatuses[eval.id];
-
-      final (badgeLabel, badgeColor, badgeBg) = switch (status) {
-        EvalStudentStatus.activePending => (
-          'ACTIVA',
-          skPrimary,
-          skPrimaryLight,
-        ),
-        EvalStudentStatus.activeCompleted => (
-          'ACTIVA · REALIZADA',
-          critGreen,
-          const Color(0xFFD1FAE5),
-        ),
-        EvalStudentStatus.closedNotDone => (
-          'FINALIZADA · NO REALIZADA',
-          const Color(0xFFEF4444),
-          const Color(0xFFFEF2F2),
-        ),
-        EvalStudentStatus.closedCompleted => (
-          'FINALIZADA',
-          skTextFaint,
-          skSurfaceAlt,
-        ),
-        null =>
-          eval.isActive
-              ? ('ACTIVA', skPrimary, skPrimaryLight)
-              : ('CERRADA', skTextFaint, skSurfaceAlt),
-      };
-
-      final showEvaluarBtn = status == EvalStudentStatus.activePending;
-      final borderColor = switch (status) {
-        EvalStudentStatus.activePending => skPrimaryMid,
-        EvalStudentStatus.activeCompleted => critGreen,
-        EvalStudentStatus.closedNotDone => const Color(0xFFFECACA),
-        _ => skBorder,
-      };
+      final badge = ctrl.statusBadgeInfoFor(eval);
+      final showEvaluarBtn = ctrl.canEvaluate(eval);
+      final borderColor = ctrl.statusBorderColorFor(eval);
 
       return Container(
         padding: const EdgeInsets.all(16),
@@ -191,15 +150,15 @@ class _HistorialItem extends StatelessWidget {
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: badgeBg,
+                    color: badge.backgroundColor,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    badgeLabel,
+                    badge.label,
                     style: GoogleFonts.sora(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
-                      color: badgeColor,
+                      color: badge.textColor,
                     ),
                   ),
                 ),
