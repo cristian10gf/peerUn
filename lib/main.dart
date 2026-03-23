@@ -95,10 +95,7 @@ class _AppBindings extends Bindings {
       permanent: true,
     );
     Get.put<IUnifiedAuthRepository>(
-      UnifiedAuthRepositoryImpl(
-        Get.find<IAuthRepository>(),
-        Get.find<ITeacherAuthRepository>(),
-      ),
+      UnifiedAuthRepositoryImpl(db),
       permanent: true,
     );
     Get.put(
