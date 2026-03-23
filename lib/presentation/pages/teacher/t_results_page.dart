@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/teacher_colors.dart';
 import 'package:example/presentation/controllers/teacher_controller.dart';
+import 'package:example/presentation/constants/evaluation_ui_constants.dart';
 import 'package:example/domain/models/teacher_data.dart';
 import 'package:example/presentation/pages/teacher/widgets/teacher_back_button.dart';
 // ignore_for_file: unused_import
@@ -321,7 +322,9 @@ class _DetailBody extends StatelessWidget {
   final GroupResult group;
   const _DetailBody({required this.ctrl, required this.group});
 
-  static const _ringColors = [tkBlue, tkPurple, tkSuccess, tkPink];
+  static final _ringColors = EvaluationUiConstants.criteriaColors
+      .map((v) => Color(v.toInt()))
+      .toList(growable: false);
 
   @override
   Widget build(BuildContext context) {
@@ -345,7 +348,7 @@ class _DetailBody extends StatelessWidget {
                 4,
                 (i) => _CriterionRing(
                   value: group.criteria[i],
-                  label: TeacherController.criteriaLabels[i],
+                  label: EvaluationUiConstants.criteriaLabels[i],
                   color: _ringColors[i],
                 ),
               ),
