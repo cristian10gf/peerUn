@@ -22,6 +22,15 @@ class TeacherController extends GetxController {
   final isLoading = false.obs;
   final authError = ''.obs;
 
+  String _friendlyRegisterError(Object error) {
+    final raw = error.toString().replaceFirst('Exception: ', '').trim();
+    if (raw.isEmpty) return 'No se pudo completar el registro';
+    if (raw.contains('409') || raw.toLowerCase().contains('registrado')) {
+      return 'El correo ya esta registrado';
+    }
+    return raw;
+  }
+
   Teacher get currentTeacher => teacher.value!;
   bool get isLoggedIn => teacher.value != null;
 
@@ -53,8 +62,8 @@ class TeacherController extends GetxController {
       final t = await _authRepo.register(name, email, password);
       teacher.value = t;
       Get.offAllNamed('/teacher/dash');
-    } catch (_) {
-      authError.value = 'El correo ya está registrado';
+    } catch (e) {
+      authError.value = _friendlyRegisterError(e);
     } finally {
       isLoading.value = false;
     }
@@ -69,6 +78,8 @@ class TeacherController extends GetxController {
   // ── Courses ───────────────────────────────────────────────────────────────
   final courses               = <CourseModel>[].obs;
   final courseLoading         = false.obs;
+  final courseCreateLoading   = false.obs;
+  final courseCreateError     = ''.obs;
   final selectedCourseId      = Rx<int?>(null);
   final selectedCourseName    = ''.obs;
   final categoriesForCourse   = <GroupCategory>[].obs;
@@ -85,10 +96,26 @@ class TeacherController extends GetxController {
     }
   }
 
-  Future<void> createCourse(String name, String code) async {
+  Future<bool> createCourse(String name, String code) async {
+    if (courseCreateLoading.value) return false;
+
+    courseCreateLoading.value = true;
+    courseCreateError.value = '';
     final tid = int.tryParse(teacher.value?.id ?? '') ?? 0;
-    final course = await _courseRepo.create(name: name, code: code, teacherId: tid);
-    courses.insert(0, course);
+    try {
+      final course = await _courseRepo.create(
+        name: name,
+        code: code,
+        teacherId: tid,
+      );
+      courses.insert(0, course);
+      return true;
+    } catch (e) {
+      courseCreateError.value = 'Error al crear curso: $e';
+      return false;
+    } finally {
+      courseCreateLoading.value = false;
+    }
   }
 
   Future<void> deleteCourse(int courseId) async {

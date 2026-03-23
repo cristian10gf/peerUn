@@ -18,6 +18,16 @@ class LoginController extends GetxController {
   final isLoading = false.obs;
   final authError = ''.obs;
 
+  String _friendlyError(Object error) {
+    final raw = error.toString().replaceFirst('Exception: ', '').trim();
+    if (raw.isEmpty) return 'Error al iniciar sesion';
+    if (raw.contains('401')) return 'Correo o contrasena incorrectos';
+    if (raw.toLowerCase().contains('sin conexion')) {
+      return 'Sin conexion a internet';
+    }
+    return raw;
+  }
+
   Future<void> login(String email, String password) async {
     if (email.trim().isEmpty || password.isEmpty) {
       authError.value = 'Completa todos los campos';
@@ -44,8 +54,8 @@ class LoginController extends GetxController {
       }
 
       Get.offAllNamed(result.homeRoute);
-    } catch (_) {
-      authError.value = 'Error al conectar con la base de datos';
+    } catch (e) {
+      authError.value = _friendlyError(e);
     } finally {
       isLoading.value = false;
     }

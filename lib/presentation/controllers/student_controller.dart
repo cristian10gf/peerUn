@@ -23,6 +23,15 @@ class StudentController extends GetxController {
   final isLoading  = false.obs;
   final authError  = ''.obs;
 
+  String _friendlyRegisterError(Object error) {
+    final raw = error.toString().replaceFirst('Exception: ', '').trim();
+    if (raw.isEmpty) return 'No se pudo completar el registro';
+    if (raw.contains('409') || raw.toLowerCase().contains('registrado')) {
+      return 'El correo ya esta registrado';
+    }
+    return raw;
+  }
+
   Student get currentStudent => student.value!;
   bool get isLoggedIn => student.value != null;
 
@@ -50,8 +59,8 @@ class StudentController extends GetxController {
       final s = await _authRepo.register(name, email, password);
       student.value = s;
       Get.offAllNamed('/student/courses');
-    } catch (_) {
-      authError.value = 'El correo ya está registrado';
+    } catch (e) {
+      authError.value = _friendlyRegisterError(e);
     } finally {
       isLoading.value = false;
     }
