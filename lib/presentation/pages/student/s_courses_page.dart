@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 import 'package:example/presentation/controllers/student_controller.dart';
 import 'package:example/domain/models/evaluation.dart';
+import 'package:example/presentation/pages/student/widgets/student_bottom_nav.dart';
+import 'package:example/presentation/pages/student/widgets/student_course_header.dart';
 // EvalStudentStatus lives in student_controller.dart
 
 class SCoursesPage extends StatelessWidget {
@@ -98,12 +100,17 @@ class SCoursesPage extends StatelessWidget {
                   children: [
                     // ── Destacado: evaluación pendiente más reciente ───────
                     Obx(() {
-                      final pending = ctrl.evaluations
-                          .where((e) =>
-                              ctrl.evalStatuses[e.id] ==
-                              EvalStudentStatus.activePending)
-                          .toList()
-                        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+                      final pending =
+                          ctrl.evaluations
+                              .where(
+                                (e) =>
+                                    ctrl.evalStatuses[e.id] ==
+                                    EvalStudentStatus.activePending,
+                              )
+                              .toList()
+                            ..sort(
+                              (a, b) => b.createdAt.compareTo(a.createdAt),
+                            );
                       if (pending.isEmpty) return const SizedBox.shrink();
                       return Column(
                         children: [
@@ -132,7 +139,9 @@ class SCoursesPage extends StatelessWidget {
                         return Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(
-                              vertical: 32, horizontal: 24),
+                            vertical: 32,
+                            horizontal: 24,
+                          ),
                           decoration: BoxDecoration(
                             color: skSurfaceAlt,
                             border: Border.all(color: skBorder),
@@ -140,8 +149,11 @@ class SCoursesPage extends StatelessWidget {
                           ),
                           child: Column(
                             children: [
-                              const Icon(Icons.rate_review_outlined,
-                                  size: 32, color: skTextFaint),
+                              const Icon(
+                                Icons.rate_review_outlined,
+                                size: 32,
+                                color: skTextFaint,
+                              ),
                               const SizedBox(height: 10),
                               Text(
                                 'Sin evaluaciones activas',
@@ -155,7 +167,9 @@ class SCoursesPage extends StatelessWidget {
                               Text(
                                 'Aquí aparecerán las evaluaciones\ncuando el docente las active',
                                 style: GoogleFonts.sora(
-                                    fontSize: 11, color: skTextFaint),
+                                  fontSize: 11,
+                                  color: skTextFaint,
+                                ),
                                 textAlign: TextAlign.center,
                               ),
                             ],
@@ -172,14 +186,19 @@ class SCoursesPage extends StatelessWidget {
                       }
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: grouped.entries.expand((entry) => [
-                          if (grouped.length > 1) ...[
-                            _CourseHeader(name: entry.key),
-                            const SizedBox(height: 8),
-                          ],
-                          ...entry.value.map(
-                              (e) => _EvalCard(eval: e, ctrl: ctrl)),
-                        ]).toList(),
+                        children: grouped.entries
+                            .expand(
+                              (entry) => [
+                                if (grouped.length > 1) ...[
+                                  StudentCourseHeader(name: entry.key),
+                                  const SizedBox(height: 8),
+                                ],
+                                ...entry.value.map(
+                                  (e) => _EvalCard(eval: e, ctrl: ctrl),
+                                ),
+                              ],
+                            )
+                            .toList(),
                       );
                     }),
                   ],
@@ -188,7 +207,7 @@ class SCoursesPage extends StatelessWidget {
             ),
 
             // ── Bottom nav ─────────────────────────────────────────────────
-            _BottomNav(activeIndex: 0),
+            StudentBottomNav(activeIndex: 0),
           ],
         ),
       ),
@@ -209,7 +228,8 @@ class SCoursesPage extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 36, height: 4,
+              width: 36,
+              height: 4,
               decoration: BoxDecoration(
                 color: skBorder,
                 borderRadius: BorderRadius.circular(99),
@@ -219,7 +239,8 @@ class SCoursesPage extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  width: 48, height: 48,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     color: skPrimaryLight,
                     borderRadius: BorderRadius.circular(14),
@@ -239,16 +260,22 @@ class SCoursesPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(student.name,
-                          style: GoogleFonts.sora(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: skText,
-                          )),
+                      Text(
+                        student.name,
+                        style: GoogleFonts.sora(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: skText,
+                        ),
+                      ),
                       const SizedBox(height: 2),
-                      Text(student.email,
-                          style: GoogleFonts.dmMono(
-                              fontSize: 11, color: skTextFaint)),
+                      Text(
+                        student.email,
+                        style: GoogleFonts.dmMono(
+                          fontSize: 11,
+                          color: skTextFaint,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -273,8 +300,11 @@ class SCoursesPage extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.logout_rounded,
-                        size: 16, color: Color(0xFFEF4444)),
+                    const Icon(
+                      Icons.logout_rounded,
+                      size: 16,
+                      color: Color(0xFFEF4444),
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'Cerrar sesión',
@@ -296,33 +326,6 @@ class SCoursesPage extends StatelessWidget {
 }
 
 // ── Course header ──────────────────────────────────────────────────────────────
-
-class _CourseHeader extends StatelessWidget {
-  final String name;
-  const _CourseHeader({required this.name});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 6, bottom: 2),
-      child: Row(
-        children: [
-          const Icon(Icons.school_rounded, size: 13, color: skPrimary),
-          const SizedBox(width: 6),
-          Text(
-            name.toUpperCase(),
-            style: GoogleFonts.sora(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: skPrimary,
-              letterSpacing: 1.2,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ── Active eval hero card ───────────────────────────────────────────────────────
 
@@ -395,38 +398,42 @@ class _ActiveEvalCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Obx(() => Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          'Progreso',
-                          style: GoogleFonts.sora(
-                            fontSize: 11,
-                            color: Colors.white.withValues(alpha: 0.5),
-                          ),
+                Obx(
+                  () => Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'Progreso',
+                        style: GoogleFonts.sora(
+                          fontSize: 11,
+                          color: Colors.white.withValues(alpha: 0.5),
                         ),
-                        Text(
-                          '${ctrl.doneCount}/${ctrl.totalPeers}',
-                          style: GoogleFonts.dmMono(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                          ),
+                      ),
+                      Text(
+                        '${ctrl.doneCount}/${ctrl.totalPeers}',
+                        style: GoogleFonts.dmMono(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
                         ),
-                      ],
-                    )),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
-            Obx(() => ClipRRect(
-                  borderRadius: BorderRadius.circular(99),
-                  child: LinearProgressIndicator(
-                    value: ctrl.evalProgress,
-                    backgroundColor: Colors.white.withValues(alpha: 0.25),
-                    valueColor: const AlwaysStoppedAnimation(Colors.white),
-                    minHeight: 3,
-                  ),
-                )),
+            Obx(
+              () => ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(
+                  value: ctrl.evalProgress,
+                  backgroundColor: Colors.white.withValues(alpha: 0.25),
+                  valueColor: const AlwaysStoppedAnimation(Colors.white),
+                  minHeight: 3,
+                ),
+              ),
+            ),
             const SizedBox(height: 14),
             Container(
               width: double.infinity,
@@ -453,7 +460,7 @@ class _ActiveEvalCard extends StatelessWidget {
 
   String _fmtDuration(Duration d) {
     if (d.isNegative) return 'Cerrada';
-    if (d.inDays > 0)  return 'Cierra en ${d.inDays}d';
+    if (d.inDays > 0) return 'Cierra en ${d.inDays}d';
     if (d.inHours > 0) return 'Cierra en ${d.inHours}h';
     return 'Cierra en ${d.inMinutes}m';
   }
@@ -468,11 +475,12 @@ class _EvalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final closesIn  = eval.closesAt.difference(DateTime.now());
+    final closesIn = eval.closesAt.difference(DateTime.now());
     final timeLabel = _fmt(closesIn);
 
     return Obx(() {
-      final status = ctrl.evalStatuses[eval.id] ?? EvalStudentStatus.activePending;
+      final status =
+          ctrl.evalStatuses[eval.id] ?? EvalStudentStatus.activePending;
       final isPending = status == EvalStudentStatus.activePending;
 
       final (badgeLabel, badgeColor, badgeBg) = isPending
@@ -499,13 +507,14 @@ class _EvalCard extends StatelessWidget {
                   _PulseDot(),
                   const SizedBox(width: 6),
                 ] else ...[
-                  Icon(Icons.check_circle_rounded,
-                      size: 12, color: critGreen),
+                  Icon(Icons.check_circle_rounded, size: 12, color: critGreen),
                   const SizedBox(width: 5),
                 ],
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 7, vertical: 2),
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: badgeBg,
                     borderRadius: BorderRadius.circular(5),
@@ -552,8 +561,7 @@ class _EvalCard extends StatelessWidget {
                         Get.toNamed('/student/peers');
                       },
                       child: Container(
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 10),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
                           color: skPrimary,
                           borderRadius: BorderRadius.circular(10),
@@ -607,7 +615,7 @@ class _EvalCard extends StatelessWidget {
 
   String _fmt(Duration d) {
     if (d.isNegative) return 'Cerrada';
-    if (d.inDays > 0)  return 'Cierra en ${d.inDays}d';
+    if (d.inDays > 0) return 'Cierra en ${d.inDays}d';
     if (d.inHours > 0) return 'Cierra en ${d.inHours}h';
     return 'Cierra en ${d.inMinutes}m';
   }
@@ -632,9 +640,10 @@ class _PulseDotState extends State<_PulseDot>
       vsync: this,
       duration: const Duration(milliseconds: 1800),
     )..repeat(reverse: true);
-    _anim = Tween<double>(begin: 1.0, end: 0.3).animate(
-      CurvedAnimation(parent: _ac, curve: Curves.easeInOut),
-    );
+    _anim = Tween<double>(
+      begin: 1.0,
+      end: 0.3,
+    ).animate(CurvedAnimation(parent: _ac, curve: Curves.easeInOut));
   }
 
   @override
@@ -650,7 +659,8 @@ class _PulseDotState extends State<_PulseDot>
       builder: (_, __) => Opacity(
         opacity: _anim.value,
         child: Container(
-          width: 7, height: 7,
+          width: 7,
+          height: 7,
           decoration: BoxDecoration(
             color: widget.color,
             shape: BoxShape.circle,
@@ -662,67 +672,3 @@ class _PulseDotState extends State<_PulseDot>
 }
 
 // ── Bottom nav ─────────────────────────────────────────────────────────────────
-
-class _BottomNav extends StatelessWidget {
-  final int activeIndex;
-  const _BottomNav({required this.activeIndex});
-
-  @override
-  Widget build(BuildContext context) {
-    final items = [
-      _NavItem(icon: Icons.home_rounded,          label: 'Inicio',    route: '/student/courses'),
-      _NavItem(icon: Icons.history_rounded,        label: 'Historial', route: '/student/eval-list'),
-      _NavItem(icon: Icons.bar_chart_rounded,      label: 'Resultados',route: '/student/results'),
-      _NavItem(icon: Icons.person_outline_rounded, label: 'Perfil',    route: null),
-    ];
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: skSurface,
-        border: Border(top: BorderSide(color: skBorder)),
-      ),
-      padding: const EdgeInsets.fromLTRB(0, 10, 0, 20),
-      child: Row(
-        children: items.asMap().entries.map((e) {
-          final isActive = e.key == activeIndex;
-          return Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                if (e.value.route != null &&
-                    !Get.currentRoute.endsWith(e.value.route!)) {
-                  Get.offNamed(e.value.route!);
-                }
-              },
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(e.value.icon, size: 20,
-                      color: isActive ? skPrimary : skTextFaint),
-                  const SizedBox(height: 3),
-                  Text(
-                    e.value.label,
-                    style: GoogleFonts.sora(
-                      fontSize: 9,
-                      letterSpacing: 0.3,
-                      fontWeight:
-                          isActive ? FontWeight.w700 : FontWeight.w500,
-                      color: isActive ? skPrimary : skTextFaint,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
-
-class _NavItem {
-  final IconData icon;
-  final String label;
-  final String? route;
-  const _NavItem({required this.icon, required this.label, this.route});
-}

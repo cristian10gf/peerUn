@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 import 'package:example/presentation/controllers/student_controller.dart';
 import 'package:example/domain/models/peer_evaluation.dart';
+import 'package:example/presentation/pages/student/widgets/student_back_button.dart';
 
 class SPeerScorePage extends StatelessWidget {
   const SPeerScorePage({super.key});
@@ -26,7 +27,10 @@ class SPeerScorePage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _BackButton(label: 'Compañeros', route: '/student/peers'),
+                  StudentBackButton(
+                    label: 'Compañeros',
+                    route: '/student/peers',
+                  ),
                   const SizedBox(height: 14),
                   Obx(() {
                     final peer = ctrl.currentPeer.value;
@@ -92,14 +96,13 @@ class SPeerScorePage extends StatelessWidget {
                 padding: const EdgeInsets.all(22),
                 child: Column(
                   children: [
-                    ...EvalCriterion.defaults
-                        .asMap()
-                        .entries
-                        .map((e) => _CriterionCard(
-                              criterion: e.value,
-                              ctrl:      ctrl,
-                              color:     _critColors[e.key],
-                            )),
+                    ...EvalCriterion.defaults.asMap().entries.map(
+                      (e) => _CriterionCard(
+                        criterion: e.value,
+                        ctrl: ctrl,
+                        color: _critColors[e.key],
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     _SubmitButton(ctrl: ctrl),
                   ],
@@ -117,7 +120,11 @@ class _CriterionCard extends StatelessWidget {
   final EvalCriterion criterion;
   final StudentController ctrl;
   final Color color;
-  const _CriterionCard({required this.criterion, required this.ctrl, required this.color});
+  const _CriterionCard({
+    required this.criterion,
+    required this.ctrl,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -148,8 +155,10 @@ class _CriterionCard extends StatelessWidget {
                 ),
                 if (score != null)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: color.withValues(alpha: 0.13),
                       borderRadius: BorderRadius.circular(8),
@@ -173,9 +182,7 @@ class _CriterionCard extends StatelessWidget {
             children: [2, 3, 4, 5].map((val) {
               return Expanded(
                 child: Padding(
-                  padding: EdgeInsets.only(
-                    right: val < 5 ? 5 : 0,
-                  ),
+                  padding: EdgeInsets.only(right: val < 5 ? 5 : 0),
                   child: Obx(() {
                     final selected = ctrl.scores[criterion.id] == val;
                     return GestureDetector(
@@ -195,8 +202,7 @@ class _CriterionCard extends StatelessWidget {
                           style: GoogleFonts.dmMono(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
-                            color:
-                                selected ? Colors.white : skTextFaint,
+                            color: selected ? Colors.white : skTextFaint,
                           ),
                         ),
                       ),
@@ -239,67 +245,30 @@ class _SubmitButton extends StatelessWidget {
     return Obx(() {
       final ready = ctrl.allCriteriaScored;
       return GestureDetector(
-      onTap: ready
-          ? () {
-              ctrl.savePeerScore();
-              Get.offNamed('/student/peers');
-            }
-          : null,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: ready ? skPrimary : skBorder,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          ready ? 'Guardar y continuar' : 'Completa los 4 criterios',
-          style: GoogleFonts.sora(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: ready ? Colors.white : skTextFaint,
+        onTap: ready
+            ? () {
+                ctrl.savePeerScore();
+                Get.offNamed('/student/peers');
+              }
+            : null,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: ready ? skPrimary : skBorder,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            ready ? 'Guardar y continuar' : 'Completa los 4 criterios',
+            style: GoogleFonts.sora(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: ready ? Colors.white : skTextFaint,
+            ),
           ),
         ),
-      ),
-    );
+      );
     });
-  }
-}
-
-class _BackButton extends StatelessWidget {
-  final String label;
-  final String route;
-  const _BackButton({required this.label, required this.route});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Get.offNamed(route),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(8, 7, 12, 7),
-        decoration: BoxDecoration(
-          color: skSurfaceAlt,
-          border: Border.all(color: skBorder),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.chevron_left_rounded,
-                size: 14, color: skTextMid),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: GoogleFonts.sora(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: skTextMid,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

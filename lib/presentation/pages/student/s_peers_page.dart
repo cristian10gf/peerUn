@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 import 'package:example/presentation/controllers/student_controller.dart';
 import 'package:example/domain/models/peer_evaluation.dart';
+import 'package:example/presentation/pages/student/widgets/student_back_button.dart';
 
 class SPeersPage extends StatelessWidget {
   const SPeersPage({super.key});
@@ -24,25 +25,29 @@ class SPeersPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _BackButton(label: 'Volver'),
+                  StudentBackButton(label: 'Volver'),
                   const SizedBox(height: 16),
-                  Obx(() => Text(
-                        ctrl.activeEvalDb.value?.name ?? 'Evaluación',
-                        style: GoogleFonts.sora(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                          color: skText,
-                        ),
-                      )),
+                  Obx(
+                    () => Text(
+                      ctrl.activeEvalDb.value?.name ?? 'Evaluación',
+                      style: GoogleFonts.sora(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                        color: skText,
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 3),
-                  Obx(() => Text(
-                        '${ctrl.currentGroupName.value} · ${ctrl.doneCount}/${ctrl.totalPeers} evaluados',
-                        style: GoogleFonts.dmMono(
-                          fontSize: 11,
-                          color: skTextFaint,
-                        ),
-                      )),
+                  Obx(
+                    () => Text(
+                      '${ctrl.currentGroupName.value} · ${ctrl.doneCount}/${ctrl.totalPeers} evaluados',
+                      style: GoogleFonts.dmMono(
+                        fontSize: 11,
+                        color: skTextFaint,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -56,10 +61,12 @@ class SPeersPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Progress card
-                    Obx(() => _ProgressCard(
-                          progress: ctrl.evalProgress,
-                          percentage: (ctrl.evalProgress * 100).round(),
-                        )),
+                    Obx(
+                      () => _ProgressCard(
+                        progress: ctrl.evalProgress,
+                        percentage: (ctrl.evalProgress * 100).round(),
+                      ),
+                    ),
                     const SizedBox(height: 18),
 
                     Text(
@@ -74,17 +81,21 @@ class SPeersPage extends StatelessWidget {
                     const SizedBox(height: 10),
 
                     // Peer cards
-                    Obx(() => Column(
-                          children: ctrl.peers
-                              .map((p) => _PeerCard(
-                                    peer: p,
-                                    onTap: () {
-                                      ctrl.selectPeer(p);
-                                      Get.toNamed('/student/peer-score');
-                                    },
-                                  ))
-                              .toList(),
-                        )),
+                    Obx(
+                      () => Column(
+                        children: ctrl.peers
+                            .map(
+                              (p) => _PeerCard(
+                                peer: p,
+                                onTap: () {
+                                  ctrl.selectPeer(p);
+                                  Get.toNamed('/student/peer-score');
+                                },
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
 
                     // Submit button
                     Obx(() {
@@ -99,8 +110,7 @@ class SPeersPage extends StatelessWidget {
                             },
                             child: Container(
                               width: double.infinity,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                               decoration: BoxDecoration(
                                 color: skPrimary,
                                 borderRadius: BorderRadius.circular(14),
@@ -200,15 +210,14 @@ class _PeerCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: peer.evaluated ? skPrimaryLight : skSurface,
-          border: Border.all(
-            color: peer.evaluated ? skPrimaryMid : skBorder,
-          ),
+          border: Border.all(color: peer.evaluated ? skPrimaryMid : skBorder),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           children: [
             Container(
-              width: 42, height: 42,
+              width: 42,
+              height: 42,
               decoration: BoxDecoration(
                 color: peer.evaluated ? skPrimary : skSurfaceAlt,
                 border: Border.all(
@@ -218,8 +227,11 @@ class _PeerCard extends StatelessWidget {
               ),
               alignment: Alignment.center,
               child: peer.evaluated
-                  ? const Icon(Icons.check_rounded,
-                      size: 16, color: Colors.white)
+                  ? const Icon(
+                      Icons.check_rounded,
+                      size: 16,
+                      color: Colors.white,
+                    )
                   : Text(
                       peer.initials,
                       style: GoogleFonts.dmMono(
@@ -259,44 +271,11 @@ class _PeerCard extends StatelessWidget {
               ),
             ),
             if (!peer.evaluated)
-              const Icon(Icons.chevron_right_rounded,
-                  size: 14, color: skTextFaint),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BackButton extends StatelessWidget {
-  final String label;
-  const _BackButton({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Get.back(),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(8, 7, 12, 7),
-        decoration: BoxDecoration(
-          color: skSurfaceAlt,
-          border: Border.all(color: skBorder),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.chevron_left_rounded,
-                size: 14, color: skTextMid),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: GoogleFonts.sora(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: skTextMid,
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: 14,
+                color: skTextFaint,
               ),
-            ),
           ],
         ),
       ),

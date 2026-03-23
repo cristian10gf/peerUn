@@ -4,7 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 import 'package:example/presentation/controllers/student_controller.dart';
 import 'package:example/domain/models/evaluation.dart';
-// EvalStudentStatus lives in student_controller.dart
+import 'package:example/presentation/pages/student/widgets/student_bottom_nav.dart';
+import 'package:example/presentation/pages/student/widgets/student_course_header.dart';
 
 class SEvalListPage extends StatelessWidget {
   const SEvalListPage({super.key});
@@ -45,8 +46,11 @@ class SEvalListPage extends StatelessWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.history_rounded,
-                              size: 40, color: skTextFaint),
+                          const Icon(
+                            Icons.history_rounded,
+                            size: 40,
+                            color: skTextFaint,
+                          ),
                           const SizedBox(height: 14),
                           Text(
                             'Sin historial',
@@ -60,7 +64,9 @@ class SEvalListPage extends StatelessWidget {
                           Text(
                             'Las evaluaciones en las que participes\naparecerán aquí',
                             style: GoogleFonts.sora(
-                                fontSize: 12, color: skTextFaint),
+                              fontSize: 12,
+                              color: skTextFaint,
+                            ),
                             textAlign: TextAlign.center,
                           ),
                         ],
@@ -81,7 +87,7 @@ class SEvalListPage extends StatelessWidget {
                 final widgets = <Widget>[];
                 for (final entry in sections) {
                   if (sections.length > 1) {
-                    widgets.add(_CourseHeader(name: entry.key));
+                    widgets.add(StudentCourseHeader(name: entry.key));
                     widgets.add(const SizedBox(height: 8));
                   }
                   for (final e in entry.value) {
@@ -97,38 +103,9 @@ class SEvalListPage extends StatelessWidget {
             ),
 
             // ── Bottom nav ─────────────────────────────────────────────────
-            _BottomNav(activeIndex: 1),
+            StudentBottomNav(activeIndex: 1),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ── Course header ──────────────────────────────────────────────────────────────
-
-class _CourseHeader extends StatelessWidget {
-  final String name;
-  const _CourseHeader({required this.name});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 6, bottom: 2),
-      child: Row(
-        children: [
-          const Icon(Icons.school_rounded, size: 13, color: skPrimary),
-          const SizedBox(width: 6),
-          Text(
-            name.toUpperCase(),
-            style: GoogleFonts.sora(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: skPrimary,
-              letterSpacing: 1.2,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -148,21 +125,38 @@ class _HistorialItem extends StatelessWidget {
       final status = ctrl.evalStatuses[eval.id];
 
       final (badgeLabel, badgeColor, badgeBg) = switch (status) {
-        EvalStudentStatus.activePending   => ('ACTIVA', skPrimary, skPrimaryLight),
-        EvalStudentStatus.activeCompleted => ('ACTIVA · REALIZADA', critGreen, const Color(0xFFD1FAE5)),
-        EvalStudentStatus.closedNotDone   => ('FINALIZADA · NO REALIZADA', const Color(0xFFEF4444), const Color(0xFFFEF2F2)),
-        EvalStudentStatus.closedCompleted => ('FINALIZADA', skTextFaint, skSurfaceAlt),
-        null                              => eval.isActive
-            ? ('ACTIVA', skPrimary, skPrimaryLight)
-            : ('CERRADA', skTextFaint, skSurfaceAlt),
+        EvalStudentStatus.activePending => (
+          'ACTIVA',
+          skPrimary,
+          skPrimaryLight,
+        ),
+        EvalStudentStatus.activeCompleted => (
+          'ACTIVA · REALIZADA',
+          critGreen,
+          const Color(0xFFD1FAE5),
+        ),
+        EvalStudentStatus.closedNotDone => (
+          'FINALIZADA · NO REALIZADA',
+          const Color(0xFFEF4444),
+          const Color(0xFFFEF2F2),
+        ),
+        EvalStudentStatus.closedCompleted => (
+          'FINALIZADA',
+          skTextFaint,
+          skSurfaceAlt,
+        ),
+        null =>
+          eval.isActive
+              ? ('ACTIVA', skPrimary, skPrimaryLight)
+              : ('CERRADA', skTextFaint, skSurfaceAlt),
       };
 
       final showEvaluarBtn = status == EvalStudentStatus.activePending;
       final borderColor = switch (status) {
-        EvalStudentStatus.activePending   => skPrimaryMid,
+        EvalStudentStatus.activePending => skPrimaryMid,
         EvalStudentStatus.activeCompleted => critGreen,
-        EvalStudentStatus.closedNotDone   => const Color(0xFFFECACA),
-        _                                 => skBorder,
+        EvalStudentStatus.closedNotDone => const Color(0xFFFECACA),
+        _ => skBorder,
       };
 
       return Container(
@@ -192,7 +186,9 @@ class _HistorialItem extends StatelessWidget {
                 const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: badgeBg,
                     borderRadius: BorderRadius.circular(6),
@@ -277,70 +273,4 @@ class _HistorialItem extends StatelessWidget {
       );
     });
   }
-}
-
-// ── Bottom nav ─────────────────────────────────────────────────────────────────
-
-class _BottomNav extends StatelessWidget {
-  final int activeIndex;
-  const _BottomNav({required this.activeIndex});
-
-  @override
-  Widget build(BuildContext context) {
-    final items = [
-      _NavItem(icon: Icons.home_rounded,          label: 'Inicio',    route: '/student/courses'),
-      _NavItem(icon: Icons.history_rounded,        label: 'Historial', route: '/student/eval-list'),
-      _NavItem(icon: Icons.bar_chart_rounded,      label: 'Resultados',route: '/student/results'),
-      _NavItem(icon: Icons.person_outline_rounded, label: 'Perfil',    route: null),
-    ];
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: skSurface,
-        border: Border(top: BorderSide(color: skBorder)),
-      ),
-      padding: const EdgeInsets.fromLTRB(0, 10, 0, 20),
-      child: Row(
-        children: items.asMap().entries.map((e) {
-          final isActive = e.key == activeIndex;
-          return Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                if (e.value.route != null &&
-                    !Get.currentRoute.endsWith(e.value.route!)) {
-                  Get.offNamed(e.value.route!);
-                }
-              },
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(e.value.icon, size: 20,
-                      color: isActive ? skPrimary : skTextFaint),
-                  const SizedBox(height: 3),
-                  Text(
-                    e.value.label,
-                    style: GoogleFonts.sora(
-                      fontSize: 9,
-                      letterSpacing: 0.3,
-                      fontWeight:
-                          isActive ? FontWeight.w700 : FontWeight.w500,
-                      color: isActive ? skPrimary : skTextFaint,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
-
-class _NavItem {
-  final IconData icon;
-  final String label;
-  final String? route;
-  const _NavItem({required this.icon, required this.label, this.route});
 }
