@@ -1,5 +1,8 @@
-import 'package:example/data/services/database_service.dart';
+import 'package:example/data/services/database/database_service.dart';
 import 'package:example/data/services/roble_schema.dart';
+import 'package:example/data/utils/email_utils.dart';
+import 'package:example/data/utils/repository_db_utils.dart';
+import 'package:example/data/utils/value_parsers.dart';
 import 'package:example/domain/models/group_category.dart';
 import 'package:example/domain/repositories/i_group_repository.dart';
 
@@ -13,21 +16,6 @@ class GroupRepositoryImpl implements IGroupRepository {
         msg.contains('registrado') ||
         msg.contains('already') ||
         msg.contains('duplicate');
-  }
-
-  Future<bool> _tableExists(String tableName) async {
-    try {
-      await _db.robleRead(tableName);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  String _normalizeEmail(String username) {
-    final value = username.trim().toLowerCase();
-    if (value.contains('@')) return value;
-    return '$value@uninorte.edu.co';
   }
 
   Future<Map<String, dynamic>> _upsertUserProfile({
@@ -63,7 +51,7 @@ class GroupRepositoryImpl implements IGroupRepository {
     required int userId,
     required String role,
   }) async {
-    if (!await _tableExists(RobleTables.userCourse)) return;
+    if (!await tableExists(_db, RobleTables.userCourse)) return;
 
     final existing = await _db.robleRead(
       RobleTables.userCourse,
@@ -85,7 +73,7 @@ class GroupRepositoryImpl implements IGroupRepository {
     required int groupId,
     required int userId,
   }) async {
-    if (!await _tableExists(RobleTables.userGroup)) return;
+    if (!await tableExists(_db, RobleTables.userGroup)) return;
 
     final existing = await _db.robleRead(
       RobleTables.userGroup,
@@ -140,29 +128,6 @@ class GroupRepositoryImpl implements IGroupRepository {
     return authUserId;
   }
 
-  int _asInt(dynamic value, {int fallback = 0}) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    if (value == null) return fallback;
-    return int.tryParse(value.toString()) ?? value.toString().hashCode.abs();
-  }
-
-  int _rowId(Map<String, dynamic> row) => _asInt(row['id'] ?? row['_id']);
-
-  DateTime _asDate(dynamic value) {
-    if (value is DateTime) return value;
-    if (value is String) {
-      final parsedDate = DateTime.tryParse(value);
-      if (parsedDate != null) return parsedDate;
-      final parsedInt = int.tryParse(value);
-      if (parsedInt != null) {
-        return DateTime.fromMillisecondsSinceEpoch(parsedInt);
-      }
-    }
-    final millis = _asInt(value, fallback: DateTime.now().millisecondsSinceEpoch);
-    return DateTime.fromMillisecondsSinceEpoch(millis);
-  }
-
   @override
   Future<List<GroupCategory>> getAll(int teacherId) async {
     final catRows = await _db.robleRead(RobleTables.category);
@@ -171,23 +136,23 @@ class GroupRepositoryImpl implements IGroupRepository {
 
     final usersById = <int, Map<String, dynamic>>{};
     for (final u in usersRows) {
-      usersById[_asInt(u['id'] ?? u['_id'])] = u;
+      usersById[asInt(u['id'] ?? u['_id'])] = u;
     }
 
     final teacherCourseIds = <int>{};
-    if (await _tableExists(RobleTables.userCourse)) {
+    if (await tableExists(_db, RobleTables.userCourse)) {
       final claims = await _db.readAuthTokenClaims();
       final email = (claims['email'] ?? '').toString().trim().toLowerCase();
       if (email.isNotEmpty) {
         final teacherUser = await _db.robleFindUserByEmail(email);
-        final teacherUserId = _asInt(teacherUser?['id'] ?? teacherUser?['_id']);
+        final teacherUserId = asInt(teacherUser?['id'] ?? teacherUser?['_id']);
         if (teacherUserId > 0) {
           final relations = await _db.robleRead(
             RobleTables.userCourse,
             filters: {'user_id': teacherUserId, 'role': 'teacher'},
           );
           for (final rel in relations) {
-            teacherCourseIds.add(_asInt(rel['course_id']));
+            teacherCourseIds.add(asInt(rel['course_id']));
           }
         }
       }
@@ -195,19 +160,19 @@ class GroupRepositoryImpl implements IGroupRepository {
 
     if (teacherCourseIds.isEmpty) {
       for (final c in courseRows) {
-        final createdBy = _asInt(c['created_by'] ?? c['teacher_id']);
-        if (createdBy == teacherId) teacherCourseIds.add(_rowId(c));
+        final createdBy = asInt(c['created_by'] ?? c['teacher_id']);
+        if (createdBy == teacherId) teacherCourseIds.add(rowIdFromMap(c));
       }
     }
 
     final result = <GroupCategory>[];
     for (final cat in catRows) {
-      final courseId = _asInt(cat['course_id']);
+      final courseId = asInt(cat['course_id']);
       if (teacherCourseIds.isNotEmpty && !teacherCourseIds.contains(courseId)) {
         continue;
       }
 
-      final catId = _rowId(cat);
+      final catId = rowIdFromMap(cat);
       final grpRows = await _db.robleRead(
         RobleTables.groups,
         filters: {'category_id': catId},
@@ -215,7 +180,7 @@ class GroupRepositoryImpl implements IGroupRepository {
 
       final groups = <CourseGroup>[];
       for (final grp in grpRows) {
-        final grpId = _rowId(grp);
+        final grpId = rowIdFromMap(grp);
         final memberRows = await _db.robleRead(
           RobleTables.userGroup,
           filters: {'group_id': grpId},
@@ -223,7 +188,7 @@ class GroupRepositoryImpl implements IGroupRepository {
 
         final members = <GroupMember>[];
         for (final membership in memberRows) {
-          final userId = _asInt(membership['user_id']);
+          final userId = asInt(membership['user_id']);
           final user = usersById[userId];
           if (user == null) continue;
 
@@ -247,7 +212,7 @@ class GroupRepositoryImpl implements IGroupRepository {
         GroupCategory(
           id: catId,
           name: (cat['name'] ?? '').toString(),
-          importedAt: _asDate(cat['created_at'] ?? cat['imported_at']),
+          importedAt: asDate(cat['created_at'] ?? cat['imported_at']),
           groups: groups,
           courseId: courseId,
         ),
@@ -305,7 +270,7 @@ class GroupRepositoryImpl implements IGroupRepository {
       'course_id': courseId,
     });
 
-    final catId = _rowId(catRow);
+    final catId = rowIdFromMap(catRow);
     final groups = <CourseGroup>[];
 
     for (final entry in groupMap.entries) {
@@ -314,10 +279,10 @@ class GroupRepositoryImpl implements IGroupRepository {
         'name': entry.key,
       });
 
-      final grpId = _rowId(grpRow);
+      final grpId = rowIdFromMap(grpRow);
       final members = <GroupMember>[];
       for (final m in entry.value) {
-        final studentEmail = _normalizeEmail(m.username);
+        final studentEmail = normalizeEmail(m.username);
         final studentAuthId = await _resolveStudentAuthId(
           email: studentEmail,
           name: m.name,
@@ -332,7 +297,7 @@ class GroupRepositoryImpl implements IGroupRepository {
           name: m.name,
           role: 'student',
         );
-        final userId = _asInt(userRow['id'] ?? userRow['_id']);
+        final userId = asInt(userRow['id'] ?? userRow['_id']);
 
         await _ensureUserGroupRelation(groupId: grpId, userId: userId);
         await _ensureUserCourseRelation(
@@ -367,7 +332,7 @@ class GroupRepositoryImpl implements IGroupRepository {
     final catRows = await _db.robleRead(RobleTables.category);
     Map<String, dynamic>? target;
     for (final row in catRows) {
-      if (_rowId(row) == categoryId) {
+      if (rowIdFromMap(row) == categoryId) {
         target = row;
         break;
       }
@@ -379,7 +344,7 @@ class GroupRepositoryImpl implements IGroupRepository {
       filters: {'category_id': categoryId},
     );
     for (final grp in grpRows) {
-      final grpId = _rowId(grp);
+      final grpId = rowIdFromMap(grp);
       final grpKey = grp['_id']?.toString();
       final memRows = await _db.robleRead(
         RobleTables.userGroup,

@@ -1,28 +1,13 @@
-import 'package:example/data/services/database_service.dart';
+import 'package:example/data/services/database/database_service.dart';
 import 'package:example/data/services/roble_schema.dart';
+import 'package:example/data/utils/string_utils.dart';
+import 'package:example/data/utils/user_utils.dart';
 import 'package:example/domain/models/teacher.dart';
 import 'package:example/domain/repositories/i_teacher_auth_repository.dart';
 
 class TeacherAuthRepositoryImpl implements ITeacherAuthRepository {
   final DatabaseService _db;
   TeacherAuthRepositoryImpl(this._db);
-
-  static String _buildInitials(String name) {
-    final parts = name.trim().split(' ').where((p) => p.isNotEmpty).toList();
-    if (parts.isEmpty) return '?';
-    if (parts.length == 1) return parts[0][0].toUpperCase();
-    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
-  }
-
-  String _displayNameFromEmail(String email) {
-    final local = email.split('@').first.trim();
-    if (local.isEmpty) return 'Teacher';
-    return local
-        .split(RegExp(r'[._-]+'))
-        .where((p) => p.isNotEmpty)
-        .map((p) => p[0].toUpperCase() + p.substring(1))
-        .join(' ');
-  }
 
   @override
   Future<Teacher?> login(String email, String password) async {
@@ -51,13 +36,15 @@ class TeacherAuthRepositoryImpl implements ITeacherAuthRepository {
         .toString();
     final id = DatabaseService.stableNumericIdFromSeed(idSeed).toString();
 
-    final name = (userRow?['name'] ?? claims['name'] ?? _displayNameFromEmail(normalized))
+    final name = (userRow?['name'] ??
+        claims['name'] ??
+        buildDisplayNameFromEmail(normalized, fallback: 'Teacher'))
         .toString();
     final teacher = Teacher(
       id: id,
       name: name,
       email: normalized,
-      initials: _buildInitials(name),
+      initials: buildInitials(name),
     );
 
     await _db.saveTeacherSession({

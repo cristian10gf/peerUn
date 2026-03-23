@@ -1,5 +1,7 @@
-import 'package:example/data/services/database_service.dart';
+import 'package:example/data/services/database/database_service.dart';
 import 'package:example/data/services/roble_schema.dart';
+import 'package:example/data/utils/string_utils.dart';
+import 'package:example/data/utils/value_parsers.dart';
 import 'package:example/domain/models/course.dart';
 import 'package:example/domain/models/evaluation.dart';
 import 'package:example/domain/models/peer_evaluation.dart';
@@ -10,43 +12,17 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
   final DatabaseService _db;
   EvaluationRepositoryImpl(this._db);
 
-  static String _buildInitials(String name) {
-    final parts = name.trim().split(' ').where((p) => p.isNotEmpty).toList();
-    if (parts.isEmpty) return '?';
-    if (parts.length == 1) return parts[0][0].toUpperCase();
-    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
-  }
+  int _asInt(dynamic value, {int fallback = 0}) =>
+      asInt(value, fallback: fallback);
 
-  int _asInt(dynamic value, {int fallback = 0}) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    if (value == null) return fallback;
-    return int.tryParse(value.toString()) ?? value.toString().hashCode.abs();
-  }
+  double _asDouble(dynamic value, {double fallback = 0}) =>
+      asDouble(value, fallback: fallback);
 
-  double _asDouble(dynamic value, {double fallback = 0}) {
-    if (value is double) return value;
-    if (value is num) return value.toDouble();
-    if (value == null) return fallback;
-    return double.tryParse(value.toString()) ?? fallback;
-  }
+  String _asString(dynamic value) => asString(value);
 
-  String _asString(dynamic value) => value?.toString() ?? '';
+  int _rowId(Map<String, dynamic> row) => rowIdFromMap(row);
 
-  int _rowId(Map<String, dynamic> row) => _asInt(row['id'] ?? row['_id']);
-
-  DateTime _asDate(dynamic value) {
-    if (value is String) {
-      final parsedInt = int.tryParse(value);
-      if (parsedInt != null) {
-        return DateTime.fromMillisecondsSinceEpoch(parsedInt);
-      }
-      final parsedDate = DateTime.tryParse(value);
-      if (parsedDate != null) return parsedDate;
-    }
-    final millis = _asInt(value, fallback: DateTime.now().millisecondsSinceEpoch);
-    return DateTime.fromMillisecondsSinceEpoch(millis);
-  }
+  DateTime _asDate(dynamic value) => asDate(value);
 
   Map<String, dynamic>? _findById(List<Map<String, dynamic>> rows, int id) {
     for (final row in rows) {
@@ -409,7 +385,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
           return Peer(
             id: _rowId(m).toString(),
             name: name,
-            initials: _buildInitials(name),
+            initials: buildInitials(name),
           );
         })
         .toList();

@@ -1,4 +1,6 @@
-import 'package:example/data/services/database_service.dart';
+import 'package:example/data/services/database/database_service.dart';
+import 'package:example/data/utils/string_utils.dart';
+import 'package:example/data/utils/user_utils.dart';
 import 'package:example/domain/models/auth_login_result.dart';
 import 'package:example/domain/repositories/i_unified_auth_repository.dart';
 
@@ -6,23 +8,6 @@ class UnifiedAuthRepositoryImpl implements IUnifiedAuthRepository {
   final DatabaseService _db;
 
   UnifiedAuthRepositoryImpl(this._db);
-
-  static String _buildInitials(String name) {
-    final parts = name.trim().split(' ').where((p) => p.isNotEmpty).toList();
-    if (parts.isEmpty) return '?';
-    if (parts.length == 1) return parts[0][0].toUpperCase();
-    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
-  }
-
-  static String _displayNameFromEmail(String email) {
-    final local = email.split('@').first.trim();
-    if (local.isEmpty) return 'User';
-    return local
-        .split(RegExp(r'[._-]+'))
-        .where((p) => p.isNotEmpty)
-        .map((p) => p[0].toUpperCase() + p.substring(1))
-        .join(' ');
-  }
 
   @override
   Future<AuthLoginResult?> loginAndResolve(
@@ -57,9 +42,11 @@ class UnifiedAuthRepositoryImpl implements IUnifiedAuthRepository {
             .toString();
     final userId = DatabaseService.stableNumericIdFromSeed(idSeed).toString();
     final name =
-        (userRow?['name'] ?? claims['name'] ?? _displayNameFromEmail(normalizedEmail))
+      (userRow?['name'] ??
+          claims['name'] ??
+          buildDisplayNameFromEmail(normalizedEmail, fallback: 'User'))
             .toString();
-    final initials = _buildInitials(name);
+    final initials = buildInitials(name);
 
     if (role == 'teacher' || role == 'admin') {
       await _db.clearStudentSession();
