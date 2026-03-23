@@ -29,7 +29,7 @@ class StudentBottomNav extends StatelessWidget {
       _NavItem(
         icon: Icons.person_outline_rounded,
         label: 'Perfil',
-        route: null,
+        route: '/student/profile',
       ),
     ];
 
