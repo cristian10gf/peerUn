@@ -10,7 +10,7 @@ import 'package:example/data/repositories/course_repository_impl.dart';
 import 'package:example/data/repositories/connectivity_repository_impl.dart';
 import 'package:example/data/repositories/unified_auth_repository_impl.dart';
 import 'package:example/data/services/connectivity_service.dart';
-import 'package:example/data/services/database_service.dart';
+import 'package:example/data/services/database/database_service.dart';
 import 'package:example/domain/repositories/i_auth_repository.dart';
 import 'package:example/domain/repositories/i_connectivity_repository.dart';
 import 'package:example/domain/repositories/i_teacher_auth_repository.dart';
