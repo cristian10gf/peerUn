@@ -5,10 +5,16 @@ import 'package:example/data/utils/repository_db_utils.dart';
 import 'package:example/data/utils/value_parsers.dart';
 import 'package:example/domain/models/group_category.dart';
 import 'package:example/domain/repositories/i_group_repository.dart';
+import 'package:example/domain/services/csv_import_domain_service.dart';
 
 class GroupRepositoryImpl implements IGroupRepository {
   final DatabaseService _db;
-  GroupRepositoryImpl(this._db);
+  final CsvImportDomainService _csvImportDomainService;
+
+  GroupRepositoryImpl(
+    this._db, {
+    CsvImportDomainService? csvImportDomainService,
+  }) : _csvImportDomainService = csvImportDomainService ?? const CsvImportDomainService();
 
   bool _looksLikeAlreadyRegistered(Object error) {
     final msg = error.toString().toLowerCase();
@@ -237,31 +243,7 @@ class GroupRepositoryImpl implements IGroupRepository {
       throw Exception('Sesion de profesor no valida para aprovisionar datos');
     }
 
-    final content = csvContent.startsWith('\uFEFF') ? csvContent.substring(1) : csvContent;
-    final lines = content
-        .split('\n')
-        .map((l) => l.trimRight())
-        .where((l) => l.isNotEmpty)
-        .toList();
-
-    if (lines.isEmpty) throw Exception('CSV vacio');
-    final dataLines = lines.skip(1).toList();
-
-    final groupMap = <String, List<_ParsedMember>>{};
-    for (final line in dataLines) {
-      final cols = line.split(',');
-      if (cols.length < 7) continue;
-      final grpName = cols[1].trim();
-      final username = cols[3].trim().toLowerCase();
-      final first = cols[5].trim();
-      final last = cols[6].trim();
-      final name = '$first $last'.trim();
-
-      if (grpName.isEmpty || username.isEmpty || name.isEmpty) continue;
-      groupMap.putIfAbsent(grpName, () => []).add(_ParsedMember(name: name, username: username));
-    }
-
-    if (groupMap.isEmpty) throw Exception('Sin datos de grupos');
+    final parsed = _csvImportDomainService.parse(csvContent);
 
     final now = DateTime.now().millisecondsSinceEpoch;
     final catRow = await _db.robleCreate(RobleTables.category, {
@@ -273,19 +255,19 @@ class GroupRepositoryImpl implements IGroupRepository {
     final catId = rowIdFromMap(catRow);
     final groups = <CourseGroup>[];
 
-    for (final entry in groupMap.entries) {
+    for (final group in parsed.groups) {
       final grpRow = await _db.robleCreate(RobleTables.groups, {
         'category_id': catId,
-        'name': entry.key,
+        'name': group.name,
       });
 
       final grpId = rowIdFromMap(grpRow);
       final members = <GroupMember>[];
-      for (final m in entry.value) {
-        final studentEmail = normalizeEmail(m.username);
+      for (final member in group.members) {
+        final studentEmail = normalizeEmail(member.username);
         final studentAuthId = await _resolveStudentAuthId(
           email: studentEmail,
-          name: m.name,
+          name: member.name,
           sharedPassword: _db.studentDefaultPassword,
           teacherAccessToken: teacherAccessToken,
           teacherRefreshToken: teacherRefreshToken,
@@ -294,7 +276,7 @@ class GroupRepositoryImpl implements IGroupRepository {
         final userRow = await _upsertUserProfile(
           authUserId: studentAuthId,
           email: studentEmail,
-          name: m.name,
+          name: member.name,
           role: 'student',
         );
         final userId = asInt(userRow['id'] ?? userRow['_id']);
@@ -309,13 +291,13 @@ class GroupRepositoryImpl implements IGroupRepository {
         members.add(
           GroupMember(
             id: userId,
-            name: m.name,
+            name: member.name,
             username: studentEmail,
           ),
         );
       }
 
-      groups.add(CourseGroup(id: grpId, name: entry.key, members: members));
+      groups.add(CourseGroup(id: grpId, name: group.name, members: members));
     }
 
     return GroupCategory(
@@ -366,10 +348,4 @@ class GroupRepositoryImpl implements IGroupRepository {
       await _db.robleDelete(RobleTables.category, catKey);
     }
   }
-}
-
-class _ParsedMember {
-  final String name;
-  final String username;
-  const _ParsedMember({required this.name, required this.username});
 }

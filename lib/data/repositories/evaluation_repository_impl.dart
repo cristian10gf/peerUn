@@ -7,16 +7,20 @@ import 'package:example/domain/models/evaluation.dart';
 import 'package:example/domain/models/peer_evaluation.dart';
 import 'package:example/domain/models/teacher_data.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
+import 'package:example/domain/services/group_results_domain_service.dart';
 
 class EvaluationRepositoryImpl implements IEvaluationRepository {
   final DatabaseService _db;
-  EvaluationRepositoryImpl(this._db);
+  final GroupResultsDomainService _groupResultsDomainService;
+
+  EvaluationRepositoryImpl(
+    this._db, {
+    GroupResultsDomainService? groupResultsDomainService,
+  }) : _groupResultsDomainService =
+           groupResultsDomainService ?? const GroupResultsDomainService();
 
   int _asInt(dynamic value, {int fallback = 0}) =>
       asInt(value, fallback: fallback);
-
-  double _asDouble(dynamic value, {double fallback = 0}) =>
-      asDouble(value, fallback: fallback);
 
   String _asString(dynamic value) => asString(value);
 
@@ -187,73 +191,49 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       filters: {'eval_id': evalId},
     );
 
-    final result = <GroupResult>[];
-    const criterionIds = ['punct', 'contrib', 'commit', 'attitude'];
+    final inputGroups = <GroupResultsInputGroup>[];
+    final inputMembers = <GroupResultsInputMember>[];
 
-    for (final g in groups) {
-      final gid = _rowId(g);
-      final members = await _db.robleRead(
-        RobleTables.userGroup,
-        filters: {'group_id': gid},
+    for (final group in groups) {
+      final groupId = _rowId(group);
+      inputGroups.add(
+        GroupResultsInputGroup(
+          id: groupId,
+          name: _asString(group['name']),
+        ),
       );
-      final memberIds = members.map(_rowId).toSet();
 
-      final students = <StudentResult>[];
-      for (final m in members) {
-        final mid = _rowId(m);
-        final mName = _asString(m['name']);
+      final memberRows = await _db.robleRead(
+        RobleTables.userGroup,
+        filters: {'group_id': groupId},
+      );
 
-        final memberResponses = responses.where(
-          (r) => _asInt(r['evaluated_member_id']) == mid && _asInt(r['score']) >= 2,
-        );
-        final values = memberResponses.map((r) => _asDouble(r['score'])).toList();
-
-        final avg = values.isEmpty
-            ? 0.0
-            : double.parse((values.reduce((a, b) => a + b) / values.length).toStringAsFixed(1));
-
-        students.add(
-          StudentResult(
-            initial: mName.isNotEmpty ? mName[0].toUpperCase() : '?',
-            name: mName,
-            score: avg,
+      for (final member in memberRows) {
+        inputMembers.add(
+          GroupResultsInputMember(
+            groupId: groupId,
+            memberId: _rowId(member),
+            name: _asString(member['name']),
           ),
         );
       }
-
-      final criteria = <double>[];
-      for (final cid in criterionIds) {
-        final cResponses = responses.where(
-          (r) => memberIds.contains(_asInt(r['evaluated_member_id'])) &&
-              _asString(r['criterion_id']) == cid &&
-              _asInt(r['score']) >= 2,
-        );
-        final values = cResponses.map((r) => _asDouble(r['score'])).toList();
-        final avg = values.isEmpty
-            ? 0.0
-            : double.parse((values.reduce((a, b) => a + b) / values.length).toStringAsFixed(1));
-        criteria.add(avg);
-      }
-
-      final validScores = students.where((s) => s.score > 0).map((s) => s.score).toList();
-      final groupAvg = validScores.isEmpty
-          ? 0.0
-          : double.parse(
-              (validScores.reduce((a, b) => a + b) / validScores.length)
-                  .toStringAsFixed(1),
-            );
-
-      result.add(
-        GroupResult(
-          name: _asString(g['name']),
-          average: groupAvg,
-          criteria: criteria,
-          students: students,
-        ),
-      );
     }
 
-    return result;
+    final inputResponses = responses
+        .map(
+          (response) => GroupResultsInputResponse(
+            evaluatedMemberId: _asInt(response['evaluated_member_id']),
+            criterionId: _asString(response['criterion_id']),
+            score: _asInt(response['score']),
+          ),
+        )
+        .toList(growable: false);
+
+    return _groupResultsDomainService.buildGroupResults(
+      groups: inputGroups,
+      members: inputMembers,
+      responses: inputResponses,
+    );
   }
 
   // ── Queries ────────────────────────────────────────────────────────────────
