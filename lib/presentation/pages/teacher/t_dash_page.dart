@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/teacher_colors.dart';
-import 'package:example/presentation/controllers/teacher_controller.dart';
+import 'package:example/presentation/controllers/teacher/teacher_course_import_controller.dart';
+import 'package:example/presentation/controllers/teacher/teacher_evaluation_controller.dart';
+import 'package:example/presentation/controllers/teacher/teacher_results_controller.dart';
+import 'package:example/presentation/controllers/teacher/teacher_session_controller.dart';
 import 'package:example/presentation/pages/teacher/widgets/teacher_bottom_nav.dart';
 
 class TDashPage extends StatelessWidget {
@@ -11,7 +14,10 @@ class TDashPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ctrl = Get.find<TeacherController>();
+    final sessionCtrl = Get.find<TeacherSessionController>();
+    final courseCtrl = Get.find<TeacherCourseImportController>();
+    final evalCtrl = Get.find<TeacherEvaluationController>();
+    final resultsCtrl = Get.find<TeacherResultsController>();
     return Scaffold(
       backgroundColor: tkBackground,
       body: SafeArea(
@@ -43,7 +49,7 @@ class TDashPage extends StatelessWidget {
                               ),
                             ),
                             Obx(() {
-                              final t = ctrl.teacher.value;
+                              final t = sessionCtrl.teacher.value;
                               if (t == null) return const SizedBox.shrink();
                               return Text(
                                 t.name,
@@ -62,10 +68,10 @@ class TDashPage extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       Obx(() {
-                        final t = ctrl.teacher.value;
+                        final t = sessionCtrl.teacher.value;
                         if (t == null) return const SizedBox.shrink();
                         return GestureDetector(
-                          onTap: () => _showProfileSheet(context, ctrl),
+                          onTap: () => _showProfileSheet(context, sessionCtrl),
                           child: Container(
                             width: 40,
                             height: 40,
@@ -100,12 +106,12 @@ class TDashPage extends StatelessWidget {
                     () => Row(
                       children: [
                         _StatCard(
-                          value: ctrl.categories.length.toString(),
+                          value: courseCtrl.categories.length.toString(),
                           label: 'CATEGORÍAS',
                         ),
                         const SizedBox(width: 8),
                         _StatCard(
-                          value: ctrl.evaluations
+                          value: evalCtrl.evaluations
                               .where((e) => e.isActive)
                               .length
                               .toString(),
@@ -113,7 +119,7 @@ class TDashPage extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         _StatCard(
-                          value: ctrl.totalGroups.toString(),
+                          value: courseCtrl.totalGroups.toString(),
                           label: 'GRUPOS',
                         ),
                       ],
@@ -133,11 +139,11 @@ class TDashPage extends StatelessWidget {
                   children: [
                     // Active eval card (only when there is one)
                     Obx(() {
-                      final eval = ctrl.activeEval.value;
+                      final eval = evalCtrl.activeEval.value;
                       if (eval == null) return const SizedBox.shrink();
                       return Column(
                         children: [
-                          _ActiveEvalCard(eval: eval, ctrl: ctrl),
+                          _ActiveEvalCard(eval: eval, resultsCtrl: resultsCtrl),
                           const SizedBox(height: 20),
                         ],
                       );
@@ -193,7 +199,7 @@ class TDashPage extends StatelessWidget {
                     const SizedBox(height: 10),
 
                     Obx(() {
-                      if (ctrl.evaluations.isEmpty) {
+                      if (evalCtrl.evaluations.isEmpty) {
                         return Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(
@@ -235,8 +241,14 @@ class TDashPage extends StatelessWidget {
                         );
                       }
                       return Column(
-                        children: ctrl.evaluations
-                            .map((e) => _EvalCard(eval: e, ctrl: ctrl))
+                        children: evalCtrl.evaluations
+                            .map(
+                              (e) => _EvalCard(
+                                eval: e,
+                                evalCtrl: evalCtrl,
+                                resultsCtrl: resultsCtrl,
+                              ),
+                            )
                             .toList(),
                       );
                     }),
@@ -253,8 +265,12 @@ class TDashPage extends StatelessWidget {
     );
   }
 
-  void _showProfileSheet(BuildContext context, TeacherController ctrl) {
-    final teacher = ctrl.currentTeacher;
+  void _showProfileSheet(
+    BuildContext context,
+    TeacherSessionController sessionCtrl,
+  ) {
+    final teacher = sessionCtrl.teacher.value;
+    if (teacher == null) return;
     showModalBottomSheet(
       context: context,
       backgroundColor: tkSurface,
@@ -330,7 +346,7 @@ class TDashPage extends StatelessWidget {
             GestureDetector(
               onTap: () {
                 Get.back();
-                ctrl.logout();
+                sessionCtrl.logout();
               },
               child: Container(
                 width: double.infinity,
@@ -368,8 +384,8 @@ class TDashPage extends StatelessWidget {
 
 class _ActiveEvalCard extends StatefulWidget {
   final Evaluation eval;
-  final TeacherController ctrl;
-  const _ActiveEvalCard({required this.eval, required this.ctrl});
+  final TeacherResultsController resultsCtrl;
+  const _ActiveEvalCard({required this.eval, required this.resultsCtrl});
 
   @override
   State<_ActiveEvalCard> createState() => _ActiveEvalCardState();
@@ -407,7 +423,7 @@ class _ActiveEvalCardState extends State<_ActiveEvalCard>
 
     return GestureDetector(
       onTap: () async {
-        await widget.ctrl.loadGroupResults(eval);
+        await widget.resultsCtrl.loadGroupResults(eval);
         Get.toNamed('/teacher/results');
       },
       child: Container(
@@ -515,8 +531,13 @@ class _ActiveEvalCardState extends State<_ActiveEvalCard>
 
 class _EvalCard extends StatelessWidget {
   final Evaluation eval;
-  final TeacherController ctrl;
-  const _EvalCard({required this.eval, required this.ctrl});
+  final TeacherEvaluationController evalCtrl;
+  final TeacherResultsController resultsCtrl;
+  const _EvalCard({
+    required this.eval,
+    required this.evalCtrl,
+    required this.resultsCtrl,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -596,7 +617,7 @@ class _EvalCard extends StatelessWidget {
             label: 'Ver resultados',
             gold: true,
             onTap: () async {
-              await ctrl.loadGroupResults(eval);
+              await resultsCtrl.loadGroupResults(eval);
               Get.toNamed('/teacher/results');
             },
           ),
@@ -720,7 +741,7 @@ class _EvalCard extends StatelessWidget {
               if (newName.isEmpty) return;
               Get.back();
               try {
-                await ctrl.renameEvaluation(eval.id, newName);
+                await evalCtrl.renameEvaluation(eval.id, newName);
               } catch (e) {
                 Get.snackbar(
                   'Error',
@@ -770,7 +791,7 @@ class _EvalCard extends StatelessWidget {
           TextButton(
             onPressed: () async {
               Get.back();
-              await ctrl.deleteEvaluation(eval.id);
+              await evalCtrl.deleteEvaluation(eval.id);
             },
             child: Text(
               'Eliminar',

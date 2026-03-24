@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/teacher_colors.dart';
-import 'package:example/presentation/controllers/teacher_controller.dart';
+import 'package:example/presentation/controllers/teacher/teacher_course_import_controller.dart';
 import 'package:example/domain/models/course_model.dart';
 import 'package:example/presentation/pages/teacher/widgets/teacher_back_button.dart';
 
 class TCourseManagePage extends StatelessWidget {
   const TCourseManagePage({super.key});
 
-  void _showCreateSheet(BuildContext context, TeacherController ctrl) {
+  void _showCreateSheet(BuildContext context, TeacherCourseImportController ctrl) {
     final nameCtrl = TextEditingController();
     final codeCtrl = TextEditingController();
     showModalBottomSheet(
@@ -119,7 +119,7 @@ class TCourseManagePage extends StatelessWidget {
 
   void _confirmDelete(
     BuildContext context,
-    TeacherController ctrl,
+    TeacherCourseImportController ctrl,
     CourseModel course,
   ) {
     showDialog(
@@ -168,7 +168,7 @@ class TCourseManagePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ctrl = Get.find<TeacherController>();
+    final ctrl = Get.find<TeacherCourseImportController>();
     return Scaffold(
       backgroundColor: tkBackground,
       body: SafeArea(

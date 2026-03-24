@@ -4,17 +4,20 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/teacher_colors.dart';
-import 'package:example/presentation/controllers/teacher_controller.dart';
+import 'package:example/presentation/controllers/teacher/teacher_course_import_controller.dart';
+import 'package:example/presentation/controllers/teacher/teacher_session_controller.dart';
 import 'package:example/presentation/models/csv_import_summary.dart';
 import 'package:example/presentation/pages/teacher/widgets/teacher_bottom_nav.dart';
 import 'package:example/presentation/pages/teacher/widgets/teacher_category_card.dart';
+import 'package:example/presentation/pages/teacher/widgets/import/t_import_header.dart';
+import 'package:example/presentation/pages/teacher/widgets/import/t_import_empty_state.dart';
 
 class TImportPage extends StatelessWidget {
   const TImportPage({super.key});
 
   Future<void> _pickAndImport(
     BuildContext context,
-    TeacherController ctrl,
+    TeacherCourseImportController ctrl,
   ) async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -29,18 +32,12 @@ class TImportPage extends StatelessWidget {
     if (path == null) return;
 
     final content = await File(path).readAsString();
-    final rawName = file.name.replaceAll(
-      RegExp(r'\.csv$', caseSensitive: false),
-      '',
-    );
-    // Strip trailing Brightspace timestamp pattern e.g. _20260217225843
-    final categoryName = rawName.replaceAll(RegExp(r'_\d{14}'), '');
 
     if (!context.mounted) return;
     final courseId = await _showCoursePicker(context, ctrl);
     if (courseId == null) return; // user cancelled
 
-    await ctrl.importCsv(content, categoryName, courseId);
+    await ctrl.importCsvFromFilename(content, file.name, courseId);
 
     if (!context.mounted) return;
     final summary = ctrl.lastImportSummary.value;
@@ -159,7 +156,7 @@ class TImportPage extends StatelessWidget {
   /// Returns the selected courseId (0 = sin curso), or null if cancelled.
   Future<int?> _showCoursePicker(
     BuildContext context,
-    TeacherController ctrl,
+    TeacherCourseImportController ctrl,
   ) async {
     return showModalBottomSheet<int>(
       context: context,
@@ -176,7 +173,8 @@ class TImportPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ctrl = Get.find<TeacherController>();
+    final sessionCtrl = Get.find<TeacherSessionController>();
+    final courseCtrl = Get.find<TeacherCourseImportController>();
     return Scaffold(
       backgroundColor: tkBackground,
       body: SafeArea(
@@ -184,124 +182,12 @@ class TImportPage extends StatelessWidget {
           children: [
             // ── Header ─────────────────────────────────────────────────────
             Container(
-              width: double.infinity,
-              color: tkSurface,
-              padding: const EdgeInsets.fromLTRB(22, 16, 22, 20),
               child: Obx(() {
-                final t = ctrl.teacher.value;
+                final t = sessionCtrl.teacher.value;
                 if (t == null) return const SizedBox.shrink();
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [tkGold, Color(0xFFE3C26E)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            t.initials,
-                            style: GoogleFonts.dmMono(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              color: tkBackground,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                t.name,
-                                style: GoogleFonts.sora(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.3,
-                                  color: tkText,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                t.email,
-                                style: GoogleFonts.dmMono(
-                                  fontSize: 11,
-                                  color: tkTextFaint,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        GestureDetector(
-                          onTap: () => Get.toNamed('/teacher/courses'),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: tkGold.withValues(alpha: 0.1),
-                              border: Border.all(
-                                color: tkGold.withValues(alpha: 0.3),
-                              ),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.school_rounded,
-                                  size: 13,
-                                  color: tkGold,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'Cursos',
-                                  style: GoogleFonts.sora(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: tkGold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Importar grupos',
-                      style: GoogleFonts.sora(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
-                        color: tkText,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Desde archivo CSV de Brightspace',
-                      style: GoogleFonts.dmMono(
-                        fontSize: 11,
-                        color: tkTextFaint,
-                      ),
-                    ),
-                  ],
+                return TImportHeader(
+                  teacher: t,
+                  onCoursesTap: () => Get.toNamed('/teacher/courses'),
                 );
               }),
             ),
@@ -316,11 +202,11 @@ class TImportPage extends StatelessWidget {
                   children: [
                     // Import button
                     Obx(() {
-                      final loading = ctrl.importLoading.value;
+                      final loading = courseCtrl.importLoading.value;
                       return GestureDetector(
                         onTap: loading
                             ? null
-                            : () => _pickAndImport(context, ctrl),
+                            : () => _pickAndImport(context, courseCtrl),
                         child: Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 14),
@@ -362,8 +248,8 @@ class TImportPage extends StatelessWidget {
                     }),
 
                     Obx(() {
-                      final loading = ctrl.importLoading.value;
-                      final status = ctrl.importProgress.value;
+                      final loading = courseCtrl.importLoading.value;
+                      final status = courseCtrl.importProgress.value;
                       if (!loading || status.isEmpty) {
                         return const SizedBox(height: 12);
                       }
@@ -407,7 +293,7 @@ class TImportPage extends StatelessWidget {
 
                     // Error message
                     Obx(() {
-                      final err = ctrl.importError.value;
+                      final err = courseCtrl.importError.value;
                       if (err.isEmpty) return const SizedBox(height: 6);
                       return Padding(
                         padding: const EdgeInsets.only(top: 10),
@@ -437,53 +323,16 @@ class TImportPage extends StatelessWidget {
 
                     // Category list or empty state
                     Obx(() {
-                      final cats = ctrl.categories;
+                      final cats = courseCtrl.categories;
                       if (cats.isEmpty) {
-                        return Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 32,
-                            horizontal: 20,
-                          ),
-                          decoration: BoxDecoration(
-                            color: tkSurface,
-                            border: Border.all(color: tkBorder),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Column(
-                            children: [
-                              const Icon(
-                                Icons.folder_open_rounded,
-                                size: 32,
-                                color: tkTextFaint,
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                'Sin categorías importadas',
-                                style: GoogleFonts.sora(
-                                  fontSize: 13,
-                                  color: tkTextFaint,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Usa el botón de arriba para cargar un CSV',
-                                style: GoogleFonts.sora(
-                                  fontSize: 11,
-                                  color: tkTextFaint,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
+                        return const TImportEmptyState();
                       }
                       return Column(
                         children: cats
                             .map(
                               (c) => TeacherCategoryCard(
                                 category: c,
-                                onDelete: () => ctrl.deleteCategory(c.id),
+                                onDelete: () => courseCtrl.deleteCategory(c.id),
                               ),
                             )
                             .toList(),
@@ -508,7 +357,7 @@ class TImportPage extends StatelessWidget {
 // ── Course picker sheet ────────────────────────────────────────────────────────
 
 class _CoursePickerSheet extends StatefulWidget {
-  final TeacherController ctrl;
+  final TeacherCourseImportController ctrl;
   const _CoursePickerSheet({required this.ctrl});
 
   @override

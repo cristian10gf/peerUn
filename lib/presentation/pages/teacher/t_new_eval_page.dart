@@ -2,42 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/teacher_colors.dart';
-import 'package:example/presentation/controllers/teacher_controller.dart';
-import 'package:example/presentation/pages/teacher/widgets/teacher_back_button.dart';
+import 'package:example/presentation/controllers/teacher/teacher_course_import_controller.dart';
+import 'package:example/presentation/controllers/teacher/teacher_evaluation_controller.dart';
+import 'package:example/presentation/pages/teacher/widgets/new_eval/t_new_eval_header.dart';
+import 'package:example/presentation/pages/teacher/widgets/new_eval/t_new_eval_picker_sheets.dart';
 
 class TNewEvalPage extends StatelessWidget {
   const TNewEvalPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final ctrl = Get.find<TeacherController>();
+    final evalCtrl = Get.find<TeacherEvaluationController>();
+    final courseCtrl = Get.find<TeacherCourseImportController>();
     return Scaffold(
       backgroundColor: tkBackground,
       body: SafeArea(
         child: Column(
           children: [
             // ── Header ─────────────────────────────────────────────────────
-            Container(
-              width: double.infinity,
-              color: tkSurface,
-              padding: const EdgeInsets.fromLTRB(22, 4, 22, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TeacherBackButton(label: 'Volver', route: '/teacher/dash'),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Nueva evaluación',
-                    style: GoogleFonts.sora(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                      color: tkText,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            const TNewEvalHeader(),
             const Divider(height: 1, color: tkBorder),
 
             // ── Body ───────────────────────────────────────────────────────
@@ -52,8 +35,8 @@ class TNewEvalPage extends StatelessWidget {
                     const SizedBox(height: 8),
                     Obx(
                       () => _GoldTextField(
-                        value: ctrl.evalName.value,
-                        onChanged: (v) => ctrl.evalName.value = v,
+                        value: evalCtrl.evalName.value,
+                        onChanged: evalCtrl.setEvalName,
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -62,12 +45,12 @@ class TNewEvalPage extends StatelessWidget {
                     _SectionLabel('CURSO'),
                     const SizedBox(height: 8),
                     Obx(() {
-                      final name = ctrl.selectedCourseName.value;
-                      final empty = ctrl.courses.isEmpty;
+                      final name = courseCtrl.selectedCourseName.value;
+                      final empty = courseCtrl.courses.isEmpty;
                       return GestureDetector(
                         onTap: empty
                             ? null
-                            : () => _showCoursePicker(context, ctrl),
+                            : () => _showCoursePicker(context, evalCtrl, courseCtrl),
                         child: Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(
@@ -114,14 +97,14 @@ class TNewEvalPage extends StatelessWidget {
                     _SectionLabel('CATEGORÍA DE GRUPOS'),
                     const SizedBox(height: 8),
                     Obx(() {
-                      final name = ctrl.selectedCategoryName.value;
-                      final hasCourse = ctrl.selectedCourseId.value != null;
-                      final cats = ctrl.categoriesForCourse;
+                      final name = evalCtrl.selectedCategoryName.value;
+                      final hasCourse = courseCtrl.selectedCourseId.value != null;
+                      final cats = courseCtrl.categoriesForCourse;
                       final empty = !hasCourse || cats.isEmpty;
                       return GestureDetector(
                         onTap: empty
                             ? null
-                            : () => _showCategoryPicker(context, ctrl),
+                            : () => _showCategoryPicker(context, evalCtrl, courseCtrl),
                         child: Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(
@@ -172,12 +155,12 @@ class TNewEvalPage extends StatelessWidget {
                     Obx(
                       () => Row(
                         children: [24, 48, 72, 168].map((h) {
-                          final selected = ctrl.selectedHours.value == h;
+                          final selected = evalCtrl.selectedHours.value == h;
                           return Expanded(
                             child: Padding(
                               padding: EdgeInsets.only(right: h != 168 ? 6 : 0),
                               child: GestureDetector(
-                                onTap: () => ctrl.selectedHours.value = h,
+                                onTap: () => evalCtrl.setSelectedHours(h),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 10,
@@ -223,9 +206,8 @@ class TNewEvalPage extends StatelessWidget {
                             description:
                                 'Estudiantes ven sus promedios recibidos por criterio',
                             value: 'public',
-                            selected: ctrl.selectedVisibility.value == 'public',
-                            onTap: () =>
-                                ctrl.selectedVisibility.value = 'public',
+                            selected: evalCtrl.selectedVisibility.value == 'public',
+                            onTap: () => evalCtrl.setSelectedVisibility('public'),
                           ),
                           const SizedBox(height: 8),
                           _VisibilityCard(
@@ -235,9 +217,8 @@ class TNewEvalPage extends StatelessWidget {
                                 'Solo el docente accede a los resultados detallados',
                             value: 'private',
                             selected:
-                                ctrl.selectedVisibility.value == 'private',
-                            onTap: () =>
-                                ctrl.selectedVisibility.value = 'private',
+                              evalCtrl.selectedVisibility.value == 'private',
+                            onTap: () => evalCtrl.setSelectedVisibility('private'),
                           ),
                         ],
                       ),
@@ -246,11 +227,11 @@ class TNewEvalPage extends StatelessWidget {
 
                     // ── Launch ───────────────────────────────────────────────
                     Obx(() {
-                      if (ctrl.evalError.value.isNotEmpty) {
+                      if (evalCtrl.evalError.value.isNotEmpty) {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 10),
                           child: Text(
-                            ctrl.evalError.value,
+                            evalCtrl.evalError.value,
                             style: GoogleFonts.sora(
                               fontSize: 12,
                               color: const Color(0xFFEF4444),
@@ -263,14 +244,14 @@ class TNewEvalPage extends StatelessWidget {
                     }),
                     Obx(
                       () => GestureDetector(
-                        onTap: ctrl.isLoading.value
+                        onTap: evalCtrl.isLoading.value
                             ? null
-                            : () => ctrl.createEvaluation(),
+                            : () => evalCtrl.createEvaluation(),
                         child: Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           decoration: BoxDecoration(
-                            color: ctrl.isLoading.value
+                            color: evalCtrl.isLoading.value
                                 ? tkGold.withValues(alpha: 0.5)
                                 : tkGold,
                             borderRadius: BorderRadius.circular(14),
@@ -289,7 +270,7 @@ class TNewEvalPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     Obx(() {
-                      final name = ctrl.selectedCategoryName.value;
+                      final name = evalCtrl.selectedCategoryName.value;
                       return Center(
                         child: Text(
                           name.isEmpty
@@ -313,190 +294,38 @@ class TNewEvalPage extends StatelessWidget {
     );
   }
 
-  void _showCoursePicker(BuildContext context, TeacherController ctrl) {
+  void _showCoursePicker(
+    BuildContext context,
+    TeacherEvaluationController evalCtrl,
+    TeacherCourseImportController courseCtrl,
+  ) {
     showModalBottomSheet(
       context: context,
       backgroundColor: tkSurface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => Obx(
-        () => Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: tkBorder,
-                borderRadius: BorderRadius.circular(99),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              child: Text(
-                'Curso',
-                style: GoogleFonts.sora(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: tkText,
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            ...ctrl.courses.map((course) {
-              final selected = ctrl.selectedCourseId.value == course.id;
-              return GestureDetector(
-                onTap: () {
-                  ctrl.selectedCategoryId.value = null;
-                  ctrl.selectedCategoryName.value = '';
-                  ctrl.loadCategoriesForCourse(course.id);
-                  Get.back();
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 22,
-                    vertical: 14,
-                  ),
-                  decoration: BoxDecoration(
-                    color: selected ? tkGoldLight : tkSurface,
-                    border: Border(bottom: BorderSide(color: tkBorder)),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              course.name,
-                              style: GoogleFonts.sora(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: selected ? tkGold : tkText,
-                              ),
-                            ),
-                            if (course.code.isNotEmpty)
-                              Text(
-                                course.code,
-                                style: GoogleFonts.dmMono(
-                                  fontSize: 11,
-                                  color: tkTextFaint,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      if (selected)
-                        const Icon(
-                          Icons.check_circle_rounded,
-                          size: 18,
-                          color: tkGold,
-                        ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-            const SizedBox(height: 20),
-          ],
-        ),
+      builder: (_) => TNewEvalCoursePickerSheet(
+        evalCtrl: evalCtrl,
+        courseCtrl: courseCtrl,
       ),
     );
   }
 
-  void _showCategoryPicker(BuildContext context, TeacherController ctrl) {
+  void _showCategoryPicker(
+    BuildContext context,
+    TeacherEvaluationController evalCtrl,
+    TeacherCourseImportController courseCtrl,
+  ) {
     showModalBottomSheet(
       context: context,
       backgroundColor: tkSurface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => Obx(
-        () => Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: tkBorder,
-                borderRadius: BorderRadius.circular(99),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              child: Text(
-                'Categoría de grupos',
-                style: GoogleFonts.sora(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: tkText,
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            ...ctrl.categoriesForCourse.map((cat) {
-              final selected = ctrl.selectedCategoryId.value == cat.id;
-              return GestureDetector(
-                onTap: () {
-                  ctrl.selectedCategoryId.value = cat.id;
-                  ctrl.selectedCategoryName.value = cat.name;
-                  Get.back();
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 22,
-                    vertical: 14,
-                  ),
-                  decoration: BoxDecoration(
-                    color: selected ? tkGoldLight : tkSurface,
-                    border: Border(bottom: BorderSide(color: tkBorder)),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              cat.name,
-                              style: GoogleFonts.sora(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: selected ? tkGold : tkText,
-                              ),
-                            ),
-                            Text(
-                              '${cat.groupCount} grupos · ${cat.studentCount} estudiantes',
-                              style: GoogleFonts.dmMono(
-                                fontSize: 11,
-                                color: tkTextFaint,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (selected)
-                        const Icon(
-                          Icons.check_circle_rounded,
-                          size: 18,
-                          color: tkGold,
-                        ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-            const SizedBox(height: 20),
-          ],
-        ),
+      builder: (_) => TNewEvalCategoryPickerSheet(
+        evalCtrl: evalCtrl,
+        courseCtrl: courseCtrl,
       ),
     );
   }

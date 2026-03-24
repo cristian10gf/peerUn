@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/teacher_colors.dart';
-import 'package:example/presentation/controllers/teacher_controller.dart';
+import 'package:example/presentation/controllers/teacher/teacher_results_controller.dart';
 import 'package:example/presentation/constants/evaluation_ui_constants.dart';
 import 'package:example/domain/models/teacher_data.dart';
 import 'package:example/presentation/pages/teacher/widgets/teacher_back_button.dart';
@@ -16,7 +16,7 @@ class TResultsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ctrl = Get.find<TeacherController>();
+    final ctrl = Get.find<TeacherResultsController>();
     return Scaffold(
       backgroundColor: tkBackground,
       body: SafeArea(
@@ -98,7 +98,7 @@ class TResultsPage extends StatelessWidget {
 // ── Overview ──────────────────────────────────────────────────────────────────
 
 class _OverviewBody extends StatelessWidget {
-  final TeacherController ctrl;
+  final TeacherResultsController ctrl;
   const _OverviewBody({required this.ctrl});
 
   @override
@@ -318,7 +318,7 @@ class _GroupCard extends StatelessWidget {
 // ── Detail ────────────────────────────────────────────────────────────────────
 
 class _DetailBody extends StatelessWidget {
-  final TeacherController ctrl;
+  final TeacherResultsController ctrl;
   final GroupResult group;
   const _DetailBody({required this.ctrl, required this.group});
 

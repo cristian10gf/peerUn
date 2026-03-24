@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/teacher_colors.dart';
-import 'package:example/presentation/controllers/teacher_controller.dart';
+import 'package:example/presentation/controllers/teacher/teacher_course_import_controller.dart';
+import 'package:example/presentation/controllers/teacher/teacher_session_controller.dart';
 import 'package:example/presentation/pages/teacher/widgets/teacher_bottom_nav.dart';
 import 'package:example/presentation/pages/teacher/widgets/teacher_category_card.dart';
 
@@ -11,8 +12,8 @@ class TProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    //:v
-    final ctrl = Get.find<TeacherController>();
+    final sessionCtrl = Get.find<TeacherSessionController>();
+    final courseCtrl = Get.find<TeacherCourseImportController>();
     return Scaffold(
       backgroundColor: tkBackground,
       body: SafeArea(
@@ -24,7 +25,7 @@ class TProfilePage extends StatelessWidget {
               color: tkSurface,
               padding: const EdgeInsets.fromLTRB(22, 16, 22, 20),
               child: Obx(() {
-                final t = ctrl.teacher.value;
+                final t = sessionCtrl.teacher.value;
                 if (t == null) return const SizedBox.shrink();
                 return Row(
                   children: [
@@ -80,7 +81,7 @@ class TProfilePage extends StatelessWidget {
                     ),
                     const SizedBox(width: 10),
                     GestureDetector(
-                      onTap: () => ctrl.logout(),
+                      onTap: () => sessionCtrl.logout(),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -141,7 +142,7 @@ class TProfilePage extends StatelessWidget {
 
                     // Import button
                     Obx(() {
-                      final loading = ctrl.importLoading.value;
+                      final loading = courseCtrl.importLoading.value;
                       return GestureDetector(
                         onTap: loading
                             ? null
@@ -188,7 +189,7 @@ class TProfilePage extends StatelessWidget {
 
                     // Error message
                     Obx(() {
-                      final err = ctrl.importError.value;
+                      final err = courseCtrl.importError.value;
                       if (err.isEmpty) return const SizedBox(height: 14);
                       return Padding(
                         padding: const EdgeInsets.only(top: 8),
@@ -206,7 +207,7 @@ class TProfilePage extends StatelessWidget {
 
                     // Category list or empty state
                     Obx(() {
-                      final cats = ctrl.categories;
+                      final cats = courseCtrl.categories;
                       if (cats.isEmpty) {
                         return Container(
                           width: double.infinity,
@@ -252,7 +253,7 @@ class TProfilePage extends StatelessWidget {
                             .map(
                               (c) => TeacherCategoryCard(
                                 category: c,
-                                onDelete: () => ctrl.deleteCategory(c.id),
+                                onDelete: () => courseCtrl.deleteCategory(c.id),
                               ),
                             )
                             .toList(),
