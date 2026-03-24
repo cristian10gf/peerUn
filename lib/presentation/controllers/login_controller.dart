@@ -2,12 +2,12 @@ import 'package:get/get.dart';
 import 'package:example/domain/models/auth_login_result.dart';
 import 'package:example/domain/repositories/i_unified_auth_repository.dart';
 import 'package:example/presentation/controllers/student_controller.dart';
-import 'package:example/presentation/controllers/teacher_controller.dart';
+import 'package:example/presentation/controllers/teacher/teacher_session_controller.dart';
 
 class LoginController extends GetxController {
   final IUnifiedAuthRepository _authRepo;
   final StudentController _studentController;
-  final TeacherController _teacherController;
+  final TeacherSessionController _teacherController;
 
   LoginController(
     this._authRepo,
