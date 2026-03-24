@@ -14,27 +14,30 @@ class DatabaseService {
   static const String _authTokensKey = 'session_auth_tokens';
 
   final Map<String, String> _tableNameCache = <String, String>{};
-  DatabaseServiceConfig get _config => DatabaseServiceConfig(defaultDbName: _defaultDbName);
+  late final DatabaseServiceConfig _config =
+      DatabaseServiceConfig(defaultDbName: _defaultDbName);
 
-  RobleApiDataBase get roble => RobleApiDataBase(
+  late final RobleApiDataBase _roble = RobleApiDataBase(
     config: RobleApiConfig(
       authUrl: _config.buildServiceUrl(_config.authBase, 'auth'),
       dataUrl: _config.buildServiceUrl(_config.dataBase, 'database'),
     ),
   );
 
-  DatabaseServiceAuth get _auth => DatabaseServiceAuth(
-    roble: roble,
+  RobleApiDataBase get roble => _roble;
+
+  late final DatabaseServiceAuth _auth = DatabaseServiceAuth(
+    roble: _roble,
     authTokensKey: _authTokensKey,
   );
 
-  DatabaseServiceCrud get _crud => DatabaseServiceCrud(
-    roble: roble,
+  late final DatabaseServiceCrud _crud = DatabaseServiceCrud(
+    roble: _roble,
     tableNameCache: _tableNameCache,
     uuid: _uuid,
   );
 
-  DatabaseServiceSession get _session => DatabaseServiceSession(
+  late final DatabaseServiceSession _session = DatabaseServiceSession(
     studentSessionKey: _studentSessionKey,
     teacherSessionKey: _teacherSessionKey,
     saveAuthTokens: saveAuthTokens,
