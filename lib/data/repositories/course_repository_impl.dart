@@ -14,7 +14,12 @@ class CourseRepositoryImpl implements ICourseRepository {
     final claims = await _db.readAuthTokenClaims();
     final email = (claims['email'] ?? '').toString().trim().toLowerCase();
     if (email.isEmpty) return null;
-    final row = await _db.robleFindUserByEmail(email);
+    Map<String, dynamic>? row;
+    try {
+      row = await _db.robleFindUserByEmail(email);
+    } catch (_) {
+      return null;
+    }
     if (row == null) return null;
     return asInt(row['id'] ?? row['_id']);
   }
@@ -37,14 +42,23 @@ class CourseRepositoryImpl implements ICourseRepository {
     try {
       return await _db.robleCreate(RobleTables.users, payload);
     } catch (_) {
-      final existing = await _db.robleFindUserByEmail(email);
+      Map<String, dynamic>? existing;
+      try {
+        existing = await _db.robleFindUserByEmail(email);
+      } catch (_) {
+        return null;
+      }
       if (existing == null) return null;
 
       final key = existing['_id']?.toString() ?? '';
       if (key.isEmpty) return existing;
 
-      await _db.robleUpdate(RobleTables.users, key, payload);
-      return await _db.robleFindUserByEmail(email) ?? existing;
+      try {
+        await _db.robleUpdate(RobleTables.users, key, payload);
+        return await _db.robleFindUserByEmail(email) ?? existing;
+      } catch (_) {
+        return existing;
+      }
     }
   }
 
