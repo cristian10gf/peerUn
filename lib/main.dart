@@ -18,7 +18,11 @@ import 'package:example/domain/repositories/i_group_repository.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
 import 'package:example/domain/repositories/i_course_repository.dart';
 import 'package:example/domain/repositories/i_unified_auth_repository.dart';
+import 'package:example/domain/use_case/teacher/teacher_import_csv_use_case.dart';
+import 'package:example/domain/use_case/teacher/teacher_create_evaluation_use_case.dart';
+import 'package:example/presentation/bindings/teacher_module_binding.dart';
 import 'package:example/presentation/controllers/connectivity_controller.dart';
+import 'package:example/presentation/controllers/teacher/teacher_session_controller.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 //import 'package:example/presentation/theme/teacher_colors.dart';
 
@@ -35,7 +39,6 @@ import 'package:example/presentation/pages/auth/login_page.dart';
 import 'package:example/presentation/controllers/login_controller.dart';
 
 // Teacher
-import 'package:example/presentation/controllers/teacher_controller.dart';
 import 'package:example/presentation/pages/teacher/t_dash_page.dart';
 import 'package:example/presentation/pages/teacher/t_import_page.dart';
 import 'package:example/presentation/pages/teacher/t_new_eval_page.dart';
@@ -80,6 +83,14 @@ class _AppBindings extends Bindings {
     Get.put<IEvaluationRepository>(EvaluationRepositoryImpl(db), permanent: true);
     Get.put<ICourseRepository>(CourseRepositoryImpl(db), permanent: true);
     Get.put(
+      TeacherImportCsvUseCase(Get.find<IGroupRepository>()),
+      permanent: true,
+    );
+    Get.put(
+      TeacherCreateEvaluationUseCase(Get.find<IEvaluationRepository>()),
+      permanent: true,
+    );
+    Get.put(
       StudentController(
         Get.find<IAuthRepository>(),
         Get.find<IEvaluationRepository>(),
@@ -87,12 +98,7 @@ class _AppBindings extends Bindings {
       permanent: true,
     );
     Get.put(
-      TeacherController(
-        Get.find<ITeacherAuthRepository>(),
-        Get.find<IGroupRepository>(),
-        Get.find<IEvaluationRepository>(),
-        Get.find<ICourseRepository>(),
-      ),
+      TeacherSessionController(Get.find<ITeacherAuthRepository>()),
       permanent: true,
     );
     Get.put<IUnifiedAuthRepository>(
@@ -103,7 +109,7 @@ class _AppBindings extends Bindings {
       LoginController(
         Get.find<IUnifiedAuthRepository>(),
         Get.find<StudentController>(),
-        Get.find<TeacherController>(),
+        Get.find<TeacherSessionController>(),
       ),
       permanent: true,
     );
@@ -160,12 +166,36 @@ class PeerEvalApp extends StatelessWidget {
         GetPage(name: '/student/results', page: () => const SMyResultsPage()),
         GetPage(name: '/student/profile', page: () => const SProfilePage()),
         // Teacher
-        GetPage(name: '/teacher/dash', page: () => const TDashPage()),
-        GetPage(name: '/teacher/import', page: () => const TImportPage()),
-        GetPage(name: '/teacher/new-eval', page: () => const TNewEvalPage()),
-        GetPage(name: '/teacher/results', page: () => const TResultsPage()),
-        GetPage(name: '/teacher/profile', page: () => const TProfilePage()),
-        GetPage(name: '/teacher/courses', page: () => const TCourseManagePage()),
+        GetPage(
+          name: '/teacher/dash',
+          page: () => const TDashPage(),
+          binding: TeacherModuleBinding(),
+        ),
+        GetPage(
+          name: '/teacher/import',
+          page: () => const TImportPage(),
+          binding: TeacherModuleBinding(),
+        ),
+        GetPage(
+          name: '/teacher/new-eval',
+          page: () => const TNewEvalPage(),
+          binding: TeacherModuleBinding(),
+        ),
+        GetPage(
+          name: '/teacher/results',
+          page: () => const TResultsPage(),
+          binding: TeacherModuleBinding(),
+        ),
+        GetPage(
+          name: '/teacher/profile',
+          page: () => const TProfilePage(),
+          binding: TeacherModuleBinding(),
+        ),
+        GetPage(
+          name: '/teacher/courses',
+          page: () => const TCourseManagePage(),
+          binding: TeacherModuleBinding(),
+        ),
       ],
     );
   }
@@ -189,7 +219,7 @@ class _SplashPageState extends State<_SplashPage> {
 
   Future<void> _resolve() async {
     final student = Get.find<StudentController>();
-    final teacher = Get.find<TeacherController>();
+    final teacher = Get.find<TeacherSessionController>();
 
     try {
       await Future.wait([student.checkSession(), teacher.checkSession()])
