@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:example/domain/models/student.dart';
 import 'package:example/domain/models/evaluation.dart';
 import 'package:example/domain/models/peer_evaluation.dart';
+import 'package:example/domain/models/student_home.dart';
 import 'package:example/domain/repositories/i_auth_repository.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
 import 'package:example/domain/services/evaluation_domain_service.dart';
@@ -102,9 +103,49 @@ class StudentController extends GetxController {
   final evaluations      = <Evaluation>[].obs;
   final evalStatuses     = <int, EvalStudentStatus>{}.obs;
   final evalLoadError    = ''.obs;
+  final homeLoadError    = ''.obs;
   final peerLoadError    = ''.obs;
   final myResultsError   = ''.obs;
   final submitError      = ''.obs;
+  final isLoadingHome    = false.obs;
+
+  final homeCourses = <StudentHomeCourse>[].obs;
+  final expandedCourseIds = <int>{}.obs;
+  final expandedCategoryIds = <int>{}.obs;
+
+  bool isCourseExpanded(int courseId) => expandedCourseIds.contains(courseId);
+  bool isCategoryExpanded(int categoryId) => expandedCategoryIds.contains(categoryId);
+
+  void toggleCourseExpanded(int courseId) {
+    if (expandedCourseIds.contains(courseId)) {
+      expandedCourseIds.remove(courseId);
+    } else {
+      expandedCourseIds.add(courseId);
+    }
+    expandedCourseIds.refresh();
+  }
+
+  void toggleCategoryExpanded(int categoryId) {
+    if (expandedCategoryIds.contains(categoryId)) {
+      expandedCategoryIds.remove(categoryId);
+    } else {
+      expandedCategoryIds.add(categoryId);
+    }
+    expandedCategoryIds.refresh();
+  }
+
+  Future<void> openActiveEvaluationForCategory(StudentHomeCategory category) async {
+    if (!category.hasActiveEvaluation) return;
+
+    final target = evaluations
+        .where((e) => e.categoryId == category.id && canEvaluate(e))
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    if (target.isEmpty) return;
+    await selectEvalForEvaluation(target.first);
+    Get.toNamed('/student/peers');
+  }
 
   List<Evaluation> get pendingEvaluationsSorted {
     return evaluations
@@ -193,9 +234,25 @@ class StudentController extends GetxController {
     if (s == null) return;
     final studentId = int.parse(s.id);
     evalLoadError.value = '';
+    homeLoadError.value = '';
     peerLoadError.value = '';
     myResultsError.value = '';
     submitError.value = '';
+
+    isLoadingHome.value = true;
+    try {
+      final courses = await _evalRepo.getStudentHomeCourses(s.email);
+      homeCourses.assignAll(courses);
+      expandedCourseIds
+        ..clear()
+        ..addAll(courses.take(2).map((c) => c.id));
+      expandedCategoryIds.clear();
+    } catch (e) {
+      homeCourses.clear();
+      homeLoadError.value = 'Error al cargar cursos: $e';
+    } finally {
+      isLoadingHome.value = false;
+    }
 
     // Load all evaluations this student is part of
     List<Evaluation> evalList = [];
@@ -422,7 +479,11 @@ class StudentController extends GetxController {
     currentGroupName.value = '';
     evaluations.clear();
     evalStatuses.clear();
+    homeLoadError.value = '';
     peers.clear();
+    homeCourses.clear();
+    expandedCourseIds.clear();
+    expandedCategoryIds.clear();
     myResults.clear();
     currentPeer.value = null;
     scores.clear();
