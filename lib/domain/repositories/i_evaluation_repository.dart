@@ -1,6 +1,7 @@
 import 'package:example/domain/models/course.dart';
 import 'package:example/domain/models/evaluation.dart';
 import 'package:example/domain/models/peer_evaluation.dart';
+import 'package:example/domain/models/student_home.dart';
 import 'package:example/domain/models/teacher_data.dart';
 
 abstract class IEvaluationRepository {
@@ -41,6 +42,10 @@ abstract class IEvaluationRepository {
 
   /// Returns the groups/categories the student belongs to as Course objects.
   Future<List<Course>> getCoursesForStudent(String email);
+
+  /// Returns enrolled courses prioritized for student home, including
+  /// categories where the student has group data and progress per category.
+  Future<List<StudentHomeCourse>> getStudentHomeCourses(String email);
 
   /// Saves one set of criterion scores from evaluator → evaluated member.
   Future<void> saveResponses({
