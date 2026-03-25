@@ -4,7 +4,9 @@ import 'package:example/data/utils/string_utils.dart';
 import 'package:example/data/utils/value_parsers.dart';
 import 'package:example/domain/models/course.dart';
 import 'package:example/domain/models/evaluation.dart';
+import 'package:example/domain/models/group_category.dart';
 import 'package:example/domain/models/peer_evaluation.dart';
+import 'package:example/domain/models/student_home.dart';
 import 'package:example/domain/models/teacher_data.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
 import 'package:example/domain/services/group_results_domain_service.dart';
@@ -33,6 +35,31 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       if (_rowId(row) == id) return row;
     }
     return null;
+  }
+
+  bool _isMembershipForStudent(
+    Map<String, dynamic> row,
+    String normalizedEmail,
+    int? studentUserId,
+  ) {
+    final rowEmail = _asString(row['email']).toLowerCase();
+    final rowUsername = _asString(row['username']).toLowerCase();
+    final rowUserId = _asInt(row['user_id'], fallback: -1);
+
+    if (rowEmail.isNotEmpty && rowEmail == normalizedEmail) return true;
+    if (rowUsername.isNotEmpty && rowUsername == normalizedEmail) return true;
+    if (studentUserId != null && rowUserId == studentUserId) return true;
+    return false;
+  }
+
+  bool _looksLikeCode(String value) {
+    final v = value.trim();
+    if (v.isEmpty) return true;
+    if (v.contains('@')) return true;
+    final hasSpace = v.contains(' ');
+    final hasLetters = RegExp('[A-Za-z]').hasMatch(v);
+    final hasDigits = RegExp(r'\d').hasMatch(v);
+    return !hasSpace && hasLetters && hasDigits;
   }
 
   // ── Create ─────────────────────────────────────────────────────────────────
@@ -411,6 +438,231 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       );
     }
 
+    return result;
+  }
+
+  @override
+  Future<List<StudentHomeCourse>> getStudentHomeCourses(String email) async {
+    final normalized = email.toLowerCase();
+    final now = DateTime.now();
+
+    final users = await _db.robleRead(RobleTables.users);
+    final userCourses = await _db.robleRead(RobleTables.userCourse);
+    final courses = await _db.robleRead(RobleTables.course);
+    final categories = await _db.robleRead(RobleTables.category);
+    final groups = await _db.robleRead(RobleTables.groups);
+    final members = await _db.robleRead(RobleTables.userGroup);
+    final evaluations = await _db.robleRead(RobleTables.evaluation);
+    final responses = await _db.robleRead(RobleTables.evaluationCriterium);
+
+    int? studentUserId;
+    final usersById = <int, Map<String, dynamic>>{};
+    final usersByRawId = <String, Map<String, dynamic>>{};
+    final usersByEmail = <String, Map<String, dynamic>>{};
+    for (final user in users) {
+      usersById[_asInt(user['id'] ?? user['_id'])] = user;
+      final rawUserId = _asString(user['user_id']);
+      if (rawUserId.isNotEmpty) {
+        usersByRawId[rawUserId] = user;
+      }
+      final userEmail = _asString(user['email']).toLowerCase();
+      if (userEmail.isNotEmpty) {
+        usersByEmail[userEmail] = user;
+      }
+      if (userEmail == normalized) {
+        studentUserId = _rowId(user);
+      }
+    }
+
+    final enrolledCourseIds = <int>{};
+    for (final row in userCourses) {
+      final role = _asString(row['role']).toLowerCase();
+      if (role.isNotEmpty && role != 'student') continue;
+      if (_isMembershipForStudent(row, normalized, studentUserId)) {
+        enrolledCourseIds.add(_asInt(row['course_id']));
+      }
+    }
+
+    final groupsByCategory = <int, List<Map<String, dynamic>>>{};
+    for (final group in groups) {
+      final categoryId = _asInt(group['category_id']);
+      groupsByCategory.putIfAbsent(categoryId, () => []).add(group);
+    }
+
+    final membersByGroup = <int, List<Map<String, dynamic>>>{};
+    for (final member in members) {
+      final groupId = _asInt(member['group_id']);
+      membersByGroup.putIfAbsent(groupId, () => []).add(member);
+    }
+
+    final categoryById = <int, Map<String, dynamic>>{};
+    final categoriesByCourse = <int, List<Map<String, dynamic>>>{};
+    for (final category in categories) {
+      final categoryId = _rowId(category);
+      final courseId = _asInt(category['course_id']);
+      categoryById[categoryId] = category;
+      categoriesByCourse.putIfAbsent(courseId, () => []).add(category);
+    }
+
+    final myGroupByCategory = <int, Map<String, dynamic>>{};
+    final myMemberIdByCategory = <int, int>{};
+
+    for (final category in categories) {
+      final categoryId = _rowId(category);
+      final categoryGroups = groupsByCategory[categoryId] ?? const [];
+      for (final group in categoryGroups) {
+        final groupId = _rowId(group);
+        final groupMembers = membersByGroup[groupId] ?? const [];
+
+        Map<String, dynamic>? myMember;
+        for (final member in groupMembers) {
+          if (_isMembershipForStudent(member, normalized, studentUserId)) {
+            myMember = member;
+            break;
+          }
+        }
+
+        if (myMember != null) {
+          myGroupByCategory[categoryId] = group;
+          myMemberIdByCategory[categoryId] = _rowId(myMember);
+          enrolledCourseIds.add(_asInt(category['course_id']));
+          break;
+        }
+      }
+    }
+
+    final activeEvalByCategory = <int, Map<String, dynamic>>{};
+    for (final row in evaluations) {
+      final closesAt = _asDate(row['closes_at']);
+      if (closesAt.isBefore(now)) continue;
+      final categoryId = _asInt(row['category_id']);
+      final current = activeEvalByCategory[categoryId];
+      if (current == null || _asDate(row['created_at']).isAfter(_asDate(current['created_at']))) {
+        activeEvalByCategory[categoryId] = row;
+      }
+    }
+
+    final responseRowsByEvalAndEvaluator = <String, Set<int>>{};
+    for (final row in responses) {
+      final evalId = _asInt(row['eval_id']);
+      final evaluatorId = _asInt(row['evaluator_id']);
+      final evaluatedMemberId = _asInt(row['evaluated_member_id'], fallback: -1);
+      if (evaluatedMemberId <= 0) continue;
+
+      final key = '$evalId:$evaluatorId';
+      responseRowsByEvalAndEvaluator.putIfAbsent(key, () => <int>{}).add(evaluatedMemberId);
+    }
+
+    final coursesById = <int, Map<String, dynamic>>{};
+    for (final course in courses) {
+      coursesById[_rowId(course)] = course;
+    }
+
+    final result = <StudentHomeCourse>[];
+    for (final courseId in enrolledCourseIds) {
+      final course = coursesById[courseId];
+      final categoryRows = categoriesByCourse[courseId] ?? const [];
+
+      final homeCategories = <StudentHomeCategory>[];
+      for (final category in categoryRows) {
+        final categoryId = _rowId(category);
+        final group = myGroupByCategory[categoryId];
+        if (group == null) continue;
+
+        final groupId = _rowId(group);
+        final groupMembers = membersByGroup[groupId] ?? const [];
+        final mappedMembers = <GroupMember>[];
+        for (final member in groupMembers) {
+          final memberRowId = _rowId(member);
+          final rawMemberUserId = _asString(member['user_id']);
+          final linkedUser = usersByRawId[rawMemberUserId] ??
+              usersById[_asInt(member['user_id'], fallback: -1)] ??
+              usersByEmail[_asString(member['email']).toLowerCase()] ??
+              usersByEmail[_asString(member['username']).toLowerCase()];
+
+          var memberName = _asString(linkedUser?['name']);
+          final memberNameFromMembership = _asString(member['name']);
+          if (memberName.isEmpty || _looksLikeCode(memberName)) {
+            memberName = memberNameFromMembership;
+          }
+
+          var memberIdentity = _asString(member['username']);
+          if (memberIdentity.isEmpty) {
+            memberIdentity = _asString(member['email']);
+          }
+          if (memberIdentity.isEmpty && linkedUser != null) {
+            memberIdentity = _asString(linkedUser['email']);
+          }
+
+          if (memberName.isEmpty && memberIdentity.isNotEmpty) {
+            final at = memberIdentity.indexOf('@');
+            memberName = at > 0 ? memberIdentity.substring(0, at) : memberIdentity;
+          }
+          if (memberName.isEmpty) {
+            memberName = 'Integrante $memberRowId';
+          }
+
+          mappedMembers.add(
+            GroupMember(
+              id: memberRowId,
+              name: memberName,
+              username: memberIdentity,
+            ),
+          );
+        }
+
+        final activeEval = activeEvalByCategory[categoryId];
+        final activeEvalId = activeEval == null ? 0 : _rowId(activeEval);
+        final activeEvalName = activeEval == null ? '' : _asString(activeEval['name']);
+
+        final myMemberId = myMemberIdByCategory[categoryId];
+        final peerMemberIds = groupMembers
+            .map(_rowId)
+            .where((memberId) => memberId != myMemberId)
+            .toSet();
+
+        var completedPeerCount = 0;
+        if (activeEval != null && studentUserId != null && peerMemberIds.isNotEmpty) {
+          final key = '$activeEvalId:$studentUserId';
+          final evaluatedMemberIds = responseRowsByEvalAndEvaluator[key] ?? const <int>{};
+          completedPeerCount = evaluatedMemberIds.where(peerMemberIds.contains).length;
+        }
+
+        homeCategories.add(
+          StudentHomeCategory(
+            id: categoryId,
+            name: _asString(category['name']),
+            group: StudentHomeGroup(
+              id: groupId,
+              name: _asString(group['name']),
+              members: mappedMembers,
+            ),
+            activeEvaluationId: activeEvalId,
+            activeEvaluationName: activeEvalName,
+            completedPeerCount: completedPeerCount,
+            totalPeerCount: peerMemberIds.length,
+          ),
+        );
+      }
+
+      homeCategories.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
+      result.add(
+        StudentHomeCourse(
+          id: courseId,
+          name: course == null ? '' : _asString(course['name']),
+          hasGroupAssignment: homeCategories.isNotEmpty,
+          categories: homeCategories,
+        ),
+      );
+    }
+
+    result.sort((a, b) {
+      if (a.hasGroupAssignment != b.hasGroupAssignment) {
+        return a.hasGroupAssignment ? -1 : 1;
+      }
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
     return result;
   }
 
