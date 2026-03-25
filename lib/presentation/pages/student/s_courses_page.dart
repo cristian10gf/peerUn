@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 import 'package:example/presentation/controllers/student_controller.dart';
 import 'package:example/domain/models/evaluation.dart';
+import 'package:example/domain/models/student_home.dart';
 import 'package:example/presentation/pages/student/widgets/student_bottom_nav.dart';
 import 'package:example/presentation/pages/student/widgets/student_course_header.dart';
 import 'package:example/presentation/pages/student/widgets/student_profile_sheet.dart';
@@ -98,6 +99,105 @@ class SCoursesPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Text(
+                      'MIS CURSOS',
+                      style: GoogleFonts.sora(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: skTextFaint,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    Obx(() {
+                      if (ctrl.isLoadingHome.value) {
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 22,
+                            horizontal: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color: skSurface,
+                            border: Border.all(color: skBorder),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            children: [
+                              const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: skPrimary,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Cargando cursos matriculados...',
+                                style: GoogleFonts.sora(
+                                  fontSize: 12,
+                                  color: skTextMid,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      if (ctrl.homeLoadError.value.isNotEmpty) {
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 16,
+                            horizontal: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF2F2),
+                            border: Border.all(color: const Color(0xFFFECACA)),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Text(
+                            ctrl.homeLoadError.value,
+                            style: GoogleFonts.sora(
+                              fontSize: 11,
+                              color: const Color(0xFF991B1B),
+                            ),
+                          ),
+                        );
+                      }
+
+                      if (ctrl.homeCourses.isEmpty) {
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 20,
+                            horizontal: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            color: skSurfaceAlt,
+                            border: Border.all(color: skBorder),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            'Aún no tienes cursos matriculados visibles.',
+                            style: GoogleFonts.sora(
+                              fontSize: 12,
+                              color: skTextMid,
+                            ),
+                          ),
+                        );
+                      }
+
+                      return Column(
+                        children: ctrl.homeCourses
+                            .map((course) => _StudentCourseCard(course: course, ctrl: ctrl))
+                            .toList(),
+                      );
+                    }),
+                    const SizedBox(height: 20),
+
                     // ── Destacado: evaluación pendiente más reciente ───────
                     Obx(() {
                       final pending = ctrl.pendingEvaluationsSorted;
@@ -197,6 +297,310 @@ class SCoursesPage extends StatelessWidget {
 }
 
 // ── Course header ──────────────────────────────────────────────────────────────
+
+class _StudentCourseCard extends StatelessWidget {
+  final StudentHomeCourse course;
+  final StudentController ctrl;
+
+  const _StudentCourseCard({required this.course, required this.ctrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final expanded = ctrl.isCourseExpanded(course.id);
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
+          color: skSurface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: course.hasGroupAssignment ? skBorderMid : const Color(0xFFFECACA),
+          ),
+        ),
+        child: Column(
+          children: [
+            InkWell(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              onTap: () => ctrl.toggleCourseExpanded(course.id),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            course.name.isEmpty ? 'Curso sin nombre' : course.name,
+                            style: GoogleFonts.sora(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: skText,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            course.hasGroupAssignment
+                                ? '${course.categories.length} categorias con grupo'
+                                : 'Sin grupo asignado',
+                            style: GoogleFonts.sora(
+                              fontSize: 11,
+                              color: skTextMid,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: course.hasGroupAssignment
+                            ? skPrimaryLight
+                            : const Color(0xFFFEF2F2),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Text(
+                        course.hasGroupAssignment ? 'Con grupo' : 'Sin grupo',
+                        style: GoogleFonts.sora(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: course.hasGroupAssignment
+                              ? skPrimary
+                              : const Color(0xFFB91C1C),
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      color: skTextMid,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (expanded)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                child: Column(
+                  children: [
+                    const Divider(height: 1, color: skBorder),
+                    const SizedBox(height: 10),
+                    if (course.categories.isEmpty)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Este curso aún no tiene categorías con grupo para ti.',
+                          style: GoogleFonts.sora(
+                            fontSize: 11,
+                            color: skTextMid,
+                          ),
+                        ),
+                      )
+                    else
+                      ...course.categories.map(
+                        (category) => _StudentCategoryCard(
+                          category: category,
+                          ctrl: ctrl,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      );
+    });
+  }
+}
+
+class _StudentCategoryCard extends StatelessWidget {
+  final StudentHomeCategory category;
+  final StudentController ctrl;
+
+  const _StudentCategoryCard({required this.category, required this.ctrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final group = category.group;
+    if (group == null) return const SizedBox.shrink();
+
+    return Obx(() {
+      final expanded = ctrl.isCategoryExpanded(category.id);
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: skSurfaceAlt,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: skBorder),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    category.name,
+                    style: GoogleFonts.sora(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: skText,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => ctrl.toggleCategoryExpanded(category.id),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(42, 32),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    expanded ? 'Ocultar' : 'Ver',
+                    style: GoogleFonts.sora(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: skPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Text(
+              group.name,
+              style: GoogleFonts.dmMono(fontSize: 11, color: skTextMid),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(99),
+                    child: LinearProgressIndicator(
+                      minHeight: 4,
+                      value: category.progress,
+                      backgroundColor: skBorder,
+                      valueColor: const AlwaysStoppedAnimation(skPrimary),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${category.completedPeerCount}/${category.totalPeerCount}',
+                  style: GoogleFonts.dmMono(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: skTextMid,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: category.hasActiveEvaluation
+                    ? () => ctrl.openActiveEvaluationForCategory(category)
+                    : null,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: skPrimary,
+                  disabledForegroundColor: skTextMid,
+                  disabledBackgroundColor: skSurface,
+                  side: BorderSide(
+                    color: category.hasActiveEvaluation ? skPrimary : skBorder,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                ),
+                child: Text(
+                  category.hasActiveEvaluation
+                      ? 'Evaluar ${category.activeEvaluationName}'
+                      : 'Sin evaluacion activa',
+                  style: GoogleFonts.sora(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: group.members
+                  .take(3)
+                  .map(
+                    (member) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: skSurface,
+                        border: Border.all(color: skBorder),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Text(
+                        member.name,
+                        style: GoogleFonts.sora(
+                          fontSize: 10,
+                          color: skText,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+            if (group.members.length > 3)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  '+${group.members.length - 3} integrantes',
+                  style: GoogleFonts.sora(
+                    fontSize: 10,
+                    color: skTextMid,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            if (expanded) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: group.members
+                    .skip(3)
+                    .map(
+                      (member) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: skSurface,
+                          border: Border.all(color: skBorder),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                        child: Text(
+                          member.name,
+                          style: GoogleFonts.sora(
+                            fontSize: 10,
+                            color: skText,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
+          ],
+        ),
+      );
+    });
+  }
+}
 
 // ── Active eval hero card ───────────────────────────────────────────────────────
 
