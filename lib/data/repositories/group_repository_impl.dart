@@ -14,7 +14,8 @@ class GroupRepositoryImpl implements IGroupRepository {
   GroupRepositoryImpl(
     this._db, {
     CsvImportDomainService? csvImportDomainService,
-  }) : _csvImportDomainService = csvImportDomainService ?? const CsvImportDomainService();
+  }) : _csvImportDomainService =
+           csvImportDomainService ?? const CsvImportDomainService();
 
   bool _looksLikeAlreadyRegistered(Object error) {
     final msg = error.toString().toLowerCase();
@@ -61,10 +62,7 @@ class GroupRepositoryImpl implements IGroupRepository {
 
     final existing = await _db.robleRead(
       RobleTables.userCourse,
-      filters: {
-        'course_id': courseId,
-        'user_id': userId,
-      },
+      filters: {'course_id': courseId, 'user_id': userId},
     );
     if (existing.isNotEmpty) return;
 
@@ -83,10 +81,7 @@ class GroupRepositoryImpl implements IGroupRepository {
 
     final existing = await _db.robleRead(
       RobleTables.userGroup,
-      filters: {
-        'group_id': groupId,
-        'user_id': userId,
-      },
+      filters: {'group_id': groupId, 'user_id': userId},
     );
     if (existing.isNotEmpty) return;
 
@@ -171,6 +166,10 @@ class GroupRepositoryImpl implements IGroupRepository {
       }
     }
 
+    if (teacherCourseIds.isEmpty) {
+      return const <GroupCategory>[];
+    }
+
     final result = <GroupCategory>[];
     for (final cat in catRows) {
       final courseId = asInt(cat['course_id']);
@@ -207,11 +206,13 @@ class GroupRepositoryImpl implements IGroupRepository {
           );
         }
 
-        groups.add(CourseGroup(
-          id: grpId,
-          name: (grp['name'] ?? '').toString(),
-          members: members,
-        ));
+        groups.add(
+          CourseGroup(
+            id: grpId,
+            name: (grp['name'] ?? '').toString(),
+            members: members,
+          ),
+        );
       }
 
       result.add(
@@ -238,7 +239,8 @@ class GroupRepositoryImpl implements IGroupRepository {
   ) async {
     final teacherTokens = await _db.readAuthTokens();
     final teacherAccessToken = teacherTokens?['access_token']?.toString() ?? '';
-    final teacherRefreshToken = teacherTokens?['refresh_token']?.toString() ?? '';
+    final teacherRefreshToken =
+        teacherTokens?['refresh_token']?.toString() ?? '';
     if (teacherAccessToken.isEmpty || teacherRefreshToken.isEmpty) {
       throw Exception('Sesion de profesor no valida para aprovisionar datos');
     }
@@ -289,11 +291,7 @@ class GroupRepositoryImpl implements IGroupRepository {
         );
 
         members.add(
-          GroupMember(
-            id: userId,
-            name: member.name,
-            username: studentEmail,
-          ),
+          GroupMember(id: userId, name: member.name, username: studentEmail),
         );
       }
 

@@ -68,14 +68,13 @@ class CourseRepositoryImpl implements ICourseRepository {
 
     final filtered = <Map<String, dynamic>>[];
     final teacherUserId = await _resolveCurrentTeacherUserId();
-    if (teacherUserId != null && await tableExists(_db, RobleTables.userCourse)) {
+    if (teacherUserId != null &&
+        await tableExists(_db, RobleTables.userCourse)) {
       final userCourse = await _db.robleRead(
         RobleTables.userCourse,
         filters: {'user_id': teacherUserId, 'role': 'teacher'},
       );
-      final allowedIds = userCourse
-          .map((r) => asInt(r['course_id']))
-          .toSet();
+      final allowedIds = userCourse.map((r) => asInt(r['course_id'])).toSet();
 
       for (final row in rows) {
         if (allowedIds.contains(rowIdFromMap(row))) filtered.add(row);
@@ -90,8 +89,7 @@ class CourseRepositoryImpl implements ICourseRepository {
       }
     }
 
-    final source = filtered.isNotEmpty ? filtered : rows;
-    final courses = source
+    final courses = filtered
         .map(
           (r) => CourseModel(
             id: rowIdFromMap(r),
@@ -133,10 +131,7 @@ class CourseRepositoryImpl implements ICourseRepository {
 
         final existing = await _db.robleRead(
           RobleTables.userCourse,
-          filters: {
-            'course_id': courseId,
-            'user_id': userId,
-          },
+          filters: {'course_id': courseId, 'user_id': userId},
         );
 
         if (existing.isEmpty) {
@@ -218,11 +213,13 @@ class CourseRepositoryImpl implements ICourseRepository {
           );
         }
 
-        groups.add(CourseGroup(
-          id: grpId,
-          name: (grp['name'] ?? '').toString(),
-          members: members,
-        ));
+        groups.add(
+          CourseGroup(
+            id: grpId,
+            name: (grp['name'] ?? '').toString(),
+            members: members,
+          ),
+        );
       }
 
       result.add(
