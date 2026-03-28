@@ -63,6 +63,14 @@ class _FakeEvaluationDatabaseService extends DatabaseService {
       throw Exception('column does not exist in table evaluation');
     }
 
+    final startDate = data['start_date'];
+    final endDate = data['end_date'];
+    final startIso = startDate is String ? DateTime.tryParse(startDate) : null;
+    final endIso = endDate is String ? DateTime.tryParse(endDate) : null;
+    if (startIso == null || endIso == null) {
+      throw Exception('date/time field value out of range');
+    }
+
     final row = <String, dynamic>{
       '_id': 'eval-1',
       'id': 1,
