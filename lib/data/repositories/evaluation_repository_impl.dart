@@ -62,6 +62,88 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     return !hasSpace && hasLetters && hasDigits;
   }
 
+  bool _isOwnedByTeacher(Map<String, dynamic> row, int teacherId) {
+    final legacyTeacher = _asInt(row['teacher_id'], fallback: -1);
+    final schemaTeacher = _asInt(row['created_by'], fallback: -1);
+    return legacyTeacher == teacherId || schemaTeacher == teacherId;
+  }
+
+  String _evalName(Map<String, dynamic> row, {String fallback = ''}) {
+    final legacy = _asString(row['name']);
+    if (legacy.isNotEmpty) return legacy;
+    final schema = _asString(row['title']);
+    if (schema.isNotEmpty) return schema;
+    return fallback;
+  }
+
+  DateTime _evalCreatedAt(Map<String, dynamic> row, {DateTime? fallback}) {
+    return _asDate(row['created_at'] ?? row['start_date'] ?? fallback);
+  }
+
+  DateTime _evalClosesAt(Map<String, dynamic> row, {DateTime? fallback}) {
+    return _asDate(row['closes_at'] ?? row['end_date'] ?? fallback);
+  }
+
+  int _evalHours(
+    Map<String, dynamic> row, {
+    required int fallback,
+    DateTime? createdAt,
+    DateTime? closesAt,
+  }) {
+    final explicit = _asInt(row['hours'], fallback: -1);
+    if (explicit > 0) return explicit;
+
+    final from = createdAt ?? _evalCreatedAt(row, fallback: DateTime.now());
+    final to = closesAt ?? _evalClosesAt(row, fallback: from);
+    final computed = to.difference(from).inHours;
+    if (computed > 0) return computed;
+    return fallback;
+  }
+
+  String _evalVisibility(
+    Map<String, dynamic> row, {
+    String fallback = 'private',
+  }) {
+    final direct = _asString(row['visibility']).toLowerCase();
+    if (direct == 'public' || direct == 'private') return direct;
+
+    final fromDescription = _asString(row['description']).toLowerCase();
+    if (fromDescription == 'public' || fromDescription == 'private') {
+      return fromDescription;
+    }
+    return fallback;
+  }
+
+  bool _looksLikeSchemaMismatch(Object error) {
+    final msg = error.toString().toLowerCase();
+    return msg.contains('column') ||
+        msg.contains('schema') ||
+        msg.contains('does not exist') ||
+        msg.contains('invalid');
+  }
+
+  Future<void> _updateEvaluationName(
+    String rowKey,
+    String newName,
+    Map<String, dynamic> currentRow,
+  ) async {
+    final prefersSchemaField =
+        currentRow.containsKey('title') && !currentRow.containsKey('name');
+    final primaryField = prefersSchemaField ? 'title' : 'name';
+    final fallbackField = prefersSchemaField ? 'name' : 'title';
+
+    try {
+      await _db.robleUpdate(RobleTables.evaluation, rowKey, {
+        primaryField: newName,
+      });
+    } catch (error) {
+      if (!_looksLikeSchemaMismatch(error)) rethrow;
+      await _db.robleUpdate(RobleTables.evaluation, rowKey, {
+        fallbackField: newName,
+      });
+    }
+  }
+
   // ── Create ─────────────────────────────────────────────────────────────────
 
   @override
@@ -72,12 +154,11 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     required String visibility,
     required int teacherId,
   }) async {
-    final existing = await _db.robleRead(
-      RobleTables.evaluation,
-      filters: {'teacher_id': teacherId},
-    );
+    final existing = await _db.robleRead(RobleTables.evaluation);
     final duplicate = existing.any(
-      (r) => _asString(r['name']).toLowerCase() == name.toLowerCase(),
+      (row) =>
+          _isOwnedByTeacher(row, teacherId) &&
+          _evalName(row).toLowerCase() == name.toLowerCase(),
     );
     if (duplicate) {
       throw Exception('Ya existe una evaluación con ese nombre');
@@ -86,31 +167,58 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     final now = DateTime.now();
     final closesAt = now.add(Duration(hours: hours));
 
-    final row = await _db.robleCreate(RobleTables.evaluation, {
-      'name': name,
-      'category_id': categoryId,
-      'hours': hours,
-      'visibility': visibility,
-      'created_at': now.millisecondsSinceEpoch,
-      'closes_at': closesAt.millisecondsSinceEpoch,
-      'teacher_id': teacherId,
-    });
+    Map<String, dynamic> row;
+    try {
+      row = await _db.robleCreate(RobleTables.evaluation, {
+        'title': name,
+        'category_id': categoryId,
+        'created_by': teacherId,
+        'description': visibility,
+        'start_date': now.millisecondsSinceEpoch,
+        'end_date': closesAt.millisecondsSinceEpoch,
+      });
+    } catch (error) {
+      if (!_looksLikeSchemaMismatch(error)) rethrow;
+      row = await _db.robleCreate(RobleTables.evaluation, {
+        'name': name,
+        'category_id': categoryId,
+        'hours': hours,
+        'visibility': visibility,
+        'created_at': now.millisecondsSinceEpoch,
+        'closes_at': closesAt.millisecondsSinceEpoch,
+        'teacher_id': teacherId,
+      });
+    }
 
-    final catRows = await _db.robleRead(
-      RobleTables.category,
-      filters: {'id': categoryId},
+    final catRows = await _db.robleRead(RobleTables.category);
+    final category = _findById(catRows, categoryId);
+    final catName = category == null ? '' : _asString(category['name']);
+
+    final createdAt = _evalCreatedAt(
+      row,
+      fallback: DateTime.fromMillisecondsSinceEpoch(now.millisecondsSinceEpoch),
     );
-    final catName = catRows.isNotEmpty ? _asString(catRows.first['name']) : '';
+    final closeAt = _evalClosesAt(
+      row,
+      fallback: DateTime.fromMillisecondsSinceEpoch(
+        closesAt.millisecondsSinceEpoch,
+      ),
+    );
 
     return Evaluation(
       id: _rowId(row),
-      name: _asString(row['name']).isEmpty ? name : _asString(row['name']),
+      name: _evalName(row, fallback: name),
       categoryId: _asInt(row['category_id'], fallback: categoryId),
       categoryName: catName,
-      hours: _asInt(row['hours'], fallback: hours),
-      visibility: _asString(row['visibility']).isEmpty ? visibility : _asString(row['visibility']),
-      createdAt: _asDate(row['created_at'] ?? now.millisecondsSinceEpoch),
-      closesAt: _asDate(row['closes_at'] ?? closesAt.millisecondsSinceEpoch),
+      hours: _evalHours(
+        row,
+        fallback: hours,
+        createdAt: createdAt,
+        closesAt: closeAt,
+      ),
+      visibility: _evalVisibility(row, fallback: visibility),
+      createdAt: createdAt,
+      closesAt: closeAt,
     );
   }
 
@@ -118,10 +226,10 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
   @override
   Future<List<Evaluation>> getAll(int teacherId) async {
-    final evalRows = await _db.robleRead(
-      RobleTables.evaluation,
-      filters: {'teacher_id': teacherId},
-    );
+    final evalRows = await _db.robleRead(RobleTables.evaluation);
+    final visibleRows = evalRows
+        .where((row) => _isOwnedByTeacher(row, teacherId))
+        .toList(growable: false);
     final catRows = await _db.robleRead(RobleTables.category);
     final courseRows = await _db.robleRead(RobleTables.course);
 
@@ -135,21 +243,30 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       catById[_rowId(c)] = c;
     }
 
-    final list = evalRows.map((row) {
+    final list = visibleRows.map((row) {
       final catId = _asInt(row['category_id']);
       final cat = catById[catId];
-      final courseName = cat == null ? '' : (courseById[_asInt(cat['course_id'])] ?? '');
+      final courseName = cat == null
+          ? ''
+          : (courseById[_asInt(cat['course_id'])] ?? '');
+      final createdAt = _evalCreatedAt(row, fallback: DateTime.now());
+      final closeAt = _evalClosesAt(row, fallback: createdAt);
 
       return Evaluation(
         id: _rowId(row),
-        name: _asString(row['name']),
+        name: _evalName(row),
         categoryId: catId,
         categoryName: cat == null ? '' : _asString(cat['name']),
         courseName: courseName,
-        hours: _asInt(row['hours']),
-        visibility: _asString(row['visibility']),
-        createdAt: _asDate(row['created_at']),
-        closesAt: _asDate(row['closes_at']),
+        hours: _evalHours(
+          row,
+          fallback: 24,
+          createdAt: createdAt,
+          closesAt: closeAt,
+        ),
+        visibility: _evalVisibility(row),
+        createdAt: createdAt,
+        closesAt: closeAt,
       );
     }).toList();
 
@@ -159,24 +276,25 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
   @override
   Future<void> rename(int evalId, String newName, int teacherId) async {
-    final evalRows = await _db.robleRead(
-      RobleTables.evaluation,
-      filters: {'teacher_id': teacherId},
-    );
+    final evalRows = await _db.robleRead(RobleTables.evaluation);
+    final teacherRows = evalRows
+        .where((row) => _isOwnedByTeacher(row, teacherId))
+        .toList(growable: false);
 
-    for (final row in evalRows) {
-      if (_rowId(row) != evalId && _asString(row['name']).toLowerCase() == newName.toLowerCase()) {
+    for (final row in teacherRows) {
+      if (_rowId(row) != evalId &&
+          _evalName(row).toLowerCase() == newName.toLowerCase()) {
         throw Exception('Ya existe una evaluación con ese nombre');
       }
     }
 
-    final target = _findById(evalRows, evalId);
+    final target = _findById(teacherRows, evalId);
     final key = target?['_id']?.toString();
     if (key == null || key.isEmpty) {
       throw Exception('No se encontró la evaluación');
     }
 
-    await _db.robleUpdate(RobleTables.evaluation, key, {'name': newName});
+    await _updateEvaluationName(key, newName, target!);
   }
 
   @override
@@ -224,10 +342,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     for (final group in groups) {
       final groupId = _rowId(group);
       inputGroups.add(
-        GroupResultsInputGroup(
-          id: groupId,
-          name: _asString(group['name']),
-        ),
+        GroupResultsInputGroup(id: groupId, name: _asString(group['name'])),
       );
 
       final memberRows = await _db.robleRead(
@@ -299,7 +414,9 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
         .map((row) {
           final catId = _asInt(row['category_id']);
           final cat = catById[catId];
-          final courseName = cat == null ? '' : (courseById[_asInt(cat['course_id'])] ?? '');
+          final courseName = cat == null
+              ? ''
+              : (courseById[_asInt(cat['course_id'])] ?? '');
           return Evaluation(
             id: _rowId(row),
             name: _asString(row['name']),
@@ -344,7 +461,9 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
         RobleTables.userGroup,
         filters: {'group_id': _rowId(g)},
       );
-      final found = members.any((m) => _asString(m['username']).toLowerCase() == normalized);
+      final found = members.any(
+        (m) => _asString(m['username']).toLowerCase() == normalized,
+      );
       if (found) return _asString(g['name']);
     }
 
@@ -372,7 +491,9 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
         RobleTables.userGroup,
         filters: {'group_id': gid},
       );
-      final isInGroup = members.any((m) => _asString(m['username']).toLowerCase() == normalized);
+      final isInGroup = members.any(
+        (m) => _asString(m['username']).toLowerCase() == normalized,
+      );
       if (isInGroup) {
         groupId = gid;
         break;
@@ -426,7 +547,9 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       if (group == null) continue;
 
       final category = categoryById[_asInt(group['category_id'])];
-      final memberCount = members.where((x) => _asInt(x['group_id']) == groupId).length;
+      final memberCount = members
+          .where((x) => _asInt(x['group_id']) == groupId)
+          .length;
 
       result.add(
         Course(
@@ -537,7 +660,8 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       if (closesAt.isBefore(now)) continue;
       final categoryId = _asInt(row['category_id']);
       final current = activeEvalByCategory[categoryId];
-      if (current == null || _asDate(row['created_at']).isAfter(_asDate(current['created_at']))) {
+      if (current == null ||
+          _asDate(row['created_at']).isAfter(_asDate(current['created_at']))) {
         activeEvalByCategory[categoryId] = row;
       }
     }
@@ -546,11 +670,16 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     for (final row in responses) {
       final evalId = _asInt(row['eval_id']);
       final evaluatorId = _asInt(row['evaluator_id']);
-      final evaluatedMemberId = _asInt(row['evaluated_member_id'], fallback: -1);
+      final evaluatedMemberId = _asInt(
+        row['evaluated_member_id'],
+        fallback: -1,
+      );
       if (evaluatedMemberId <= 0) continue;
 
       final key = '$evalId:$evaluatorId';
-      responseRowsByEvalAndEvaluator.putIfAbsent(key, () => <int>{}).add(evaluatedMemberId);
+      responseRowsByEvalAndEvaluator
+          .putIfAbsent(key, () => <int>{})
+          .add(evaluatedMemberId);
     }
 
     final coursesById = <int, Map<String, dynamic>>{};
@@ -575,7 +704,8 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
         for (final member in groupMembers) {
           final memberRowId = _rowId(member);
           final rawMemberUserId = _asString(member['user_id']);
-          final linkedUser = usersByRawId[rawMemberUserId] ??
+          final linkedUser =
+              usersByRawId[rawMemberUserId] ??
               usersById[_asInt(member['user_id'], fallback: -1)] ??
               usersByEmail[_asString(member['email']).toLowerCase()] ??
               usersByEmail[_asString(member['username']).toLowerCase()];
@@ -596,7 +726,9 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
           if (memberName.isEmpty && memberIdentity.isNotEmpty) {
             final at = memberIdentity.indexOf('@');
-            memberName = at > 0 ? memberIdentity.substring(0, at) : memberIdentity;
+            memberName = at > 0
+                ? memberIdentity.substring(0, at)
+                : memberIdentity;
           }
           if (memberName.isEmpty) {
             memberName = 'Integrante $memberRowId';
@@ -613,7 +745,9 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
         final activeEval = activeEvalByCategory[categoryId];
         final activeEvalId = activeEval == null ? 0 : _rowId(activeEval);
-        final activeEvalName = activeEval == null ? '' : _asString(activeEval['name']);
+        final activeEvalName = activeEval == null
+            ? ''
+            : _asString(activeEval['name']);
 
         final myMemberId = myMemberIdByCategory[categoryId];
         final peerMemberIds = groupMembers
@@ -622,10 +756,15 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
             .toSet();
 
         var completedPeerCount = 0;
-        if (activeEval != null && studentUserId != null && peerMemberIds.isNotEmpty) {
+        if (activeEval != null &&
+            studentUserId != null &&
+            peerMemberIds.isNotEmpty) {
           final key = '$activeEvalId:$studentUserId';
-          final evaluatedMemberIds = responseRowsByEvalAndEvaluator[key] ?? const <int>{};
-          completedPeerCount = evaluatedMemberIds.where(peerMemberIds.contains).length;
+          final evaluatedMemberIds =
+              responseRowsByEvalAndEvaluator[key] ?? const <int>{};
+          completedPeerCount = evaluatedMemberIds
+              .where(peerMemberIds.contains)
+              .length;
         }
 
         homeCategories.add(
@@ -645,7 +784,9 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
         );
       }
 
-      homeCategories.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      homeCategories.sort(
+        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      );
 
       result.add(
         StudentHomeCourse(
@@ -692,11 +833,14 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     required int evaluatorStudentId,
     required int evaluatedMemberId,
   }) async {
-    final rows = await _db.robleRead(RobleTables.evaluationCriterium, filters: {
-      'eval_id': evalId,
-      'evaluator_id': evaluatorStudentId,
-      'evaluated_member_id': evaluatedMemberId,
-    });
+    final rows = await _db.robleRead(
+      RobleTables.evaluationCriterium,
+      filters: {
+        'eval_id': evalId,
+        'evaluator_id': evaluatorStudentId,
+        'evaluated_member_id': evaluatedMemberId,
+      },
+    );
     return rows.isNotEmpty;
   }
 
@@ -783,7 +927,9 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
         RobleTables.userGroup,
         filters: {'group_id': gid},
       );
-      final found = members.any((m) => _asString(m['username']).toLowerCase() == normalized);
+      final found = members.any(
+        (m) => _asString(m['username']).toLowerCase() == normalized,
+      );
       if (found) {
         groupId = gid;
         break;
@@ -803,10 +949,10 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
     if (peerIds.isEmpty) return false;
 
-    final responses = await _db.robleRead(RobleTables.evaluationCriterium, filters: {
-      'eval_id': evalId,
-      'evaluator_id': studentId,
-    });
+    final responses = await _db.robleRead(
+      RobleTables.evaluationCriterium,
+      filters: {'eval_id': evalId, 'evaluator_id': studentId},
+    );
 
     final doneIds = <int>{};
     for (final r in responses) {
