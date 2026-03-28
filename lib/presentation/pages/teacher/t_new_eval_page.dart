@@ -294,12 +294,12 @@ class TNewEvalPage extends StatelessWidget {
     );
   }
 
-  void _showCoursePicker(
+  Future<void> _showCoursePicker(
     BuildContext context,
     TeacherEvaluationController evalCtrl,
     TeacherCourseImportController courseCtrl,
-  ) {
-    showModalBottomSheet(
+  ) async {
+    final selectedCourseId = await showModalBottomSheet<int>(
       context: context,
       backgroundColor: tkSurface,
       shape: const RoundedRectangleBorder(
@@ -310,14 +310,17 @@ class TNewEvalPage extends StatelessWidget {
         courseCtrl: courseCtrl,
       ),
     );
+
+    if (selectedCourseId == null) return;
+    await evalCtrl.selectCourseForEvaluation(selectedCourseId);
   }
 
-  void _showCategoryPicker(
+  Future<void> _showCategoryPicker(
     BuildContext context,
     TeacherEvaluationController evalCtrl,
     TeacherCourseImportController courseCtrl,
-  ) {
-    showModalBottomSheet(
+  ) async {
+    final selectedCategoryId = await showModalBottomSheet<int>(
       context: context,
       backgroundColor: tkSurface,
       shape: const RoundedRectangleBorder(
@@ -327,6 +330,15 @@ class TNewEvalPage extends StatelessWidget {
         evalCtrl: evalCtrl,
         courseCtrl: courseCtrl,
       ),
+    );
+
+    if (selectedCategoryId == null) return;
+    final category = courseCtrl.categoriesForCourse.firstWhereOrNull(
+      (cat) => cat.id == selectedCategoryId,
+    );
+    evalCtrl.selectCategoryForEvaluation(
+      selectedCategoryId,
+      category?.name ?? '',
     );
   }
 }
