@@ -3,8 +3,9 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 import 'package:example/presentation/controllers/student_controller.dart';
-import 'package:example/domain/models/peer_evaluation.dart';
 import 'package:example/presentation/pages/student/widgets/student_back_button.dart';
+import 'package:example/presentation/pages/student/widgets/student_peer_card.dart';
+import 'package:example/presentation/pages/student/widgets/student_progress_card.dart';
 
 class SPeersPage extends StatelessWidget {
   const SPeersPage({super.key});
@@ -62,7 +63,7 @@ class SPeersPage extends StatelessWidget {
                   children: [
                     // Progress card
                     Obx(
-                      () => _ProgressCard(
+                      () => StudentProgressCard(
                         progress: ctrl.evalProgress,
                         percentage: (ctrl.evalProgress * 100).round(),
                       ),
@@ -85,7 +86,7 @@ class SPeersPage extends StatelessWidget {
                       () => Column(
                         children: ctrl.peers
                             .map(
-                              (p) => _PeerCard(
+                              (p) => StudentPeerCard(
                                 peer: p,
                                 onTap: () {
                                   ctrl.selectPeer(p);
@@ -133,149 +134,6 @@ class SPeersPage extends StatelessWidget {
                 ),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ProgressCard extends StatelessWidget {
-  final double progress;
-  final int percentage;
-  const _ProgressCard({required this.progress, required this.percentage});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: BoxDecoration(
-        color: skSurfaceAlt,
-        border: Border.all(color: skBorder),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.schedule_rounded, size: 15, color: skTextMid),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Evaluación en curso',
-                  style: GoogleFonts.sora(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: skText,
-                  ),
-                ),
-              ),
-              Text(
-                '$percentage%',
-                style: GoogleFonts.dmMono(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: skPrimary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(99),
-            child: LinearProgressIndicator(
-              value: progress,
-              backgroundColor: skBorder,
-              valueColor: const AlwaysStoppedAnimation(skPrimary),
-              minHeight: 3,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PeerCard extends StatelessWidget {
-  final Peer peer;
-  final VoidCallback onTap;
-  const _PeerCard({required this.peer, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: peer.evaluated ? null : onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: peer.evaluated ? skPrimaryLight : skSurface,
-          border: Border.all(color: peer.evaluated ? skPrimaryMid : skBorder),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: peer.evaluated ? skPrimary : skSurfaceAlt,
-                border: Border.all(
-                  color: peer.evaluated ? skPrimary : skBorder,
-                ),
-                borderRadius: BorderRadius.circular(13),
-              ),
-              alignment: Alignment.center,
-              child: peer.evaluated
-                  ? const Icon(
-                      Icons.check_rounded,
-                      size: 16,
-                      color: Colors.white,
-                    )
-                  : Text(
-                      peer.initials,
-                      style: GoogleFonts.dmMono(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: skTextMid,
-                      ),
-                    ),
-            ),
-            const SizedBox(width: 13),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    peer.name,
-                    style: GoogleFonts.sora(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: skText,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    peer.evaluated ? 'Evaluado' : 'Pendiente',
-                    style: GoogleFonts.sora(
-                      fontSize: 11,
-                      fontWeight: peer.evaluated
-                          ? FontWeight.w600
-                          : FontWeight.w400,
-                      color: peer.evaluated ? skPrimary : skTextFaint,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (!peer.evaluated)
-              const Icon(
-                Icons.chevron_right_rounded,
-                size: 14,
-                color: skTextFaint,
-              ),
           ],
         ),
       ),
