@@ -25,6 +25,46 @@ class GroupRepositoryImpl implements IGroupRepository {
         msg.contains('duplicate');
   }
 
+  String _asString(dynamic value) => value?.toString().trim() ?? '';
+
+  String _extractAuthUserId(Map<String, dynamic> payload) {
+    String firstNonEmpty(List<dynamic> candidates) {
+      for (final candidate in candidates) {
+        final text = _asString(candidate);
+        if (text.isNotEmpty) return text;
+      }
+      return '';
+    }
+
+    final topLevel = firstNonEmpty([
+      payload['user_id'],
+      payload['userId'],
+      payload['sub'],
+      payload['_id'],
+      payload['id'],
+    ]);
+    if (topLevel.isNotEmpty) return topLevel;
+
+    final user = payload['user'];
+    if (user is Map) {
+      final userMap = Map<String, dynamic>.from(user);
+      final nested = firstNonEmpty([
+        userMap['user_id'],
+        userMap['userId'],
+        userMap['sub'],
+        userMap['_id'],
+        userMap['id'],
+      ]);
+      if (nested.isNotEmpty) return nested;
+    }
+
+    final accessToken = _asString(payload['accessToken']);
+    if (accessToken.isEmpty) return '';
+
+    final claims = _db.decodeJwtClaims(accessToken);
+    return _asString(claims['sub']);
+  }
+
   Future<Map<String, dynamic>> _upsertUserProfile({
     required String authUserId,
     required String email,
@@ -98,24 +138,46 @@ class GroupRepositoryImpl implements IGroupRepository {
     required String teacherAccessToken,
     required String teacherRefreshToken,
   }) async {
+    final existingProfile = await _db.robleFindUserByEmail(email);
+    final existingAuthId = _asString(existingProfile?['user_id']);
+    if (existingAuthId.isNotEmpty) {
+      return existingAuthId;
+    }
+
+    var alreadyRegistered = false;
+    var signupPayload = <String, dynamic>{};
+
     try {
-      await _db.robleSignupDirect(
+      signupPayload = await _db.robleSignupDirect(
         email: email,
         password: sharedPassword,
         name: name,
       );
     } catch (e) {
       if (!_looksLikeAlreadyRegistered(e)) rethrow;
+      alreadyRegistered = true;
+    }
+
+    final authIdFromSignup = _extractAuthUserId(signupPayload);
+    if (authIdFromSignup.isNotEmpty) {
+      return authIdFromSignup;
+    }
+
+    if (alreadyRegistered) {
+      final refreshedProfile = await _db.robleFindUserByEmail(email);
+      final refreshedAuthId = _asString(refreshedProfile?['user_id']);
+      if (refreshedAuthId.isNotEmpty) {
+        return refreshedAuthId;
+      }
+
+      // Legacy fallback to keep import resilient when auth profile exists
+      // but does not expose a user_id in local records.
+      final seed = DatabaseService.stableNumericIdFromSeed(email);
+      return 'legacy-$seed';
     }
 
     final login = await _db.robleLogin(email: email, password: sharedPassword);
-    final accessToken = (login['accessToken'] ?? '').toString();
-    if (accessToken.isEmpty) {
-      throw Exception('No se pudo autenticar estudiante: $email');
-    }
-
-    final claims = _db.decodeJwtClaims(accessToken);
-    final authUserId = claims['sub']?.toString() ?? '';
+    final authUserId = _extractAuthUserId(login);
     if (authUserId.isEmpty) {
       throw Exception('No se pudo obtener user_id auth para: $email');
     }

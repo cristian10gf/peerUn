@@ -11,6 +11,18 @@ import 'package:example/domain/models/teacher_data.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
 import 'package:example/domain/services/group_results_domain_service.dart';
 
+class _StudentIdentity {
+  final String normalizedEmail;
+  final int? numericId;
+  final String rawUserId;
+
+  const _StudentIdentity({
+    required this.normalizedEmail,
+    required this.numericId,
+    required this.rawUserId,
+  });
+}
+
 class EvaluationRepositoryImpl implements IEvaluationRepository {
   final DatabaseService _db;
   final GroupResultsDomainService _groupResultsDomainService;
@@ -37,17 +49,81 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     return null;
   }
 
+  Future<_StudentIdentity> _resolveStudentIdentity(String email) async {
+    final normalized = email.toLowerCase();
+    final users = await _db.robleRead(RobleTables.users);
+
+    for (final user in users) {
+      final userEmail = _asString(user['email']).toLowerCase();
+      final username = _asString(user['username']).toLowerCase();
+      if ((userEmail.isNotEmpty && userEmail == normalized) ||
+          (username.isNotEmpty && username == normalized)) {
+        final rawUserId = _asString(user['user_id']);
+        final idSeed =
+            user['id'] ??
+            user['_id'] ??
+            (rawUserId.isNotEmpty ? rawUserId : normalized);
+        return _StudentIdentity(
+          normalizedEmail: normalized,
+          numericId: DatabaseService.stableNumericIdFromSeed(idSeed.toString()),
+          rawUserId: rawUserId,
+        );
+      }
+    }
+
+    return _StudentIdentity(
+      normalizedEmail: normalized,
+      numericId: DatabaseService.stableNumericIdFromSeed(normalized),
+      rawUserId: '',
+    );
+  }
+
+  bool _matchesStudentMembership(
+    Map<String, dynamic> row,
+    _StudentIdentity identity,
+  ) {
+    return _isMembershipForStudent(
+      row,
+      identity.normalizedEmail,
+      identity.numericId,
+      studentRawUserId: identity.rawUserId,
+    );
+  }
+
+  String _memberDisplayName(Map<String, dynamic> row) {
+    final directName = _asString(row['name']).trim();
+    if (directName.isNotEmpty && !_looksLikeCode(directName)) {
+      return directName;
+    }
+
+    final email = _asString(row['email']).trim();
+    if (email.isNotEmpty) {
+      final at = email.indexOf('@');
+      return at > 0 ? email.substring(0, at) : email;
+    }
+
+    final username = _asString(row['username']).trim();
+    if (username.isNotEmpty) return username;
+
+    return 'Integrante ${_rowId(row)}';
+  }
+
   bool _isMembershipForStudent(
     Map<String, dynamic> row,
     String normalizedEmail,
-    int? studentUserId,
-  ) {
+    int? studentUserId, {
+    String studentRawUserId = '',
+  }) {
     final rowEmail = _asString(row['email']).toLowerCase();
     final rowUsername = _asString(row['username']).toLowerCase();
+    final rowRawUserId = _asString(row['user_id']);
     final rowUserId = _asInt(row['user_id'], fallback: -1);
 
     if (rowEmail.isNotEmpty && rowEmail == normalizedEmail) return true;
     if (rowUsername.isNotEmpty && rowUsername == normalizedEmail) return true;
+    if (studentRawUserId.isNotEmpty && rowRawUserId == studentRawUserId) {
+      return true;
+    }
     if (studentUserId != null && rowUserId == studentUserId) return true;
     return false;
   }
@@ -174,8 +250,8 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
         'category_id': categoryId,
         'created_by': teacherId,
         'description': visibility,
-        'start_date': now.millisecondsSinceEpoch,
-        'end_date': closesAt.millisecondsSinceEpoch,
+        'start_date': now.toIso8601String(),
+        'end_date': closesAt.toIso8601String(),
       });
     } catch (error) {
       if (!_looksLikeSchemaMismatch(error)) rethrow;
@@ -382,7 +458,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
   @override
   Future<List<Evaluation>> getEvaluationsForStudent(String email) async {
-    final normalized = email.toLowerCase();
+    final identity = await _resolveStudentIdentity(email);
     final members = await _db.robleRead(RobleTables.userGroup);
     final groups = await _db.robleRead(RobleTables.groups);
     final categories = await _db.robleRead(RobleTables.category);
@@ -390,9 +466,12 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     final evals = await _db.robleRead(RobleTables.evaluation);
 
     final myGroupIds = members
-        .where((m) => _asString(m['username']).toLowerCase() == normalized)
-        .map(_rowId)
+        .where((m) => _matchesStudentMembership(m, identity))
+        .map((m) => _asInt(m['group_id'], fallback: -1))
+        .where((groupId) => groupId > 0)
         .toSet();
+
+    if (myGroupIds.isEmpty) return [];
 
     final myCategoryIds = groups
         .where((g) => myGroupIds.contains(_rowId(g)))
@@ -417,16 +496,25 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
           final courseName = cat == null
               ? ''
               : (courseById[_asInt(cat['course_id'])] ?? '');
+
+          final createdAt = _evalCreatedAt(row, fallback: DateTime.now());
+          final closesAt = _evalClosesAt(row, fallback: createdAt);
+
           return Evaluation(
             id: _rowId(row),
-            name: _asString(row['name']),
+            name: _evalName(row),
             categoryId: catId,
             categoryName: cat == null ? '' : _asString(cat['name']),
             courseName: courseName,
-            hours: _asInt(row['hours']),
-            visibility: _asString(row['visibility']),
-            createdAt: _asDate(row['created_at']),
-            closesAt: _asDate(row['closes_at']),
+            hours: _evalHours(
+              row,
+              fallback: 24,
+              createdAt: createdAt,
+              closesAt: closesAt,
+            ),
+            visibility: _evalVisibility(row),
+            createdAt: createdAt,
+            closesAt: closesAt,
           );
         })
         .toList();
@@ -444,7 +532,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
   @override
   Future<String?> getGroupNameForStudent(int evalId, String email) async {
-    final normalized = email.toLowerCase();
+    final identity = await _resolveStudentIdentity(email);
 
     final evalRows = await _db.robleRead(RobleTables.evaluation);
     final eval = _findById(evalRows, evalId);
@@ -461,9 +549,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
         RobleTables.userGroup,
         filters: {'group_id': _rowId(g)},
       );
-      final found = members.any(
-        (m) => _asString(m['username']).toLowerCase() == normalized,
-      );
+      final found = members.any((m) => _matchesStudentMembership(m, identity));
       if (found) return _asString(g['name']);
     }
 
@@ -472,7 +558,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
   @override
   Future<List<Peer>> getPeersForStudent(int evalId, String email) async {
-    final normalized = email.toLowerCase();
+    final identity = await _resolveStudentIdentity(email);
 
     final evalRows = await _db.robleRead(RobleTables.evaluation);
     final eval = _findById(evalRows, evalId);
@@ -492,7 +578,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
         filters: {'group_id': gid},
       );
       final isInGroup = members.any(
-        (m) => _asString(m['username']).toLowerCase() == normalized,
+        (m) => _matchesStudentMembership(m, identity),
       );
       if (isInGroup) {
         groupId = gid;
@@ -506,22 +592,19 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       RobleTables.userGroup,
       filters: {'group_id': groupId},
     );
-    return rows
-        .where((m) => _asString(m['username']).toLowerCase() != normalized)
-        .map((m) {
-          final name = _asString(m['name']);
-          return Peer(
-            id: _rowId(m).toString(),
-            name: name,
-            initials: buildInitials(name),
-          );
-        })
-        .toList();
+    return rows.where((m) => !_matchesStudentMembership(m, identity)).map((m) {
+      final name = _memberDisplayName(m);
+      return Peer(
+        id: _rowId(m).toString(),
+        name: name,
+        initials: buildInitials(name),
+      );
+    }).toList();
   }
 
   @override
   Future<List<Course>> getCoursesForStudent(String email) async {
-    final normalized = email.toLowerCase();
+    final identity = await _resolveStudentIdentity(email);
     final members = await _db.robleRead(RobleTables.userGroup);
     final groups = await _db.robleRead(RobleTables.groups);
     final categories = await _db.robleRead(RobleTables.category);
@@ -537,7 +620,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     }
 
     final myMemberships = members
-        .where((m) => _asString(m['username']).toLowerCase() == normalized)
+        .where((m) => _matchesStudentMembership(m, identity))
         .toList();
 
     final result = <Course>[];
@@ -566,7 +649,9 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
   @override
   Future<List<StudentHomeCourse>> getStudentHomeCourses(String email) async {
-    final normalized = email.toLowerCase();
+    final identity = await _resolveStudentIdentity(email);
+    final normalized = identity.normalizedEmail;
+    final studentUserId = identity.numericId;
     final now = DateTime.now();
 
     final users = await _db.robleRead(RobleTables.users);
@@ -578,7 +663,6 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     final evaluations = await _db.robleRead(RobleTables.evaluation);
     final responses = await _db.robleRead(RobleTables.evaluationCriterium);
 
-    int? studentUserId;
     final usersById = <int, Map<String, dynamic>>{};
     final usersByRawId = <String, Map<String, dynamic>>{};
     final usersByEmail = <String, Map<String, dynamic>>{};
@@ -592,16 +676,18 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       if (userEmail.isNotEmpty) {
         usersByEmail[userEmail] = user;
       }
-      if (userEmail == normalized) {
-        studentUserId = _rowId(user);
-      }
     }
 
     final enrolledCourseIds = <int>{};
     for (final row in userCourses) {
       final role = _asString(row['role']).toLowerCase();
       if (role.isNotEmpty && role != 'student') continue;
-      if (_isMembershipForStudent(row, normalized, studentUserId)) {
+      if (_isMembershipForStudent(
+        row,
+        normalized,
+        studentUserId,
+        studentRawUserId: identity.rawUserId,
+      )) {
         enrolledCourseIds.add(_asInt(row['course_id']));
       }
     }
@@ -639,7 +725,12 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
         Map<String, dynamic>? myMember;
         for (final member in groupMembers) {
-          if (_isMembershipForStudent(member, normalized, studentUserId)) {
+          if (_isMembershipForStudent(
+            member,
+            normalized,
+            studentUserId,
+            studentRawUserId: identity.rawUserId,
+          )) {
             myMember = member;
             break;
           }
@@ -656,19 +747,20 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
     final activeEvalByCategory = <int, Map<String, dynamic>>{};
     for (final row in evaluations) {
-      final closesAt = _asDate(row['closes_at']);
+      final createdAt = _evalCreatedAt(row, fallback: now);
+      final closesAt = _evalClosesAt(row, fallback: createdAt);
       if (closesAt.isBefore(now)) continue;
       final categoryId = _asInt(row['category_id']);
       final current = activeEvalByCategory[categoryId];
       if (current == null ||
-          _asDate(row['created_at']).isAfter(_asDate(current['created_at']))) {
+          createdAt.isAfter(_evalCreatedAt(current, fallback: now))) {
         activeEvalByCategory[categoryId] = row;
       }
     }
 
     final responseRowsByEvalAndEvaluator = <String, Set<int>>{};
     for (final row in responses) {
-      final evalId = _asInt(row['eval_id']);
+      final evalId = _asInt(row['eval_id'] ?? row['evaluation_id']);
       final evaluatorId = _asInt(row['evaluator_id']);
       final evaluatedMemberId = _asInt(
         row['evaluated_member_id'],
@@ -745,9 +837,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
         final activeEval = activeEvalByCategory[categoryId];
         final activeEvalId = activeEval == null ? 0 : _rowId(activeEval);
-        final activeEvalName = activeEval == null
-            ? ''
-            : _asString(activeEval['name']);
+        final activeEvalName = activeEval == null ? '' : _evalName(activeEval);
 
         final myMemberId = myMemberIdByCategory[categoryId];
         final peerMemberIds = groupMembers
@@ -846,7 +936,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
   @override
   Future<List<CriterionResult>> getMyResults(int evalId, String email) async {
-    final normalized = email.toLowerCase();
+    final identity = await _resolveStudentIdentity(email);
 
     final evalRows = await _db.robleRead(RobleTables.evaluation);
     final eval = _findById(evalRows, evalId);
@@ -866,7 +956,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
         filters: {'group_id': gid},
       );
       for (final m in members) {
-        if (_asString(m['username']).toLowerCase() == normalized) {
+        if (_matchesStudentMembership(m, identity)) {
           myMemberIds.add(_rowId(m));
         }
       }
@@ -887,7 +977,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       final score = _asInt(r['score']);
       if (!myMemberIds.contains(targetId) || score < 2) continue;
 
-      final cid = _asString(r['criterion_id']);
+      final cid = _asString(r['criterion_id'] ?? r['criterium_id']);
       sums[cid] = (sums[cid] ?? 0) + score;
       counts[cid] = (counts[cid] ?? 0) + 1;
     }
@@ -908,7 +998,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     required String email,
     required int studentId,
   }) async {
-    final normalized = email.toLowerCase();
+    final identity = await _resolveStudentIdentity(email);
 
     final evalRows = await _db.robleRead(RobleTables.evaluation);
     final eval = _findById(evalRows, evalId);
@@ -927,9 +1017,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
         RobleTables.userGroup,
         filters: {'group_id': gid},
       );
-      final found = members.any(
-        (m) => _asString(m['username']).toLowerCase() == normalized,
-      );
+      final found = members.any((m) => _matchesStudentMembership(m, identity));
       if (found) {
         groupId = gid;
         break;
@@ -943,7 +1031,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       filters: {'group_id': groupId},
     );
     final peerIds = groupMembers
-        .where((m) => _asString(m['username']).toLowerCase() != normalized)
+        .where((m) => !_matchesStudentMembership(m, identity))
         .map(_rowId)
         .toSet();
 

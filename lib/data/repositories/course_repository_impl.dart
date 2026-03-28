@@ -10,6 +10,27 @@ class CourseRepositoryImpl implements ICourseRepository {
   final DatabaseService _db;
   CourseRepositoryImpl(this._db);
 
+  int _courseIdentityFromRow(Map<String, dynamic> row) {
+    return asInt(row['course_id'] ?? row['id'] ?? row['_id']);
+  }
+
+  Set<int> _resolveEquivalentCourseIds(
+    List<Map<String, dynamic>> rows,
+    int courseId,
+  ) {
+    final ids = <int>{courseId};
+    for (final row in rows) {
+      final canonicalId = _courseIdentityFromRow(row);
+      final legacyId = rowIdFromMap(row);
+      if (canonicalId == courseId || legacyId == courseId) {
+        ids
+          ..add(canonicalId)
+          ..add(legacyId);
+      }
+    }
+    return ids;
+  }
+
   Future<int?> _resolveCurrentTeacherUserId() async {
     final claims = await _db.readAuthTokenClaims();
     final email = (claims['email'] ?? '').toString().trim().toLowerCase();
@@ -77,7 +98,11 @@ class CourseRepositoryImpl implements ICourseRepository {
       final allowedIds = userCourse.map((r) => asInt(r['course_id'])).toSet();
 
       for (final row in rows) {
-        if (allowedIds.contains(rowIdFromMap(row))) filtered.add(row);
+        final canonicalId = _courseIdentityFromRow(row);
+        final legacyId = rowIdFromMap(row);
+        if (allowedIds.contains(canonicalId) || allowedIds.contains(legacyId)) {
+          filtered.add(row);
+        }
       }
     } else {
       for (final row in rows) {
@@ -92,7 +117,7 @@ class CourseRepositoryImpl implements ICourseRepository {
     final courses = filtered
         .map(
           (r) => CourseModel(
-            id: rowIdFromMap(r),
+            id: _courseIdentityFromRow(r),
             teacherId: asInt(r['created_by'] ?? r['teacher_id']),
             name: (r['name'] ?? '').toString(),
             code: (r['code'] ?? r['description'] ?? '').toString(),
@@ -127,7 +152,7 @@ class CourseRepositoryImpl implements ICourseRepository {
     if (await tableExists(_db, RobleTables.userCourse)) {
       if (teacherUserRow != null) {
         final userId = asInt(teacherUserRow['id'] ?? teacherUserRow['_id']);
-        final courseId = rowIdFromMap(row);
+        final courseId = _courseIdentityFromRow(row);
 
         final existing = await _db.robleRead(
           RobleTables.userCourse,
@@ -158,7 +183,9 @@ class CourseRepositoryImpl implements ICourseRepository {
     final rows = await _db.robleRead(RobleTables.course);
     String? key;
     for (final row in rows) {
-      if (rowIdFromMap(row) == courseId) {
+      final canonicalId = _courseIdentityFromRow(row);
+      final legacyId = rowIdFromMap(row);
+      if (canonicalId == courseId || legacyId == courseId) {
         key = row['_id']?.toString();
         break;
       }
@@ -171,10 +198,23 @@ class CourseRepositoryImpl implements ICourseRepository {
 
   @override
   Future<List<GroupCategory>> getCategoriesForCourse(int courseId) async {
-    final catRows = await _db.robleRead(
+    var catRows = await _db.robleRead(
       RobleTables.category,
       filters: {'course_id': courseId},
     );
+
+    if (catRows.isEmpty) {
+      final allCourses = await _db.robleRead(RobleTables.course);
+      final equivalentIds = _resolveEquivalentCourseIds(allCourses, courseId);
+
+      final allCategories = await _db.robleRead(RobleTables.category);
+      catRows = allCategories
+          .where((categoryRow) {
+            final relationId = asInt(categoryRow['course_id']);
+            return equivalentIds.contains(relationId);
+          })
+          .toList(growable: false);
+    }
 
     final allUsers = await _db.robleRead(RobleTables.users);
     final usersById = <int, Map<String, dynamic>>{};
