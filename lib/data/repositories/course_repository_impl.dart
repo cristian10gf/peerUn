@@ -10,6 +10,37 @@ class CourseRepositoryImpl implements ICourseRepository {
   final DatabaseService _db;
   CourseRepositoryImpl(this._db);
 
+  String _asString(dynamic value) => value?.toString().trim() ?? '';
+
+  String _firstNonEmptyField(Map<String, dynamic> row, List<String> keys) {
+    for (final key in keys) {
+      final value = _asString(row[key]);
+      if (value.isNotEmpty) return value;
+    }
+    return '';
+  }
+
+  String _courseReferenceFromRow(Map<String, dynamic> row) {
+    return _firstNonEmptyField(row, const ['course_id', 'id', '_id']);
+  }
+
+  String _categoryReferenceFromRow(Map<String, dynamic> row) {
+    return _firstNonEmptyField(row, const ['category_id', 'id', '_id']);
+  }
+
+  String _groupReferenceFromRow(Map<String, dynamic> row) {
+    return _firstNonEmptyField(row, const ['group_id', 'id', '_id']);
+  }
+
+  String _userReferenceFromRow(Map<String, dynamic> row) {
+    return _firstNonEmptyField(row, const ['user_id', 'id', '_id']);
+  }
+
+  int _domainIdFromReference(String reference, {required int fallback}) {
+    if (reference.isEmpty) return fallback;
+    return DatabaseService.stableNumericIdFromSeed(reference);
+  }
+
   int _courseIdentityFromRow(Map<String, dynamic> row) {
     return asInt(row['course_id'] ?? row['id'] ?? row['_id']);
   }
@@ -31,18 +62,23 @@ class CourseRepositoryImpl implements ICourseRepository {
     return ids;
   }
 
-  Future<int?> _resolveCurrentTeacherUserId() async {
+  Future<Set<String>> _resolveCurrentTeacherUserReferences() async {
     final claims = await _db.readAuthTokenClaims();
     final email = (claims['email'] ?? '').toString().trim().toLowerCase();
-    if (email.isEmpty) return null;
+    if (email.isEmpty) return const <String>{};
     Map<String, dynamic>? row;
     try {
       row = await _db.robleFindUserByEmail(email);
     } catch (_) {
-      return null;
+      return const <String>{};
     }
-    if (row == null) return null;
-    return asInt(row['id'] ?? row['_id']);
+    if (row == null) return const <String>{};
+
+    return <String>{
+      _asString(row['user_id']),
+      _asString(row['id']),
+      _asString(row['_id']),
+    }..removeWhere((value) => value.isEmpty);
   }
 
   Future<Map<String, dynamic>?> _upsertCurrentTeacherUser() async {
@@ -88,13 +124,17 @@ class CourseRepositoryImpl implements ICourseRepository {
     final rows = await _db.robleRead(RobleTables.course);
 
     final filtered = <Map<String, dynamic>>[];
-    final teacherUserId = await _resolveCurrentTeacherUserId();
-    if (teacherUserId != null &&
+    final teacherUserReferences = await _resolveCurrentTeacherUserReferences();
+    if (teacherUserReferences.isNotEmpty &&
         await tableExists(_db, RobleTables.userCourse)) {
-      final userCourse = await _db.robleRead(
-        RobleTables.userCourse,
-        filters: {'user_id': teacherUserId, 'role': 'teacher'},
-      );
+      final userCourse = <Map<String, dynamic>>[];
+      for (final teacherUserReference in teacherUserReferences) {
+        final relations = await _db.robleRead(
+          RobleTables.userCourse,
+          filters: {'user_id': teacherUserReference, 'role': 'teacher'},
+        );
+        userCourse.addAll(relations);
+      }
       final allowedIds = userCourse.map((r) => asInt(r['course_id'])).toSet();
 
       for (final row in rows) {
@@ -151,18 +191,18 @@ class CourseRepositoryImpl implements ICourseRepository {
 
     if (await tableExists(_db, RobleTables.userCourse)) {
       if (teacherUserRow != null) {
-        final userId = asInt(teacherUserRow['id'] ?? teacherUserRow['_id']);
-        final courseId = _courseIdentityFromRow(row);
+        final userReference = _userReferenceFromRow(teacherUserRow);
+        final courseReference = _courseReferenceFromRow(row);
 
         final existing = await _db.robleRead(
           RobleTables.userCourse,
-          filters: {'course_id': courseId, 'user_id': userId},
+          filters: {'course_id': courseReference, 'user_id': userReference},
         );
 
         if (existing.isEmpty) {
           await _db.robleCreate(RobleTables.userCourse, {
-            'course_id': courseId,
-            'user_id': userId,
+            'course_id': courseReference,
+            'user_id': userReference,
             'role': 'teacher',
           });
         }
@@ -170,7 +210,7 @@ class CourseRepositoryImpl implements ICourseRepository {
     }
 
     return CourseModel(
-      id: rowIdFromMap(row),
+      id: _courseIdentityFromRow(row),
       teacherId: asInt(row['created_by'] ?? createdBy),
       name: (row['name'] ?? name).toString(),
       code: (row['code'] ?? row['description'] ?? code).toString(),
@@ -217,32 +257,78 @@ class CourseRepositoryImpl implements ICourseRepository {
     }
 
     final allUsers = await _db.robleRead(RobleTables.users);
-    final usersById = <int, Map<String, dynamic>>{};
+    final usersByReference = <String, Map<String, dynamic>>{};
     for (final u in allUsers) {
-      usersById[asInt(u['id'] ?? u['_id'])] = u;
+      final canonical = _userReferenceFromRow(u);
+      if (canonical.isNotEmpty) {
+        usersByReference[canonical] = u;
+      }
+
+      final legacyId = _asString(u['id']);
+      if (legacyId.isNotEmpty) {
+        usersByReference.putIfAbsent(legacyId, () => u);
+      }
+
+      final rowKey = _asString(u['_id']);
+      if (rowKey.isNotEmpty) {
+        usersByReference.putIfAbsent(rowKey, () => u);
+      }
     }
 
     final result = <GroupCategory>[];
     for (final cat in catRows) {
-      final catId = rowIdFromMap(cat);
-      final grpRows = await _db.robleRead(
-        RobleTables.groups,
-        filters: {'category_id': catId},
+      final categoryReference = _categoryReferenceFromRow(cat);
+      final catId = _domainIdFromReference(
+        categoryReference,
+        fallback: rowIdFromMap(cat),
       );
+      var grpRows = await _db.robleRead(
+        RobleTables.groups,
+        filters: {'category_id': categoryReference},
+      );
+      if (grpRows.isEmpty) {
+        final legacyCategoryRef = catId.toString();
+        if (legacyCategoryRef != categoryReference) {
+          grpRows = await _db.robleRead(
+            RobleTables.groups,
+            filters: {'category_id': legacyCategoryRef},
+          );
+        }
+      }
 
       final groups = <CourseGroup>[];
       for (final grp in grpRows) {
-        final grpId = rowIdFromMap(grp);
-        final membershipRows = await _db.robleRead(
-          RobleTables.userGroup,
-          filters: {'group_id': grpId},
+        final groupReference = _groupReferenceFromRow(grp);
+        final grpId = _domainIdFromReference(
+          groupReference,
+          fallback: rowIdFromMap(grp),
         );
+        var membershipRows = await _db.robleRead(
+          RobleTables.userGroup,
+          filters: {'group_id': groupReference},
+        );
+        if (membershipRows.isEmpty) {
+          final legacyGroupRef = grpId.toString();
+          if (legacyGroupRef != groupReference) {
+            membershipRows = await _db.robleRead(
+              RobleTables.userGroup,
+              filters: {'group_id': legacyGroupRef},
+            );
+          }
+        }
 
         final members = <GroupMember>[];
         for (final membership in membershipRows) {
-          final userId = asInt(membership['user_id']);
-          final user = usersById[userId];
+          final userReference = _asString(membership['user_id']);
+          if (userReference.isEmpty) continue;
+
+          final user = usersByReference[userReference];
           if (user == null) continue;
+
+          final userId = _domainIdFromReference(
+            userReference,
+            fallback: asInt(user['id'] ?? user['_id']),
+          );
 
           members.add(
             GroupMember(
