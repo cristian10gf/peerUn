@@ -3,12 +3,13 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 import 'package:example/presentation/controllers/student_controller.dart';
-import 'package:example/domain/models/peer_evaluation.dart';
+import 'package:example/presentation/pages/student/widgets/student_back_button.dart';
+import 'package:example/presentation/pages/student/widgets/student_criterion_palette.dart';
+import 'package:example/presentation/pages/student/widgets/student_results_average_card.dart';
+import 'package:example/presentation/pages/student/widgets/student_results_criterion_card.dart';
 
 class SMyResultsPage extends StatelessWidget {
   const SMyResultsPage({super.key});
-
-  static const _critColors = [critBlue, critPurple, critGreen, critAmber];
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +27,7 @@ class SMyResultsPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _BackButton(label: 'Volver', route: '/student/courses'),
+                  StudentBackButton(label: 'Volver', route: '/student/courses'),
                   const SizedBox(height: 14),
                   Text(
                     'Mis resultados',
@@ -64,10 +65,12 @@ class SMyResultsPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Average card
-                    Obx(() => _AverageCard(
-                          avg:   ctrl.myAverage,
-                          badge: ctrl.performanceBadge,
-                        )),
+                    Obx(
+                      () => StudentResultsAverageCard(
+                        average: ctrl.myAverage,
+                        badge: ctrl.performanceBadge,
+                      ),
+                    ),
                     const SizedBox(height: 20),
 
                     // Section label
@@ -83,178 +86,24 @@ class SMyResultsPage extends StatelessWidget {
                     const SizedBox(height: 10),
 
                     // Criteria cards
-                    Obx(() => Column(
-                          children: ctrl.myResults
-                              .asMap()
-                              .entries
-                              .map((e) => _CriterionResultCard(
-                                    result: e.value,
-                                    color:  _critColors[e.key % _critColors.length],
-                                  ))
-                              .toList(),
-                        )),
+                    Obx(
+                      () => Column(
+                        children: ctrl.myResults
+                            .asMap()
+                            .entries
+                            .map(
+                              (e) => StudentResultsCriterionCard(
+                                result: e.value,
+                                color:
+                                    StudentCriterionPalette.colors[e.key %
+                                        StudentCriterionPalette.colors.length],
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AverageCard extends StatelessWidget {
-  final double avg;
-  final String badge;
-  const _AverageCard({required this.avg, required this.badge});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      decoration: BoxDecoration(
-        color: skSurfaceAlt,
-        border: Border.all(color: skBorder),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        children: [
-          Text(
-            avg.toStringAsFixed(2),
-            style: GoogleFonts.dmMono(
-              fontSize: 52,
-              fontWeight: FontWeight.w800,
-              color: skPrimary,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Promedio general recibido',
-            style: GoogleFonts.sora(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: skTextFaint,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: skSuccess.withValues(alpha: 0.09),
-              border: Border.all(color: skSuccess.withValues(alpha: 0.3)),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              badge,
-              style: GoogleFonts.sora(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: skSuccess,
-                letterSpacing: 0.3,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CriterionResultCard extends StatelessWidget {
-  final CriterionResult result;
-  final Color color;
-  const _CriterionResultCard({required this.result, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: skSurfaceAlt,
-        border: Border.all(color: skBorder),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 4,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  result.label,
-                  style: GoogleFonts.sora(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: skText,
-                  ),
-                ),
-              ),
-              Text(
-                result.value.toString(),
-                style: GoogleFonts.dmMono(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(99),
-            child: LinearProgressIndicator(
-              value: result.barFraction,
-              backgroundColor: skBorder,
-              valueColor: AlwaysStoppedAnimation(color),
-              minHeight: 5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BackButton extends StatelessWidget {
-  final String label;
-  final String route;
-  const _BackButton({required this.label, required this.route});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Get.offNamed(route),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(8, 7, 12, 7),
-        decoration: BoxDecoration(
-          color: skSurfaceAlt,
-          border: Border.all(color: skBorder),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.chevron_left_rounded,
-                size: 14, color: skTextMid),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: GoogleFonts.sora(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: skTextMid,
               ),
             ),
           ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 
 import 'package:example/data/repositories/auth_repository_impl.dart';
@@ -6,14 +7,22 @@ import 'package:example/data/repositories/teacher_auth_repository_impl.dart';
 import 'package:example/data/repositories/group_repository_impl.dart';
 import 'package:example/data/repositories/evaluation_repository_impl.dart';
 import 'package:example/data/repositories/course_repository_impl.dart';
+import 'package:example/data/repositories/connectivity_repository_impl.dart';
 import 'package:example/data/repositories/unified_auth_repository_impl.dart';
-import 'package:example/data/services/database_service.dart';
+import 'package:example/data/services/connectivity_service.dart';
+import 'package:example/data/services/database/database_service.dart';
 import 'package:example/domain/repositories/i_auth_repository.dart';
+import 'package:example/domain/repositories/i_connectivity_repository.dart';
 import 'package:example/domain/repositories/i_teacher_auth_repository.dart';
 import 'package:example/domain/repositories/i_group_repository.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
 import 'package:example/domain/repositories/i_course_repository.dart';
 import 'package:example/domain/repositories/i_unified_auth_repository.dart';
+import 'package:example/domain/use_case/teacher/teacher_import_csv_use_case.dart';
+import 'package:example/domain/use_case/teacher/teacher_create_evaluation_use_case.dart';
+import 'package:example/presentation/bindings/teacher_module_binding.dart';
+import 'package:example/presentation/controllers/connectivity_controller.dart';
+import 'package:example/presentation/controllers/teacher/teacher_session_controller.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 //import 'package:example/presentation/theme/teacher_colors.dart';
 
@@ -24,12 +33,12 @@ import 'package:example/presentation/pages/student/s_eval_list_page.dart';
 import 'package:example/presentation/pages/student/s_peer_score_page.dart';
 import 'package:example/presentation/pages/student/s_my_results_page.dart';
 import 'package:example/presentation/pages/student/s_peers_page.dart';
+import 'package:example/presentation/pages/student/s_profile_page.dart';
 import 'package:example/presentation/pages/auth/register_page.dart';
 import 'package:example/presentation/pages/auth/login_page.dart';
 import 'package:example/presentation/controllers/login_controller.dart';
 
 // Teacher
-import 'package:example/presentation/controllers/teacher_controller.dart';
 import 'package:example/presentation/pages/teacher/t_dash_page.dart';
 import 'package:example/presentation/pages/teacher/t_import_page.dart';
 import 'package:example/presentation/pages/teacher/t_new_eval_page.dart';
@@ -39,6 +48,11 @@ import 'package:example/presentation/pages/teacher/t_course_manage_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await dotenv.load(fileName: '.env', isOptional: true);
+  } catch (_) {
+    // Optional in local/dev. Fallback values are handled in app getters.
+  }
   runApp(const PeerEvalApp());
 }
 
@@ -48,7 +62,18 @@ class _AppBindings extends Bindings {
   @override
   void dependencies() {
     final db = DatabaseService();
+    final connectivityService = ConnectivityService();
+
     Get.put(db, permanent: true);
+    Get.put(connectivityService, permanent: true);
+    Get.put<IConnectivityRepository>(
+      ConnectivityRepositoryImpl(connectivityService),
+      permanent: true,
+    );
+    Get.put(
+      ConnectivityController(Get.find<IConnectivityRepository>()),
+      permanent: true,
+    );
     Get.put<IAuthRepository>(AuthRepositoryImpl(db), permanent: true);
     Get.put<ITeacherAuthRepository>(
       TeacherAuthRepositoryImpl(db),
@@ -58,6 +83,14 @@ class _AppBindings extends Bindings {
     Get.put<IEvaluationRepository>(EvaluationRepositoryImpl(db), permanent: true);
     Get.put<ICourseRepository>(CourseRepositoryImpl(db), permanent: true);
     Get.put(
+      TeacherImportCsvUseCase(Get.find<IGroupRepository>()),
+      permanent: true,
+    );
+    Get.put(
+      TeacherCreateEvaluationUseCase(Get.find<IEvaluationRepository>()),
+      permanent: true,
+    );
+    Get.put(
       StudentController(
         Get.find<IAuthRepository>(),
         Get.find<IEvaluationRepository>(),
@@ -65,26 +98,18 @@ class _AppBindings extends Bindings {
       permanent: true,
     );
     Get.put(
-      TeacherController(
-        Get.find<ITeacherAuthRepository>(),
-        Get.find<IGroupRepository>(),
-        Get.find<IEvaluationRepository>(),
-        Get.find<ICourseRepository>(),
-      ),
+      TeacherSessionController(Get.find<ITeacherAuthRepository>()),
       permanent: true,
     );
     Get.put<IUnifiedAuthRepository>(
-      UnifiedAuthRepositoryImpl(
-        Get.find<IAuthRepository>(),
-        Get.find<ITeacherAuthRepository>(),
-      ),
+      UnifiedAuthRepositoryImpl(db),
       permanent: true,
     );
     Get.put(
       LoginController(
         Get.find<IUnifiedAuthRepository>(),
         Get.find<StudentController>(),
-        Get.find<TeacherController>(),
+        Get.find<TeacherSessionController>(),
       ),
       permanent: true,
     );
@@ -96,10 +121,16 @@ class _AppBindings extends Bindings {
 class PeerEvalApp extends StatelessWidget {
   const PeerEvalApp({super.key});
 
+  String get _appName {
+    final fromEnv = dotenv.isInitialized ? dotenv.env['APP_NAME']?.trim() : null;
+    if (fromEnv != null && fromEnv.isNotEmpty) return fromEnv;
+    return 'Evalia';
+  }
+
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
-      title: 'Evalia',
+      title: _appName,
       debugShowCheckedModeBanner: false,
       initialBinding: _AppBindings(),
       theme: ThemeData(
@@ -133,13 +164,38 @@ class PeerEvalApp extends StatelessWidget {
         ),
         GetPage(name: '/student/peers',  page: () => const SPeersPage()),
         GetPage(name: '/student/results', page: () => const SMyResultsPage()),
+        GetPage(name: '/student/profile', page: () => const SProfilePage()),
         // Teacher
-        GetPage(name: '/teacher/dash', page: () => const TDashPage()),
-        GetPage(name: '/teacher/import', page: () => const TImportPage()),
-        GetPage(name: '/teacher/new-eval', page: () => const TNewEvalPage()),
-        GetPage(name: '/teacher/results', page: () => const TResultsPage()),
-        GetPage(name: '/teacher/profile', page: () => const TProfilePage()),
-        GetPage(name: '/teacher/courses', page: () => const TCourseManagePage()),
+        GetPage(
+          name: '/teacher/dash',
+          page: () => const TDashPage(),
+          binding: TeacherModuleBinding(),
+        ),
+        GetPage(
+          name: '/teacher/import',
+          page: () => const TImportPage(),
+          binding: TeacherModuleBinding(),
+        ),
+        GetPage(
+          name: '/teacher/new-eval',
+          page: () => const TNewEvalPage(),
+          binding: TeacherModuleBinding(),
+        ),
+        GetPage(
+          name: '/teacher/results',
+          page: () => const TResultsPage(),
+          binding: TeacherModuleBinding(),
+        ),
+        GetPage(
+          name: '/teacher/profile',
+          page: () => const TProfilePage(),
+          binding: TeacherModuleBinding(),
+        ),
+        GetPage(
+          name: '/teacher/courses',
+          page: () => const TCourseManagePage(),
+          binding: TeacherModuleBinding(),
+        ),
       ],
     );
   }
@@ -163,7 +219,7 @@ class _SplashPageState extends State<_SplashPage> {
 
   Future<void> _resolve() async {
     final student = Get.find<StudentController>();
-    final teacher = Get.find<TeacherController>();
+    final teacher = Get.find<TeacherSessionController>();
 
     try {
       await Future.wait([student.checkSession(), teacher.checkSession()])

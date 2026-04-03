@@ -2,12 +2,12 @@ import 'package:get/get.dart';
 import 'package:example/domain/models/auth_login_result.dart';
 import 'package:example/domain/repositories/i_unified_auth_repository.dart';
 import 'package:example/presentation/controllers/student_controller.dart';
-import 'package:example/presentation/controllers/teacher_controller.dart';
+import 'package:example/presentation/controllers/teacher/teacher_session_controller.dart';
 
 class LoginController extends GetxController {
   final IUnifiedAuthRepository _authRepo;
   final StudentController _studentController;
-  final TeacherController _teacherController;
+  final TeacherSessionController _teacherController;
 
   LoginController(
     this._authRepo,
@@ -17,6 +17,16 @@ class LoginController extends GetxController {
 
   final isLoading = false.obs;
   final authError = ''.obs;
+
+  String _friendlyError(Object error) {
+    final raw = error.toString().replaceFirst('Exception: ', '').trim();
+    if (raw.isEmpty) return 'Error al iniciar sesion';
+    if (raw.contains('401')) return 'Correo o contrasena incorrectos';
+    if (raw.toLowerCase().contains('sin conexion')) {
+      return 'Sin conexion a internet';
+    }
+    return raw;
+  }
 
   Future<void> login(String email, String password) async {
     if (email.trim().isEmpty || password.isEmpty) {
@@ -36,16 +46,16 @@ class LoginController extends GetxController {
       }
 
       if (result.role == AppUserRole.teacher) {
-        await _teacherController.checkSession();
-        _studentController.student.value = null;
+        _studentController.clearSessionStateForRoleSwitch();
+        await _teacherController.activateSessionFromLogin();
       } else {
-        await _studentController.checkSession();
-        _teacherController.teacher.value = null;
+        _teacherController.clearSessionStateForRoleSwitch();
+        await _studentController.activateSessionFromLogin();
       }
 
       Get.offAllNamed(result.homeRoute);
-    } catch (_) {
-      authError.value = 'Error al conectar con la base de datos';
+    } catch (e) {
+      authError.value = _friendlyError(e);
     } finally {
       isLoading.value = false;
     }

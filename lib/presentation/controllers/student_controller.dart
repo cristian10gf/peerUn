@@ -1,27 +1,45 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:example/domain/models/student.dart';
 import 'package:example/domain/models/evaluation.dart';
 import 'package:example/domain/models/peer_evaluation.dart';
+import 'package:example/domain/models/student_home.dart';
 import 'package:example/domain/repositories/i_auth_repository.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
+import 'package:example/domain/services/evaluation_domain_service.dart';
+import 'package:example/presentation/theme/app_colors.dart';
 
-enum EvalStudentStatus {
-  activePending,    // activa, el estudiante aún no la completó
-  activeCompleted,  // activa, el estudiante ya evaluó a todos
-  closedNotDone,    // cerrada, el estudiante no la realizó
-  closedCompleted,  // cerrada, el estudiante la realizó
-}
+typedef StudentStatusBadge = ({
+  String label,
+  Color textColor,
+  Color backgroundColor,
+});
 
 class StudentController extends GetxController {
   final IAuthRepository        _authRepo;
   final IEvaluationRepository  _evalRepo;
+  final EvaluationDomainService _evaluationDomainService;
 
-  StudentController(this._authRepo, this._evalRepo);
+  StudentController(
+    this._authRepo,
+    this._evalRepo, {
+    EvaluationDomainService? evaluationDomainService,
+  }) : _evaluationDomainService =
+           evaluationDomainService ?? const EvaluationDomainService();
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   final student    = Rx<Student?>(null);
   final isLoading  = false.obs;
   final authError  = ''.obs;
+
+  String _friendlyRegisterError(Object error) {
+    final raw = error.toString().replaceFirst('Exception: ', '').trim();
+    if (raw.isEmpty) return 'No se pudo completar el registro';
+    if (raw.contains('409') || raw.toLowerCase().contains('registrado')) {
+      return 'El correo ya esta registrado';
+    }
+    return raw;
+  }
 
   Student get currentStudent => student.value!;
   bool get isLoggedIn => student.value != null;
@@ -43,6 +61,20 @@ class StudentController extends GetxController {
     }
   }
 
+  Future<void> activateSessionFromLogin() async {
+    await checkSession();
+  }
+
+  void clearSessionStateForRoleSwitch() {
+    student.value = null;
+    authError.value = '';
+    evalLoadError.value = '';
+    peerLoadError.value = '';
+    myResultsError.value = '';
+    submitError.value = '';
+    _resetEvalState();
+  }
+
   Future<void> register(String name, String email, String password) async {
     isLoading.value = true;
     authError.value = '';
@@ -50,8 +82,8 @@ class StudentController extends GetxController {
       final s = await _authRepo.register(name, email, password);
       student.value = s;
       Get.offAllNamed('/student/courses');
-    } catch (_) {
-      authError.value = 'El correo ya está registrado';
+    } catch (e) {
+      authError.value = _friendlyRegisterError(e);
     } finally {
       isLoading.value = false;
     }
@@ -70,27 +102,176 @@ class StudentController extends GetxController {
   final hasActiveEval    = false.obs;
   final evaluations      = <Evaluation>[].obs;
   final evalStatuses     = <int, EvalStudentStatus>{}.obs;
+  final evalLoadError    = ''.obs;
+  final homeLoadError    = ''.obs;
+  final peerLoadError    = ''.obs;
+  final myResultsError   = ''.obs;
+  final submitError      = ''.obs;
+  final isLoadingHome    = false.obs;
+
+  final homeCourses = <StudentHomeCourse>[].obs;
+  final expandedCourseIds = <int>{}.obs;
+  final expandedCategoryIds = <int>{}.obs;
+
+  bool isCourseExpanded(int courseId) => expandedCourseIds.contains(courseId);
+  bool isCategoryExpanded(int categoryId) => expandedCategoryIds.contains(categoryId);
+
+  void toggleCourseExpanded(int courseId) {
+    if (expandedCourseIds.contains(courseId)) {
+      expandedCourseIds.remove(courseId);
+    } else {
+      expandedCourseIds.add(courseId);
+    }
+    expandedCourseIds.refresh();
+  }
+
+  void toggleCategoryExpanded(int categoryId) {
+    if (expandedCategoryIds.contains(categoryId)) {
+      expandedCategoryIds.remove(categoryId);
+    } else {
+      expandedCategoryIds.add(categoryId);
+    }
+    expandedCategoryIds.refresh();
+  }
+
+  Future<void> openActiveEvaluationForCategory(StudentHomeCategory category) async {
+    if (!category.hasActiveEvaluation) return;
+
+    final target = evaluations
+        .where((e) => e.categoryId == category.id && canEvaluate(e))
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    if (target.isEmpty) return;
+    await selectEvalForEvaluation(target.first);
+    Get.toNamed('/student/peers');
+  }
+
+  List<Evaluation> get pendingEvaluationsSorted {
+    return evaluations
+        .where((e) => evalStatuses[e.id] == EvalStudentStatus.activePending)
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  List<Evaluation> get activeEvaluations {
+    return evaluations.where((e) => e.isActive).toList();
+  }
+
+  Map<String, List<Evaluation>> get groupedAllEvaluationsByCourse {
+    return _groupEvaluationsByCourse(evaluations);
+  }
+
+  Map<String, List<Evaluation>> get groupedActiveEvaluationsByCourse {
+    return _groupEvaluationsByCourse(activeEvaluations);
+  }
+
+  EvalStudentStatus? statusFor(Evaluation eval) => evalStatuses[eval.id];
+
+  bool canEvaluate(Evaluation eval) {
+    return statusFor(eval) == EvalStudentStatus.activePending;
+  }
+
+  StudentStatusBadge statusBadgeInfoFor(Evaluation eval) {
+    final status = statusFor(eval);
+    return switch (status) {
+      EvalStudentStatus.activePending => (
+        label: 'ACTIVA',
+        textColor: skPrimary,
+        backgroundColor: skPrimaryLight,
+      ),
+      EvalStudentStatus.activeCompleted => (
+        label: 'ACTIVA · REALIZADA',
+        textColor: critGreen,
+        backgroundColor: const Color(0xFFD1FAE5),
+      ),
+      EvalStudentStatus.closedNotDone => (
+        label: 'FINALIZADA · NO REALIZADA',
+        textColor: const Color(0xFFEF4444),
+        backgroundColor: const Color(0xFFFEF2F2),
+      ),
+      EvalStudentStatus.closedCompleted => (
+        label: 'FINALIZADA',
+        textColor: skTextFaint,
+        backgroundColor: skSurfaceAlt,
+      ),
+      null => eval.isActive
+          ? (
+              label: 'ACTIVA',
+              textColor: skPrimary,
+              backgroundColor: skPrimaryLight,
+            )
+          : (
+              label: 'CERRADA',
+              textColor: skTextFaint,
+              backgroundColor: skSurfaceAlt,
+            ),
+    };
+  }
+
+  Color statusBorderColorFor(Evaluation eval) {
+    return switch (statusFor(eval)) {
+      EvalStudentStatus.activePending => skPrimaryMid,
+      EvalStudentStatus.activeCompleted => critGreen,
+      EvalStudentStatus.closedNotDone => const Color(0xFFFECACA),
+      _ => skBorder,
+    };
+  }
+
+  Map<String, List<Evaluation>> _groupEvaluationsByCourse(
+    List<Evaluation> source,
+  ) {
+    final grouped = <String, List<Evaluation>>{};
+    for (final e in source) {
+      final key = e.courseName.isNotEmpty ? e.courseName : 'Sin curso';
+      grouped.putIfAbsent(key, () => []).add(e);
+    }
+    return grouped;
+  }
 
   Future<void> loadEvalData() async {
     final s = student.value;
     if (s == null) return;
     final studentId = int.parse(s.id);
+    evalLoadError.value = '';
+    homeLoadError.value = '';
+    peerLoadError.value = '';
+    myResultsError.value = '';
+    submitError.value = '';
+
+    isLoadingHome.value = true;
+    try {
+      final courses = await _evalRepo.getStudentHomeCourses(s.email);
+      homeCourses.assignAll(courses);
+      expandedCourseIds
+        ..clear()
+        ..addAll(courses.take(2).map((c) => c.id));
+      expandedCategoryIds.clear();
+    } catch (e) {
+      homeCourses.clear();
+      homeLoadError.value = 'Error al cargar cursos: $e';
+    } finally {
+      isLoadingHome.value = false;
+    }
 
     // Load all evaluations this student is part of
     List<Evaluation> evalList = [];
     try {
       evalList = await _evalRepo.getEvaluationsForStudent(s.email);
       evaluations.assignAll(evalList);
-    } catch (_) {}
+    } catch (e) {
+      evalLoadError.value = 'Error al cargar evaluaciones: $e';
+      evaluations.clear();
+    }
 
     // Compute per-eval completion status
     await _computeStatuses(evalList, s.email, studentId);
 
     // Pick first active+pending eval as default context, fallback to first active
-    final Evaluation? eval =
-        evalList.firstWhereOrNull((e) => evalStatuses[e.id] == EvalStudentStatus.activePending) ??
-        evalList.firstWhereOrNull((e) => e.isActive) ??
-        (evalList.isNotEmpty ? evalList.first : null);
+    final eval = _evaluationDomainService.selectDefaultEvaluation(
+      evalList,
+      evalStatuses,
+    );
 
     activeEvalDb.value = eval;
 
@@ -117,30 +298,31 @@ class StudentController extends GetxController {
           email:     email,
           studentId: studentId,
         );
-        if (eval.isActive) {
-          statuses[eval.id] = completed
-              ? EvalStudentStatus.activeCompleted
-              : EvalStudentStatus.activePending;
-        } else {
-          statuses[eval.id] = completed
-              ? EvalStudentStatus.closedCompleted
-              : EvalStudentStatus.closedNotDone;
+        statuses[eval.id] = _evaluationDomainService.statusForEvaluation(
+          evaluation: eval,
+          completed: completed,
+        );
+      } catch (e) {
+        statuses[eval.id] = _evaluationDomainService.statusForEvaluation(
+          evaluation: eval,
+          completed: false,
+        );
+        if (evalLoadError.value.isEmpty) {
+          evalLoadError.value = 'No se pudo calcular el estado de algunas evaluaciones: $e';
         }
-      } catch (_) {
-        statuses[eval.id] = eval.isActive
-            ? EvalStudentStatus.activePending
-            : EvalStudentStatus.closedNotDone;
       }
     }
     evalStatuses.assignAll(statuses);
   }
 
   Future<void> _loadGroupAndPeers(Evaluation eval, dynamic s) async {
+    peerLoadError.value = '';
     try {
       final gName = await _evalRepo.getGroupNameForStudent(eval.id, s.email);
       currentGroupName.value = gName ?? eval.categoryName;
-    } catch (_) {
+    } catch (e) {
       currentGroupName.value = eval.categoryName;
+      peerLoadError.value = 'Error al cargar el grupo: $e';
     }
 
     final studentId = int.parse(s.id);
@@ -154,7 +336,9 @@ class StudentController extends GetxController {
           evaluatedMemberId:  int.parse(p.id),
         );
       }
-    } catch (_) {}
+    } catch (e) {
+      peerLoadError.value = 'Error al cargar pares: $e';
+    }
     peers.assignAll(peerList);
   }
 
@@ -174,29 +358,35 @@ class StudentController extends GetxController {
     final s = student.value;
     if (s == null) return;
     activeEvalDb.value = eval;
+    peerLoadError.value = '';
     try {
       final gName = await _evalRepo.getGroupNameForStudent(eval.id, s.email);
       currentGroupName.value = gName ?? eval.categoryName;
-    } catch (_) {
+    } catch (e) {
       currentGroupName.value = eval.categoryName;
+      peerLoadError.value = 'Error al cargar el grupo: $e';
     }
     await _loadMyResultsInternal(eval.id, s.email);
   }
 
   Future<void> _loadMyResultsInternal(int evalId, String email) async {
+    myResultsError.value = '';
     try {
       final results = await _evalRepo.getMyResults(evalId, email);
       myResults.assignAll(results);
-    } catch (_) {}
+    } catch (e) {
+      myResultsError.value = 'Error al cargar resultados: $e';
+      myResults.clear();
+    }
   }
 
   // ── Eval list ─────────────────────────────────────────────────────────────
   final peers = <Peer>[].obs;
 
-  int get doneCount   => peers.where((p) => p.evaluated).length;
-  int get totalPeers  => peers.length;
-  double get evalProgress => totalPeers == 0 ? 0 : doneCount / totalPeers;
-  bool get allEvaluated   => totalPeers > 0 && doneCount == totalPeers;
+  int get doneCount => _evaluationDomainService.donePeers(peers);
+  int get totalPeers => _evaluationDomainService.totalPeers(peers);
+  double get evalProgress => _evaluationDomainService.evalProgress(peers);
+  bool get allEvaluated => _evaluationDomainService.allEvaluated(peers);
 
   // ── Peer scoring ──────────────────────────────────────────────────────────
   final currentPeer = Rx<Peer?>(null);
@@ -226,7 +416,9 @@ class StudentController extends GetxController {
     final eval = activeEvalDb.value;
     if (s == null || eval == null) return;
 
+    submitError.value = '';
     final studentId = int.parse(s.id);
+    var failedSaves = 0;
     for (final peer in peers) {
       if (peer.evaluated && peer.scores.isNotEmpty) {
         try {
@@ -236,8 +428,16 @@ class StudentController extends GetxController {
             evaluatedMemberId:  int.parse(peer.id),
             scores:             peer.scores,
           );
-        } catch (_) {}
+        } catch (e) {
+          failedSaves++;
+          if (submitError.value.isEmpty) {
+            submitError.value = 'Error al guardar algunas evaluaciones: $e';
+          }
+        }
       }
+    }
+    if (failedSaves > 0) {
+      submitError.value = 'No se pudieron guardar $failedSaves evaluaciones';
     }
     await _loadMyResultsInternal(eval.id, s.email);
 
@@ -248,27 +448,25 @@ class StudentController extends GetxController {
         email:     s.email,
         studentId: studentId,
       );
-      evalStatuses[eval.id] = eval.isActive
-          ? (completed ? EvalStudentStatus.activeCompleted : EvalStudentStatus.activePending)
-          : (completed ? EvalStudentStatus.closedCompleted : EvalStudentStatus.closedNotDone);
-    } catch (_) {}
+      evalStatuses[eval.id] = _evaluationDomainService.statusForEvaluation(
+        evaluation: eval,
+        completed: completed,
+      );
+    } catch (e) {
+      submitError.value = submitError.value.isEmpty
+          ? 'No se pudo actualizar el estado: $e'
+          : submitError.value;
+    }
   }
 
   // ── My results ────────────────────────────────────────────────────────────
   final myResults = <CriterionResult>[].obs;
 
-  double get myAverage => myResults.isEmpty
-      ? 0
-      : myResults.map((r) => r.value).reduce((a, b) => a + b) /
-            myResults.length;
+  double get myAverage =>
+      _evaluationDomainService.averageFromCriterionResults(myResults);
 
-  String get performanceBadge {
-    final avg = myAverage;
-    if (avg >= 4.5) return 'Excelente desempeño';
-    if (avg >= 3.5) return 'Buen desempeño';
-    if (avg >= 2.5) return 'Desempeño adecuado';
-    return 'Necesita mejorar';
-  }
+  String get performanceBadge =>
+      _evaluationDomainService.performanceBadge(myAverage);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   void _refreshActiveEvalCard() {
@@ -281,7 +479,11 @@ class StudentController extends GetxController {
     currentGroupName.value = '';
     evaluations.clear();
     evalStatuses.clear();
+    homeLoadError.value = '';
     peers.clear();
+    homeCourses.clear();
+    expandedCourseIds.clear();
+    expandedCategoryIds.clear();
     myResults.clear();
     currentPeer.value = null;
     scores.clear();

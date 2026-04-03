@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:example/domain/models/auth_login_result.dart';
+import 'package:example/presentation/controllers/connectivity_controller.dart';
 import 'package:example/presentation/controllers/student_controller.dart';
-import 'package:example/presentation/controllers/teacher_controller.dart';
+import 'package:example/presentation/controllers/teacher/teacher_session_controller.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 import 'package:example/presentation/pages/auth/widgets/auth_field.dart';
+import 'package:example/presentation/widgets/connectivity_floating_pill.dart';
 //import 'package:example/presentation/theme/teacher_colors.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -51,7 +53,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
   Future<void> _submit(
     StudentController studentCtrl,
-    TeacherController teacherCtrl,
+    TeacherSessionController teacherCtrl,
   ) async {
     setState(() => _localError = null);
     studentCtrl.authError.value = '';
@@ -92,7 +94,8 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     final studentCtrl = Get.find<StudentController>();
-    final teacherCtrl = Get.find<TeacherController>();
+    final teacherCtrl = Get.find<TeacherSessionController>();
+    final connectivityCtrl = Get.find<ConnectivityController>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final bgColor = isDark ? tkBackground : skBackground;
@@ -338,17 +341,18 @@ class _RegisterPageState extends State<RegisterPage> {
                     final loading = _selectedRole == AppUserRole.student
                         ? studentCtrl.isLoading.value
                         : teacherCtrl.isLoading.value;
+                    final canAct = connectivityCtrl.isConnected.value;
 
                     return GestureDetector(
-                      onTap: loading
+                      onTap: loading || !canAct
                           ? null
                           : () => _submit(studentCtrl, teacherCtrl),
                       child: Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
                         decoration: BoxDecoration(
-                          color: loading
-                              ? accentColor.withValues(alpha: 0.7)
+                          color: (loading || !canAct)
+                              ? accentColor.withValues(alpha: 0.45)
                               : accentColor,
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -412,6 +416,8 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
         ),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: const ConnectivityFloatingPill(),
     );
   }
 }

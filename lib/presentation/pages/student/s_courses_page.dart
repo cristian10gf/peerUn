@@ -4,7 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 import 'package:example/presentation/controllers/student_controller.dart';
 import 'package:example/domain/models/evaluation.dart';
-// EvalStudentStatus lives in student_controller.dart
+import 'package:example/domain/models/student_home.dart';
+import 'package:example/presentation/pages/student/widgets/student_bottom_nav.dart';
+import 'package:example/presentation/pages/student/widgets/student_course_header.dart';
+import 'package:example/presentation/pages/student/widgets/student_profile_sheet.dart';
 
 class SCoursesPage extends StatelessWidget {
   const SCoursesPage({super.key});
@@ -61,7 +64,7 @@ class SCoursesPage extends StatelessWidget {
                     final s = ctrl.student.value;
                     if (s == null) return const SizedBox.shrink();
                     return GestureDetector(
-                      onTap: () => _showProfileSheet(context, ctrl),
+                      onTap: () => StudentProfileSheet.show(context, ctrl),
                       child: Container(
                         width: 40,
                         height: 40,
@@ -96,14 +99,108 @@ class SCoursesPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Text(
+                      'MIS CURSOS',
+                      style: GoogleFonts.sora(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: skTextFaint,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    Obx(() {
+                      if (ctrl.isLoadingHome.value) {
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 22,
+                            horizontal: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color: skSurface,
+                            border: Border.all(color: skBorder),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            children: [
+                              const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: skPrimary,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Cargando cursos matriculados...',
+                                style: GoogleFonts.sora(
+                                  fontSize: 12,
+                                  color: skTextMid,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      if (ctrl.homeLoadError.value.isNotEmpty) {
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 16,
+                            horizontal: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF2F2),
+                            border: Border.all(color: const Color(0xFFFECACA)),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Text(
+                            ctrl.homeLoadError.value,
+                            style: GoogleFonts.sora(
+                              fontSize: 11,
+                              color: const Color(0xFF991B1B),
+                            ),
+                          ),
+                        );
+                      }
+
+                      if (ctrl.homeCourses.isEmpty) {
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 20,
+                            horizontal: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            color: skSurfaceAlt,
+                            border: Border.all(color: skBorder),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            'Aún no tienes cursos matriculados visibles.',
+                            style: GoogleFonts.sora(
+                              fontSize: 12,
+                              color: skTextMid,
+                            ),
+                          ),
+                        );
+                      }
+
+                      return Column(
+                        children: ctrl.homeCourses
+                            .map((course) => _StudentCourseCard(course: course, ctrl: ctrl))
+                            .toList(),
+                      );
+                    }),
+                    const SizedBox(height: 20),
+
                     // ── Destacado: evaluación pendiente más reciente ───────
                     Obx(() {
-                      final pending = ctrl.evaluations
-                          .where((e) =>
-                              ctrl.evalStatuses[e.id] ==
-                              EvalStudentStatus.activePending)
-                          .toList()
-                        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+                      final pending = ctrl.pendingEvaluationsSorted;
                       if (pending.isEmpty) return const SizedBox.shrink();
                       return Column(
                         children: [
@@ -125,14 +222,14 @@ class SCoursesPage extends StatelessWidget {
                     const SizedBox(height: 10),
 
                     Obx(() {
-                      final active = ctrl.evaluations
-                          .where((e) => e.isActive)
-                          .toList();
+                      final active = ctrl.activeEvaluations;
                       if (active.isEmpty) {
                         return Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(
-                              vertical: 32, horizontal: 24),
+                            vertical: 32,
+                            horizontal: 24,
+                          ),
                           decoration: BoxDecoration(
                             color: skSurfaceAlt,
                             border: Border.all(color: skBorder),
@@ -140,8 +237,11 @@ class SCoursesPage extends StatelessWidget {
                           ),
                           child: Column(
                             children: [
-                              const Icon(Icons.rate_review_outlined,
-                                  size: 32, color: skTextFaint),
+                              const Icon(
+                                Icons.rate_review_outlined,
+                                size: 32,
+                                color: skTextFaint,
+                              ),
                               const SizedBox(height: 10),
                               Text(
                                 'Sin evaluaciones activas',
@@ -155,31 +255,31 @@ class SCoursesPage extends StatelessWidget {
                               Text(
                                 'Aquí aparecerán las evaluaciones\ncuando el docente las active',
                                 style: GoogleFonts.sora(
-                                    fontSize: 11, color: skTextFaint),
+                                  fontSize: 11,
+                                  color: skTextFaint,
+                                ),
                                 textAlign: TextAlign.center,
                               ),
                             ],
                           ),
                         );
                       }
-                      // Group by course name (preserving insertion order)
-                      final grouped = <String, List<Evaluation>>{};
-                      for (final e in active) {
-                        final key = e.courseName.isNotEmpty
-                            ? e.courseName
-                            : 'Sin curso';
-                        grouped.putIfAbsent(key, () => []).add(e);
-                      }
+                      final grouped = ctrl.groupedActiveEvaluationsByCourse;
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: grouped.entries.expand((entry) => [
-                          if (grouped.length > 1) ...[
-                            _CourseHeader(name: entry.key),
-                            const SizedBox(height: 8),
-                          ],
-                          ...entry.value.map(
-                              (e) => _EvalCard(eval: e, ctrl: ctrl)),
-                        ]).toList(),
+                        children: grouped.entries
+                            .expand(
+                              (entry) => [
+                                if (grouped.length > 1) ...[
+                                  StudentCourseHeader(name: entry.key),
+                                  const SizedBox(height: 8),
+                                ],
+                                ...entry.value.map(
+                                  (e) => _EvalCard(eval: e, ctrl: ctrl),
+                                ),
+                              ],
+                            )
+                            .toList(),
                       );
                     }),
                   ],
@@ -188,106 +288,7 @@ class SCoursesPage extends StatelessWidget {
             ),
 
             // ── Bottom nav ─────────────────────────────────────────────────
-            _BottomNav(activeIndex: 0),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showProfileSheet(BuildContext context, StudentController ctrl) {
-    final student = ctrl.currentStudent;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: skSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 36, height: 4,
-              decoration: BoxDecoration(
-                color: skBorder,
-                borderRadius: BorderRadius.circular(99),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Container(
-                  width: 48, height: 48,
-                  decoration: BoxDecoration(
-                    color: skPrimaryLight,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    student.initials,
-                    style: GoogleFonts.sora(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: skPrimary,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(student.name,
-                          style: GoogleFonts.sora(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: skText,
-                          )),
-                      const SizedBox(height: 2),
-                      Text(student.email,
-                          style: GoogleFonts.dmMono(
-                              fontSize: 11, color: skTextFaint)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            const Divider(color: skBorder, height: 1),
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: () {
-                Get.back();
-                ctrl.logout();
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF2F2),
-                  border: Border.all(color: const Color(0xFFFECACA)),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.logout_rounded,
-                        size: 16, color: Color(0xFFEF4444)),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Cerrar sesión',
-                      style: GoogleFonts.sora(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFFEF4444),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            StudentBottomNav(activeIndex: 0),
           ],
         ),
       ),
@@ -297,30 +298,307 @@ class SCoursesPage extends StatelessWidget {
 
 // ── Course header ──────────────────────────────────────────────────────────────
 
-class _CourseHeader extends StatelessWidget {
-  final String name;
-  const _CourseHeader({required this.name});
+class _StudentCourseCard extends StatelessWidget {
+  final StudentHomeCourse course;
+  final StudentController ctrl;
+
+  const _StudentCourseCard({required this.course, required this.ctrl});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 6, bottom: 2),
-      child: Row(
-        children: [
-          const Icon(Icons.school_rounded, size: 13, color: skPrimary),
-          const SizedBox(width: 6),
-          Text(
-            name.toUpperCase(),
-            style: GoogleFonts.sora(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: skPrimary,
-              letterSpacing: 1.2,
-            ),
+    return Obx(() {
+      final expanded = ctrl.isCourseExpanded(course.id);
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
+          color: skSurface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: course.hasGroupAssignment ? skBorderMid : const Color(0xFFFECACA),
           ),
-        ],
-      ),
-    );
+        ),
+        child: Column(
+          children: [
+            InkWell(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              onTap: () => ctrl.toggleCourseExpanded(course.id),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            course.name.isEmpty ? 'Curso sin nombre' : course.name,
+                            style: GoogleFonts.sora(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: skText,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            course.hasGroupAssignment
+                                ? '${course.categories.length} categorias con grupo'
+                                : 'Sin grupo asignado',
+                            style: GoogleFonts.sora(
+                              fontSize: 11,
+                              color: skTextMid,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: course.hasGroupAssignment
+                            ? skPrimaryLight
+                            : const Color(0xFFFEF2F2),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Text(
+                        course.hasGroupAssignment ? 'Con grupo' : 'Sin grupo',
+                        style: GoogleFonts.sora(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: course.hasGroupAssignment
+                              ? skPrimary
+                              : const Color(0xFFB91C1C),
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      color: skTextMid,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (expanded)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                child: Column(
+                  children: [
+                    const Divider(height: 1, color: skBorder),
+                    const SizedBox(height: 10),
+                    if (course.categories.isEmpty)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Este curso aún no tiene categorías con grupo para ti.',
+                          style: GoogleFonts.sora(
+                            fontSize: 11,
+                            color: skTextMid,
+                          ),
+                        ),
+                      )
+                    else
+                      ...course.categories.map(
+                        (category) => _StudentCategoryCard(
+                          category: category,
+                          ctrl: ctrl,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      );
+    });
+  }
+}
+
+class _StudentCategoryCard extends StatelessWidget {
+  final StudentHomeCategory category;
+  final StudentController ctrl;
+
+  const _StudentCategoryCard({required this.category, required this.ctrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final group = category.group;
+    if (group == null) return const SizedBox.shrink();
+
+    return Obx(() {
+      final expanded = ctrl.isCategoryExpanded(category.id);
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: skSurfaceAlt,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: skBorder),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    category.name,
+                    style: GoogleFonts.sora(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: skText,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => ctrl.toggleCategoryExpanded(category.id),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(42, 32),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    expanded ? 'Ocultar' : 'Ver',
+                    style: GoogleFonts.sora(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: skPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Text(
+              group.name,
+              style: GoogleFonts.dmMono(fontSize: 11, color: skTextMid),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(99),
+                    child: LinearProgressIndicator(
+                      minHeight: 4,
+                      value: category.progress,
+                      backgroundColor: skBorder,
+                      valueColor: const AlwaysStoppedAnimation(skPrimary),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${category.completedPeerCount}/${category.totalPeerCount}',
+                  style: GoogleFonts.dmMono(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: skTextMid,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: category.hasActiveEvaluation
+                    ? () => ctrl.openActiveEvaluationForCategory(category)
+                    : null,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: skPrimary,
+                  disabledForegroundColor: skTextMid,
+                  disabledBackgroundColor: skSurface,
+                  side: BorderSide(
+                    color: category.hasActiveEvaluation ? skPrimary : skBorder,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                ),
+                child: Text(
+                  category.hasActiveEvaluation
+                      ? 'Evaluar ${category.activeEvaluationName}'
+                      : 'Sin evaluacion activa',
+                  style: GoogleFonts.sora(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: group.members
+                  .take(3)
+                  .map(
+                    (member) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: skSurface,
+                        border: Border.all(color: skBorder),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Text(
+                        member.name,
+                        style: GoogleFonts.sora(
+                          fontSize: 10,
+                          color: skText,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+            if (group.members.length > 3)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  '+${group.members.length - 3} integrantes',
+                  style: GoogleFonts.sora(
+                    fontSize: 10,
+                    color: skTextMid,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            if (expanded) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: group.members
+                    .skip(3)
+                    .map(
+                      (member) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: skSurface,
+                          border: Border.all(color: skBorder),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                        child: Text(
+                          member.name,
+                          style: GoogleFonts.sora(
+                            fontSize: 10,
+                            color: skText,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
+          ],
+        ),
+      );
+    });
   }
 }
 
@@ -395,38 +673,42 @@ class _ActiveEvalCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Obx(() => Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          'Progreso',
-                          style: GoogleFonts.sora(
-                            fontSize: 11,
-                            color: Colors.white.withValues(alpha: 0.5),
-                          ),
+                Obx(
+                  () => Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'Progreso',
+                        style: GoogleFonts.sora(
+                          fontSize: 11,
+                          color: Colors.white.withValues(alpha: 0.5),
                         ),
-                        Text(
-                          '${ctrl.doneCount}/${ctrl.totalPeers}',
-                          style: GoogleFonts.dmMono(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                          ),
+                      ),
+                      Text(
+                        '${ctrl.doneCount}/${ctrl.totalPeers}',
+                        style: GoogleFonts.dmMono(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
                         ),
-                      ],
-                    )),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
-            Obx(() => ClipRRect(
-                  borderRadius: BorderRadius.circular(99),
-                  child: LinearProgressIndicator(
-                    value: ctrl.evalProgress,
-                    backgroundColor: Colors.white.withValues(alpha: 0.25),
-                    valueColor: const AlwaysStoppedAnimation(Colors.white),
-                    minHeight: 3,
-                  ),
-                )),
+            Obx(
+              () => ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(
+                  value: ctrl.evalProgress,
+                  backgroundColor: Colors.white.withValues(alpha: 0.25),
+                  valueColor: const AlwaysStoppedAnimation(Colors.white),
+                  minHeight: 3,
+                ),
+              ),
+            ),
             const SizedBox(height: 14),
             Container(
               width: double.infinity,
@@ -453,7 +735,7 @@ class _ActiveEvalCard extends StatelessWidget {
 
   String _fmtDuration(Duration d) {
     if (d.isNegative) return 'Cerrada';
-    if (d.inDays > 0)  return 'Cierra en ${d.inDays}d';
+    if (d.inDays > 0) return 'Cierra en ${d.inDays}d';
     if (d.inHours > 0) return 'Cierra en ${d.inHours}h';
     return 'Cierra en ${d.inMinutes}m';
   }
@@ -468,18 +750,13 @@ class _EvalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final closesIn  = eval.closesAt.difference(DateTime.now());
+    final closesIn = eval.closesAt.difference(DateTime.now());
     final timeLabel = _fmt(closesIn);
 
     return Obx(() {
-      final status = ctrl.evalStatuses[eval.id] ?? EvalStudentStatus.activePending;
-      final isPending = status == EvalStudentStatus.activePending;
-
-      final (badgeLabel, badgeColor, badgeBg) = isPending
-          ? ('ACTIVA', skPrimary, skPrimaryLight)
-          : ('ACTIVA · REALIZADA', critGreen, const Color(0xFFD1FAE5));
-
-      final borderColor = isPending ? skPrimaryMid : critGreen;
+      final isPending = ctrl.canEvaluate(eval);
+      final badge = ctrl.statusBadgeInfoFor(eval);
+      final borderColor = ctrl.statusBorderColorFor(eval);
 
       return Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -499,23 +776,24 @@ class _EvalCard extends StatelessWidget {
                   _PulseDot(),
                   const SizedBox(width: 6),
                 ] else ...[
-                  Icon(Icons.check_circle_rounded,
-                      size: 12, color: critGreen),
+                  Icon(Icons.check_circle_rounded, size: 12, color: critGreen),
                   const SizedBox(width: 5),
                 ],
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 7, vertical: 2),
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
-                    color: badgeBg,
+                    color: badge.backgroundColor,
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: Text(
-                    badgeLabel,
+                    badge.label,
                     style: GoogleFonts.sora(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
-                      color: badgeColor,
+                      color: badge.textColor,
                       letterSpacing: 1.1,
                     ),
                   ),
@@ -552,8 +830,7 @@ class _EvalCard extends StatelessWidget {
                         Get.toNamed('/student/peers');
                       },
                       child: Container(
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 10),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
                           color: skPrimary,
                           borderRadius: BorderRadius.circular(10),
@@ -607,7 +884,7 @@ class _EvalCard extends StatelessWidget {
 
   String _fmt(Duration d) {
     if (d.isNegative) return 'Cerrada';
-    if (d.inDays > 0)  return 'Cierra en ${d.inDays}d';
+    if (d.inDays > 0) return 'Cierra en ${d.inDays}d';
     if (d.inHours > 0) return 'Cierra en ${d.inHours}h';
     return 'Cierra en ${d.inMinutes}m';
   }
@@ -632,9 +909,10 @@ class _PulseDotState extends State<_PulseDot>
       vsync: this,
       duration: const Duration(milliseconds: 1800),
     )..repeat(reverse: true);
-    _anim = Tween<double>(begin: 1.0, end: 0.3).animate(
-      CurvedAnimation(parent: _ac, curve: Curves.easeInOut),
-    );
+    _anim = Tween<double>(
+      begin: 1.0,
+      end: 0.3,
+    ).animate(CurvedAnimation(parent: _ac, curve: Curves.easeInOut));
   }
 
   @override
@@ -650,7 +928,8 @@ class _PulseDotState extends State<_PulseDot>
       builder: (_, __) => Opacity(
         opacity: _anim.value,
         child: Container(
-          width: 7, height: 7,
+          width: 7,
+          height: 7,
           decoration: BoxDecoration(
             color: widget.color,
             shape: BoxShape.circle,
@@ -662,67 +941,3 @@ class _PulseDotState extends State<_PulseDot>
 }
 
 // ── Bottom nav ─────────────────────────────────────────────────────────────────
-
-class _BottomNav extends StatelessWidget {
-  final int activeIndex;
-  const _BottomNav({required this.activeIndex});
-
-  @override
-  Widget build(BuildContext context) {
-    final items = [
-      _NavItem(icon: Icons.home_rounded,          label: 'Inicio',    route: '/student/courses'),
-      _NavItem(icon: Icons.history_rounded,        label: 'Historial', route: '/student/eval-list'),
-      _NavItem(icon: Icons.bar_chart_rounded,      label: 'Resultados',route: '/student/results'),
-      _NavItem(icon: Icons.person_outline_rounded, label: 'Perfil',    route: null),
-    ];
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: skSurface,
-        border: Border(top: BorderSide(color: skBorder)),
-      ),
-      padding: const EdgeInsets.fromLTRB(0, 10, 0, 20),
-      child: Row(
-        children: items.asMap().entries.map((e) {
-          final isActive = e.key == activeIndex;
-          return Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                if (e.value.route != null &&
-                    !Get.currentRoute.endsWith(e.value.route!)) {
-                  Get.offNamed(e.value.route!);
-                }
-              },
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(e.value.icon, size: 20,
-                      color: isActive ? skPrimary : skTextFaint),
-                  const SizedBox(height: 3),
-                  Text(
-                    e.value.label,
-                    style: GoogleFonts.sora(
-                      fontSize: 9,
-                      letterSpacing: 0.3,
-                      fontWeight:
-                          isActive ? FontWeight.w700 : FontWeight.w500,
-                      color: isActive ? skPrimary : skTextFaint,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
-
-class _NavItem {
-  final IconData icon;
-  final String label;
-  final String? route;
-  const _NavItem({required this.icon, required this.label, this.route});
-}

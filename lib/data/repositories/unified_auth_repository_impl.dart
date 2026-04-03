@@ -1,13 +1,13 @@
+import 'package:example/data/services/database/database_service.dart';
+import 'package:example/data/utils/string_utils.dart';
+import 'package:example/data/utils/user_utils.dart';
 import 'package:example/domain/models/auth_login_result.dart';
-import 'package:example/domain/repositories/i_auth_repository.dart';
-import 'package:example/domain/repositories/i_teacher_auth_repository.dart';
 import 'package:example/domain/repositories/i_unified_auth_repository.dart';
 
 class UnifiedAuthRepositoryImpl implements IUnifiedAuthRepository {
-  final IAuthRepository _studentAuth;
-  final ITeacherAuthRepository _teacherAuth;
+  final DatabaseService _db;
 
-  UnifiedAuthRepositoryImpl(this._studentAuth, this._teacherAuth);
+  UnifiedAuthRepositoryImpl(this._db);
 
   @override
   Future<AuthLoginResult?> loginAndResolve(
@@ -16,17 +16,63 @@ class UnifiedAuthRepositoryImpl implements IUnifiedAuthRepository {
   ) async {
     final normalizedEmail = email.trim().toLowerCase();
 
-    final teacher = await _teacherAuth.login(normalizedEmail, password);
-    if (teacher != null) {
-      // Keep a single active role session.
-      await _studentAuth.logout();
+    final auth = await _db.robleLogin(
+      email: normalizedEmail,
+      password: password,
+    );
+
+    final accessToken = (auth['accessToken'] ?? '').toString();
+    final refreshToken = (auth['refreshToken'] ?? '').toString();
+    if (accessToken.isEmpty) return null;
+
+    _db.setSessionTokens(accessToken: accessToken, refreshToken: refreshToken);
+
+    Map<String, dynamic>? userRow;
+    try {
+      userRow = await _db.robleFindUserByEmail(normalizedEmail);
+    } catch (_) {
+      // Keep login available while users table permissions are being configured.
+    }
+
+    final claims = _db.decodeJwtClaims(accessToken);
+    final fallbackRole = (claims['role'] ?? '').toString().trim().toLowerCase();
+    final role = (userRow?['role'] ?? fallbackRole).toString().trim().toLowerCase();
+    final idSeed =
+        (userRow?['id'] ?? userRow?['_id'] ?? claims['sub'] ?? normalizedEmail)
+            .toString();
+    final userId = DatabaseService.stableNumericIdFromSeed(idSeed).toString();
+    final name =
+      (userRow?['name'] ??
+          claims['name'] ??
+          buildDisplayNameFromEmail(normalizedEmail, fallback: 'User'))
+            .toString();
+    final initials = buildInitials(name);
+
+    if (role == 'teacher' || role == 'admin') {
+      await _db.clearStudentSession();
+      await _db.saveTeacherSession({
+        'id': userId,
+        'name': name,
+        'email': normalizedEmail,
+        'initials': initials,
+        'access_token': accessToken,
+        'refresh_token': refreshToken,
+        'role': role,
+      });
       return const AuthLoginResult(role: AppUserRole.teacher);
     }
 
-    final student = await _studentAuth.login(normalizedEmail, password);
-    if (student != null) {
-      // Keep a single active role session.
-      await _teacherAuth.logout();
+    if (role == 'student') {
+      await _db.clearTeacherSession();
+      await _db.saveStudentSession({
+        'id': userId,
+        'name': name,
+        'email': normalizedEmail,
+        'initials': initials,
+        'access_token': accessToken,
+        'refresh_token': refreshToken,
+        'role': role,
+      });
       return const AuthLoginResult(role: AppUserRole.student);
     }
 
