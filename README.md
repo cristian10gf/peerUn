@@ -2,7 +2,7 @@
 
 > **Equipo:** Cristian · Sandro · Jorge · Flavio
 >
-> **Figma:** https://www.figma.com/design/DDNofweJTAejsv44DZ1akb/Untitled?node-id=1-801&t=LxzPnaJQcuQtXxtO-1
+> **Figma:** https://www.figma.com/design/Fg6gFmRqxWChHEaiA3MCE9/Figma---del-proyecto?node-id=457-1183&t=UVHzPY98K4r52EYN-0
 >
 > **Proyecto:** Plataforma móvil de evaluación entre compañeros para trabajo colaborativo universitario
 > **Fecha inicial:** 25 de febrero de 2026
