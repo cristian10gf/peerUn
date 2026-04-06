@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:example/data/utils/error_parser.dart';
 import 'package:example/domain/models/evaluation.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
 import 'package:example/domain/use_case/teacher/teacher_create_evaluation_use_case.dart';
@@ -64,7 +65,7 @@ class TeacherEvaluationController extends GetxController {
       evaluations.assignAll(all);
       activeEval.value = all.firstWhereOrNull((e) => e.isActive);
     } catch (e) {
-      evaluationsLoadError.value = 'Error al cargar evaluaciones: $e';
+      evaluationsLoadError.value = parseApiError(e, fallback: 'Error al cargar evaluaciones');
     }
   }
 
@@ -133,7 +134,7 @@ class TeacherEvaluationController extends GetxController {
         duration: const Duration(seconds: 3),
       );
     } catch (e) {
-      evalError.value = 'Error al crear evaluación: $e';
+      evalError.value = parseApiError(e, fallback: 'Error al crear evaluación');
     } finally {
       isLoading.value = false;
     }

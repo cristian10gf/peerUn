@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:example/data/utils/error_parser.dart';
 import 'package:example/domain/models/course_model.dart';
 import 'package:example/domain/models/group_category.dart';
 import 'package:example/domain/repositories/i_course_repository.dart';
@@ -73,7 +74,7 @@ class TeacherCourseImportController extends GetxController {
       final all = await _courseRepo.getAll(_teacherId);
       courses.assignAll(all);
     } catch (e) {
-      courseLoadError.value = 'Error al cargar cursos: $e';
+      courseLoadError.value = parseApiError(e, fallback: 'Error al cargar cursos');
     } finally {
       courseLoading.value = false;
     }
@@ -105,7 +106,7 @@ class TeacherCourseImportController extends GetxController {
       courses.insert(0, course);
       return true;
     } catch (e) {
-      courseCreateError.value = 'Error al crear curso: $e';
+      courseCreateError.value = parseApiError(e, fallback: 'Error al crear curso');
       return false;
     } finally {
       courseCreateLoading.value = false;
@@ -132,7 +133,7 @@ class TeacherCourseImportController extends GetxController {
       categoriesForCourse.assignAll(cats);
     } catch (e) {
       categoriesForCourse.clear();
-      categoriesForCourseError.value = 'Error al cargar categorías del curso: $e';
+      categoriesForCourseError.value = parseApiError(e, fallback: 'Error al cargar categorías del curso');
     }
   }
 
@@ -142,7 +143,7 @@ class TeacherCourseImportController extends GetxController {
       final cats = await _groupRepo.getAll(_teacherId);
       categories.assignAll(cats);
     } catch (e) {
-      categoriesLoadError.value = 'Error al cargar categorías: $e';
+      categoriesLoadError.value = parseApiError(e, fallback: 'Error al cargar categorías');
     }
   }
 
@@ -173,7 +174,7 @@ class TeacherCourseImportController extends GetxController {
         courseId: imported.courseId,
       );
     } catch (e) {
-      importError.value = 'Error al importar: $e';
+      importError.value = parseApiError(e, fallback: 'Error al importar CSV');
       lastImportSummary.value = null;
     } finally {
       importLoading.value = false;

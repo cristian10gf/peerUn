@@ -7,6 +7,9 @@ import 'package:example/domain/models/group_category.dart';
 import 'package:example/domain/repositories/i_group_repository.dart';
 import 'package:example/domain/services/csv_import_domain_service.dart';
 
+/// Maximum number of concurrent signup-direct calls during CSV import.
+const _kSignupConcurrency = 5;
+
 class GroupRepositoryImpl implements IGroupRepository {
   final DatabaseService _db;
   final CsvImportDomainService _csvImportDomainService;
@@ -16,6 +19,8 @@ class GroupRepositoryImpl implements IGroupRepository {
     CsvImportDomainService? csvImportDomainService,
   }) : _csvImportDomainService =
            csvImportDomainService ?? const CsvImportDomainService();
+
+  // ─── Helpers ─────────────────────────────────────────────────────────────
 
   bool _looksLikeAlreadyRegistered(Object error) {
     final msg = error.toString().toLowerCase();
@@ -27,234 +32,87 @@ class GroupRepositoryImpl implements IGroupRepository {
 
   String _asString(dynamic value) => value?.toString().trim() ?? '';
 
-  String _firstNonEmptyField(Map<String, dynamic> row, List<String> keys) {
+  String _firstNonEmpty(Map<String, dynamic> row, List<String> keys) {
     for (final key in keys) {
-      final value = _asString(row[key]);
-      if (value.isNotEmpty) return value;
+      final v = _asString(row[key]);
+      if (v.isNotEmpty) return v;
     }
     return '';
   }
 
-  String _userReferenceFromRow(Map<String, dynamic> row) {
-    return _firstNonEmptyField(row, const ['user_id', 'id', '_id']);
-  }
+  String _courseRef(Map<String, dynamic> row) =>
+      _firstNonEmpty(row, const ['course_id', 'id', '_id']);
 
-  String _courseReferenceFromRow(Map<String, dynamic> row) {
-    return _firstNonEmptyField(row, const ['course_id', 'id', '_id']);
-  }
+  String _categoryRef(Map<String, dynamic> row) =>
+      _firstNonEmpty(row, const ['category_id', 'id', '_id']);
 
-  String _categoryReferenceFromRow(Map<String, dynamic> row) {
-    return _firstNonEmptyField(row, const ['category_id', 'id', '_id']);
-  }
+  String _groupRef(Map<String, dynamic> row) =>
+      _firstNonEmpty(row, const ['group_id', 'id', '_id']);
 
-  String _groupReferenceFromRow(Map<String, dynamic> row) {
-    return _firstNonEmptyField(row, const ['group_id', 'id', '_id']);
-  }
-
-  int _domainIdFromReference(String reference, {required int fallback}) {
+  int _domainId(String reference, {required int fallback}) {
     if (reference.isEmpty) return fallback;
     return DatabaseService.stableNumericIdFromSeed(reference);
   }
 
-  Future<String> _resolveCourseReference(int courseId) async {
-    final rows = await _db.robleRead(RobleTables.course);
-    for (final row in rows) {
-      final ref = _courseReferenceFromRow(row);
-      if (ref.isEmpty) continue;
-
-      final candidateIds = <int>{
-        asInt(row['course_id'], fallback: -1),
-        asInt(row['id'], fallback: -1),
-        asInt(row['_id'], fallback: -1),
-      };
-      if (candidateIds.contains(courseId)) {
-        return ref;
-      }
-    }
-
-    return courseId.toString();
-  }
-
+  /// Extracts the auth user-id (sub) from a [signupResponse].
+  ///
+  /// Roble's signup-direct does not always return the UID in the body, but it
+  /// always issues a JWT whose `sub` claim IS the UID. We try three sources
+  /// in order of reliability:
+  ///   1. `accessToken` JWT `sub` claim
+  ///   2. Top-level `user_id` / `uid` / `sub` fields
+  ///   3. Nested `user.id` object
   String _extractAuthUserId(Map<String, dynamic> payload) {
-    String firstNonEmpty(List<dynamic> candidates) {
-      for (final candidate in candidates) {
-        final text = _asString(candidate);
-        if (text.isNotEmpty) return text;
-      }
-      return '';
+    // 1. Decode JWT sub if accessToken is present (most reliable).
+    final accessToken = _asString(
+      payload['accessToken'] ?? payload['access_token'],
+    );
+    if (accessToken.isNotEmpty) {
+      final claims = _db.decodeJwtClaims(accessToken);
+      final sub = _asString(claims['sub']);
+      if (sub.isNotEmpty) return sub;
     }
 
-    final topLevel = firstNonEmpty([
-      payload['user_id'],
-      payload['userId'],
-      payload['sub'],
-      payload['_id'],
-      payload['id'],
-    ]);
-    if (topLevel.isNotEmpty) return topLevel;
+    // 2. Top-level fields.
+    for (final key in const [
+      'user_id',
+      'userId',
+      'uid',
+      'sub',
+      '_id',
+      'id',
+    ]) {
+      final v = _asString(payload[key]);
+      if (v.isNotEmpty) return v;
+    }
 
+    // 3. Nested user object.
     final user = payload['user'];
     if (user is Map) {
-      final userMap = Map<String, dynamic>.from(user);
-      final nested = firstNonEmpty([
-        userMap['user_id'],
-        userMap['userId'],
-        userMap['sub'],
-        userMap['_id'],
-        userMap['id'],
-      ]);
-      if (nested.isNotEmpty) return nested;
-    }
-
-    final accessToken = _asString(payload['accessToken']);
-    if (accessToken.isEmpty) return '';
-
-    final claims = _db.decodeJwtClaims(accessToken);
-    return _asString(claims['sub']);
-  }
-
-  Future<Map<String, dynamic>> _upsertUserProfile({
-    required String authUserId,
-    required String email,
-    required String name,
-    required String role,
-    Map<String, dynamic>? existingProfile,
-  }) async {
-    final payload = {
-      'user_id': authUserId,
-      'email': email,
-      'name': name,
-      'role': role,
-    };
-
-    final existing = existingProfile;
-    if (existing != null) {
-      final key = existing['_id']?.toString() ?? '';
-      if (key.isNotEmpty) {
-        await _db.robleUpdate(RobleTables.users, key, payload);
-        return {
-          ...existing,
-          ...payload,
-        };
+      for (final key in const ['user_id', 'userId', 'uid', 'sub', '_id', 'id']) {
+        final v = _asString(user[key]);
+        if (v.isNotEmpty) return v;
       }
     }
 
-    try {
-      return await _db.robleCreate(RobleTables.users, payload);
-    } catch (_) {
-      final fallbackExisting = existing ?? await _db.robleFindUserByEmail(email);
-      if (fallbackExisting == null) rethrow;
-
-      final key = fallbackExisting['_id']?.toString() ?? '';
-      if (key.isEmpty) rethrow;
-
-      await _db.robleUpdate(RobleTables.users, key, payload);
-      return {
-        ...fallbackExisting,
-        ...payload,
-      };
-    }
+    return '';
   }
 
-  String _relationKey(dynamic left, dynamic right) {
-    return '${left.toString()}::${right.toString()}';
-  }
-
-  Future<void> _ensureUserCourseRelation({
-    required String courseReference,
-    required String userReference,
-    required String role,
-    required bool tableAvailable,
-    required Set<String> relationKeys,
+  /// Runs [tasks] with at most [maxConcurrent] running simultaneously.
+  Future<List<T>> _runConcurrent<T>(
+    List<Future<T> Function()> tasks, {
+    int maxConcurrent = _kSignupConcurrency,
   }) async {
-    if (!tableAvailable) return;
-    final key = _relationKey(courseReference, userReference);
-    if (relationKeys.contains(key)) return;
-
-    await _db.robleCreate(RobleTables.userCourse, {
-      'course_id': courseReference,
-      'user_id': userReference,
-      'role': role,
-    });
-    relationKeys.add(key);
+    final results = <T>[];
+    for (var i = 0; i < tasks.length; i += maxConcurrent) {
+      final chunk = tasks.skip(i).take(maxConcurrent).toList();
+      final chunkResults = await Future.wait(chunk.map((t) => t()));
+      results.addAll(chunkResults);
+    }
+    return results;
   }
 
-  Future<void> _ensureUserGroupRelation({
-    required String groupReference,
-    required String userReference,
-    required bool tableAvailable,
-    required Set<String> relationKeys,
-  }) async {
-    if (!tableAvailable) return;
-    final key = _relationKey(groupReference, userReference);
-    if (relationKeys.contains(key)) return;
-
-    await _db.robleCreate(RobleTables.userGroup, {
-      'group_id': groupReference,
-      'user_id': userReference,
-    });
-    relationKeys.add(key);
-  }
-
-  Future<String> _resolveStudentAuthId({
-    required String email,
-    required String name,
-    required String sharedPassword,
-    required String teacherAccessToken,
-    required String teacherRefreshToken,
-    Map<String, dynamic>? cachedProfile,
-  }) async {
-    final existingProfile = cachedProfile ?? await _db.robleFindUserByEmail(email);
-    final existingAuthId = _asString(existingProfile?['user_id']);
-    if (existingAuthId.isNotEmpty) {
-      return existingAuthId;
-    }
-
-    var alreadyRegistered = false;
-    var signupPayload = <String, dynamic>{};
-
-    try {
-      signupPayload = await _db.robleSignupDirect(
-        email: email,
-        password: sharedPassword,
-        name: name,
-      );
-    } catch (e) {
-      if (!_looksLikeAlreadyRegistered(e)) rethrow;
-      alreadyRegistered = true;
-    }
-
-    final authIdFromSignup = _extractAuthUserId(signupPayload);
-    if (authIdFromSignup.isNotEmpty) {
-      return authIdFromSignup;
-    }
-
-    if (alreadyRegistered) {
-      final refreshedAuthId = _asString(existingProfile?['user_id']);
-      if (refreshedAuthId.isNotEmpty) {
-        return refreshedAuthId;
-      }
-
-      // Legacy fallback to keep import resilient when auth profile exists
-      // but does not expose a user_id in local records.
-      final seed = DatabaseService.stableNumericIdFromSeed(email);
-      return 'legacy-$seed';
-    }
-
-    final login = await _db.robleLogin(email: email, password: sharedPassword);
-    final authUserId = _extractAuthUserId(login);
-    if (authUserId.isEmpty) {
-      throw Exception('No se pudo obtener user_id auth para: $email');
-    }
-
-    // Restore teacher token context to continue data writes.
-    _db.setSessionTokens(
-      accessToken: teacherAccessToken,
-      refreshToken: teacherRefreshToken,
-    );
-
-    return authUserId;
-  }
+  // ─── Public interface ────────────────────────────────────────────────────
 
   @override
   Future<List<GroupCategory>> getAll(int teacherId) async {
@@ -262,21 +120,11 @@ class GroupRepositoryImpl implements IGroupRepository {
     final courseRows = await _db.robleRead(RobleTables.course);
     final usersRows = await _db.robleRead(RobleTables.users);
 
-    final usersByReference = <String, Map<String, dynamic>>{};
+    final usersByRef = <String, Map<String, dynamic>>{};
     for (final u in usersRows) {
-      final canonical = _userReferenceFromRow(u);
-      if (canonical.isNotEmpty) {
-        usersByReference[canonical] = u;
-      }
-
-      final legacyId = _asString(u['id']);
-      if (legacyId.isNotEmpty) {
-        usersByReference.putIfAbsent(legacyId, () => u);
-      }
-
-      final rowKey = _asString(u['_id']);
-      if (rowKey.isNotEmpty) {
-        usersByReference.putIfAbsent(rowKey, () => u);
+      for (final key in const ['user_id', 'id', '_id']) {
+        final v = _asString(u[key]);
+        if (v.isNotEmpty) usersByRef.putIfAbsent(v, () => u);
       }
     }
 
@@ -286,21 +134,19 @@ class GroupRepositoryImpl implements IGroupRepository {
       final email = (claims['email'] ?? '').toString().trim().toLowerCase();
       if (email.isNotEmpty) {
         final teacherUser = await _db.robleFindUserByEmail(email);
-        final teacherUserCandidates = <String>{
+        final candidates = <String>{
           _asString(teacherUser?['user_id']),
           _asString(teacherUser?['id']),
           _asString(teacherUser?['_id']),
-        }..removeWhere((value) => value.isEmpty);
+        }..removeWhere((v) => v.isEmpty);
 
-        if (teacherUserCandidates.isNotEmpty) {
-          for (final candidate in teacherUserCandidates) {
+        for (final candidate in candidates) {
           final relations = await _db.robleRead(
             RobleTables.userCourse,
             filters: {'user_id': candidate, 'role': 'teacher'},
           );
           for (final rel in relations) {
             teacherCourseIds.add(asInt(rel['course_id']));
-          }
           }
         }
       }
@@ -310,80 +156,60 @@ class GroupRepositoryImpl implements IGroupRepository {
       for (final c in courseRows) {
         final createdBy = asInt(c['created_by'] ?? c['teacher_id']);
         if (createdBy != teacherId) continue;
-
-        final courseRef = _courseReferenceFromRow(c);
-        final domainId = _domainIdFromReference(
-          courseRef,
-          fallback: rowIdFromMap(c),
+        final ref = _courseRef(c);
+        teacherCourseIds.add(
+          _domainId(ref, fallback: rowIdFromMap(c)),
         );
-        teacherCourseIds.add(domainId);
       }
     }
 
-    if (teacherCourseIds.isEmpty) {
-      return const <GroupCategory>[];
-    }
+    if (teacherCourseIds.isEmpty) return const <GroupCategory>[];
 
     final result = <GroupCategory>[];
     for (final cat in catRows) {
       final courseId = asInt(cat['course_id']);
-      if (teacherCourseIds.isNotEmpty && !teacherCourseIds.contains(courseId)) {
-        continue;
-      }
+      if (!teacherCourseIds.contains(courseId)) continue;
 
-      final catReference = _categoryReferenceFromRow(cat);
-      final catId = _domainIdFromReference(
-        catReference,
-        fallback: rowIdFromMap(cat),
-      );
+      final catReference = _categoryRef(cat);
+      final catId = _domainId(catReference, fallback: rowIdFromMap(cat));
+
       var grpRows = await _db.robleRead(
         RobleTables.groups,
         filters: {'category_id': catReference},
       );
       if (grpRows.isEmpty) {
-        final legacyCategoryRef = catId.toString();
-        if (legacyCategoryRef != catReference) {
-          grpRows = await _db.robleRead(
-            RobleTables.groups,
-            filters: {'category_id': legacyCategoryRef},
-          );
-        }
+        grpRows = await _db.robleRead(
+          RobleTables.groups,
+          filters: {'category_id': catId.toString()},
+        );
       }
 
       final groups = <CourseGroup>[];
       for (final grp in grpRows) {
-        final groupReference = _groupReferenceFromRow(grp);
-        final grpId = _domainIdFromReference(
-          groupReference,
-          fallback: rowIdFromMap(grp),
-        );
+        final groupReference = _groupRef(grp);
+        final grpId = _domainId(groupReference, fallback: rowIdFromMap(grp));
+
         var memberRows = await _db.robleRead(
           RobleTables.userGroup,
           filters: {'group_id': groupReference},
         );
         if (memberRows.isEmpty) {
-          final legacyGroupRef = grpId.toString();
-          if (legacyGroupRef != groupReference) {
-            memberRows = await _db.robleRead(
-              RobleTables.userGroup,
-              filters: {'group_id': legacyGroupRef},
-            );
-          }
+          memberRows = await _db.robleRead(
+            RobleTables.userGroup,
+            filters: {'group_id': grpId.toString()},
+          );
         }
 
         final members = <GroupMember>[];
         for (final membership in memberRows) {
           final userReference = _asString(membership['user_id']);
           if (userReference.isEmpty) continue;
-
-          final user = usersByReference[userReference];
+          final user = usersByRef[userReference];
           if (user == null) continue;
-
-          final userId = _domainIdFromReference(
+          final userId = _domainId(
             userReference,
             fallback: asInt(user['id'] ?? user['_id']),
           );
-
           members.add(
             GroupMember(
               id: userId,
@@ -417,6 +243,21 @@ class GroupRepositoryImpl implements IGroupRepository {
     return result;
   }
 
+  // ─── importCsv ────────────────────────────────────────────────────────────
+  //
+  // OPTIMISED STRATEGY (from ~165 sequential calls → ~15-20 total):
+  //
+  //  Pre-load  : 1 read(users) + 1 read(user_group) + 1 read(user_course)
+  //              + 1 read(course) = 4 reads
+  //  Phase 1   : N parallel signup-direct (only NEW students, concurrency 5)
+  //  Phase 2   : 1 bulk insert → user table
+  //  Phase 3   : 1 create → category
+  //  Phase 4   : G creates → groups (G = number of groups, typically ≤15)
+  //  Phase 5   : 1 bulk insert → user_group relations
+  //  Phase 6   : 1 bulk insert → user_course relations
+  //
+  // ─────────────────────────────────────────────────────────────────────────
+
   @override
   Future<GroupCategory> importCsv(
     String csvContent,
@@ -424,131 +265,231 @@ class GroupRepositoryImpl implements IGroupRepository {
     int teacherId,
     int courseId,
   ) async {
+    // ── Guard: need a valid teacher token to make auth calls ────────────────
     final teacherTokens = await _db.readAuthTokens();
     final teacherAccessToken = teacherTokens?['access_token']?.toString() ?? '';
     final teacherRefreshToken =
         teacherTokens?['refresh_token']?.toString() ?? '';
     if (teacherAccessToken.isEmpty || teacherRefreshToken.isEmpty) {
-      throw Exception('Sesion de profesor no valida para aprovisionar datos');
+      throw Exception('Sesión de profesor no válida para aprovisionar datos');
     }
 
+    // ── Parse CSV ────────────────────────────────────────────────────────────
     final parsed = _csvImportDomainService.parse(csvContent);
-    final courseReference = await _resolveCourseReference(courseId);
 
-    final usersByEmail = <String, Map<String, dynamic>>{};
-    final authUserIdByEmail = <String, String>{};
+    // ── PRE-LOAD: fetch tables we need in one pass ───────────────────────────
     final allUsers = await _db.robleRead(RobleTables.users);
+    final allCourses = await _db.robleRead(RobleTables.course);
+
+    final hasUserCourseTable = await tableExists(_db, RobleTables.userCourse);
+    final hasUserGroupTable = await tableExists(_db, RobleTables.userGroup);
+
+    // Read existing relations once (warm-up cache).
+    final existingUserCourseKeys = <String>{};
+    final existingUserGroupKeys = <String>{};
+    if (hasUserCourseTable) {
+      final rows = await _db.robleRead(RobleTables.userCourse);
+      for (final r in rows) {
+        final cid = _asString(r['course_id']);
+        final uid = _asString(r['user_id']);
+        if (cid.isNotEmpty && uid.isNotEmpty) {
+          existingUserCourseKeys.add('$cid::$uid');
+        }
+      }
+    }
+    if (hasUserGroupTable) {
+      final rows = await _db.robleRead(RobleTables.userGroup);
+      for (final r in rows) {
+        final gid = _asString(r['group_id']);
+        final uid = _asString(r['user_id']);
+        if (gid.isNotEmpty && uid.isNotEmpty) {
+          existingUserGroupKeys.add('$gid::$uid');
+        }
+      }
+    }
+
+    // Build per-email lookups from the pre-loaded users.
+    final usersByEmail = <String, Map<String, dynamic>>{};
+    final authIdByEmail = <String, String>{};
     for (final row in allUsers) {
       final email = normalizeEmail((row['email'] ?? '').toString());
       if (email.isEmpty) continue;
       usersByEmail[email] = row;
-      final authUserId = _asString(row['user_id']);
-      if (authUserId.isNotEmpty) {
-        authUserIdByEmail[email] = authUserId;
+      final authId = _asString(row['user_id']);
+      if (authId.isNotEmpty) authIdByEmail[email] = authId;
+    }
+
+    // Resolve the course's canonical reference (used for user_course FK).
+    final courseReference = _resolveCourseRef(allCourses, courseId);
+
+    // ── Collect unique emails from CSV ───────────────────────────────────────
+    final uniqueEmails = <String>{};
+    for (final group in parsed.groups) {
+      for (final member in group.members) {
+        uniqueEmails.add(normalizeEmail(member.username));
+      }
+    }
+    final newEmails =
+        uniqueEmails.where((e) => !authIdByEmail.containsKey(e)).toList();
+
+    // ── PHASE 1: Parallel signup-direct for new students ─────────────────────
+    if (newEmails.isNotEmpty) {
+      final signupTasks = newEmails.map((email) => () async {
+        // Find name from CSV (use first occurrence).
+        String name = email.split('@').first;
+        outer:
+        for (final group in parsed.groups) {
+          for (final member in group.members) {
+            if (normalizeEmail(member.username) == email) {
+              name = member.name;
+              break outer;
+            }
+          }
+        }
+
+        try {
+          final signupResponse = await _db.robleSignupDirect(
+            email: email,
+            password: _db.studentDefaultPassword,
+            name: name,
+          );
+          final authId = _extractAuthUserId(signupResponse);
+          if (authId.isNotEmpty) authIdByEmail[email] = authId;
+        } catch (e) {
+          if (!_looksLikeAlreadyRegistered(e)) rethrow;
+          // Already registered — authId may already be in the map or will be
+          // resolved from the users table pre-load above.
+        }
+
+        // Restore teacher token context after each signup attempt.
+        _db.setSessionTokens(
+          accessToken: teacherAccessToken,
+          refreshToken: teacherRefreshToken,
+        );
+      }).toList();
+
+      await _runConcurrent(signupTasks);
+
+      // Ensure teacher token is active for subsequent DB writes.
+      _db.setSessionTokens(
+        accessToken: teacherAccessToken,
+        refreshToken: teacherRefreshToken,
+      );
+    }
+
+    // ── PHASE 2: Bulk upsert users table ─────────────────────────────────────
+    final userRecordsToInsert = <Map<String, dynamic>>[];
+    for (final email in uniqueEmails) {
+      if (usersByEmail.containsKey(email)) continue; // Already in DB.
+
+      String name = email.split('@').first;
+      outer:
+      for (final group in parsed.groups) {
+        for (final member in group.members) {
+          if (normalizeEmail(member.username) == email) {
+            name = member.name;
+            break outer;
+          }
+        }
+      }
+
+      userRecordsToInsert.add({
+        'user_id': authIdByEmail[email] ?? email,
+        'email': email,
+        'name': name,
+        'role': 'student',
+      });
+    }
+
+    if (userRecordsToInsert.isNotEmpty) {
+      try {
+        final inserted = await _db.robleBulkInsert(
+          RobleTables.users,
+          userRecordsToInsert,
+        );
+        for (final row in inserted) {
+          final email = normalizeEmail(_asString(row['email']));
+          if (email.isNotEmpty) {
+            usersByEmail[email] = row;
+            final authId = _asString(row['user_id']);
+            if (authId.isNotEmpty) authIdByEmail.putIfAbsent(email, () => authId);
+          }
+        }
+      } catch (_) {
+        // Fallback to individual creates if bulk fails.
+        for (final record in userRecordsToInsert) {
+          try {
+            final row = await _db.robleCreate(RobleTables.users, record);
+            final email = normalizeEmail(_asString(row['email']));
+            if (email.isNotEmpty) {
+              usersByEmail[email] = row;
+              final authId = _asString(row['user_id']);
+              if (authId.isNotEmpty) {
+                authIdByEmail.putIfAbsent(email, () => authId);
+              }
+            }
+          } catch (_) {}
+        }
       }
     }
 
-    var hasUserCourseTable = false;
-    final userCourseRelationKeys = <String>{};
-    try {
-      final relationRows = await _db.robleRead(RobleTables.userCourse);
-      hasUserCourseTable = true;
-      for (final relation in relationRows) {
-        final relCourseId = _asString(relation['course_id']);
-        final relUserId = _asString(relation['user_id']);
-        if (relCourseId.isEmpty || relUserId.isEmpty) continue;
-        userCourseRelationKeys.add(_relationKey(relCourseId, relUserId));
-      }
-    } catch (_) {
-      hasUserCourseTable = false;
-    }
-
-    var hasUserGroupTable = false;
-    final userGroupRelationKeys = <String>{};
-    try {
-      final relationRows = await _db.robleRead(RobleTables.userGroup);
-      hasUserGroupTable = true;
-      for (final relation in relationRows) {
-        final relGroupId = _asString(relation['group_id']);
-        final relUserId = _asString(relation['user_id']);
-        if (relGroupId.isEmpty || relUserId.isEmpty) continue;
-        userGroupRelationKeys.add(_relationKey(relGroupId, relUserId));
-      }
-    } catch (_) {
-      hasUserGroupTable = false;
-    }
-
+    // ── PHASE 3: Create category ─────────────────────────────────────────────
     final now = DateTime.now().millisecondsSinceEpoch;
     final catRow = await _db.robleCreate(RobleTables.category, {
       'name': categoryName,
       'description': 'Importado desde CSV',
       'course_id': courseReference,
     });
+    final categoryReference = _categoryRef(catRow);
+    final catId = _domainId(categoryReference, fallback: rowIdFromMap(catRow));
 
-    final categoryReference = _categoryReferenceFromRow(catRow);
-    final catId = _domainIdFromReference(
-      categoryReference,
-      fallback: rowIdFromMap(catRow),
-    );
+    // ── PHASE 4: Create groups + collect relation records ────────────────────
     final groups = <CourseGroup>[];
+    final userGroupRecords = <Map<String, dynamic>>[];
+    final userCourseRecords = <Map<String, dynamic>>[];
 
     for (final group in parsed.groups) {
       final grpRow = await _db.robleCreate(RobleTables.groups, {
         'category_id': categoryReference,
         'name': group.name,
       });
+      final groupReference = _groupRef(grpRow);
+      final grpId = _domainId(groupReference, fallback: rowIdFromMap(grpRow));
 
-      final groupReference = _groupReferenceFromRow(grpRow);
-      final grpId = _domainIdFromReference(
-        groupReference,
-        fallback: rowIdFromMap(grpRow),
-      );
       final members = <GroupMember>[];
       for (final member in group.members) {
         final studentEmail = normalizeEmail(member.username);
-        final cachedUser = usersByEmail[studentEmail];
-        var studentAuthId = authUserIdByEmail[studentEmail] ?? '';
-        if (studentAuthId.isEmpty) {
-          studentAuthId = await _resolveStudentAuthId(
-            email: studentEmail,
-            name: member.name,
-            sharedPassword: _db.studentDefaultPassword,
-            teacherAccessToken: teacherAccessToken,
-            teacherRefreshToken: teacherRefreshToken,
-            cachedProfile: cachedUser,
-          );
-          authUserIdByEmail[studentEmail] = studentAuthId;
+        final userRow = usersByEmail[studentEmail];
+        final userReference = _asString(userRow?['user_id']).isNotEmpty
+            ? _asString(userRow!['user_id'])
+            : (authIdByEmail[studentEmail] ?? studentEmail);
+        final userId = _domainId(
+          userReference,
+          fallback: asInt(userRow?['id'] ?? userRow?['_id']),
+        );
+
+        if (hasUserGroupTable) {
+          final ugKey = '$groupReference::$userReference';
+          if (!existingUserGroupKeys.contains(ugKey)) {
+            userGroupRecords.add({
+              'group_id': groupReference,
+              'user_id': userReference,
+            });
+            existingUserGroupKeys.add(ugKey);
+          }
         }
 
-        final userRow = await _upsertUserProfile(
-          authUserId: studentAuthId,
-          email: studentEmail,
-          name: member.name,
-          role: 'student',
-          existingProfile: cachedUser,
-        );
-        usersByEmail[studentEmail] = userRow;
-        final userReferenceCandidate = _userReferenceFromRow(userRow);
-        final userReference =
-          userReferenceCandidate.isEmpty ? studentAuthId : userReferenceCandidate;
-        final userId = _domainIdFromReference(
-          userReference,
-          fallback: asInt(userRow['id'] ?? userRow['_id']),
-        );
-
-        await _ensureUserGroupRelation(
-          groupReference: groupReference,
-          userReference: userReference,
-          tableAvailable: hasUserGroupTable,
-          relationKeys: userGroupRelationKeys,
-        );
-        await _ensureUserCourseRelation(
-          courseReference: courseReference,
-          userReference: userReference,
-          role: 'student',
-          tableAvailable: hasUserCourseTable,
-          relationKeys: userCourseRelationKeys,
-        );
+        if (hasUserCourseTable) {
+          final ucKey = '$courseReference::$userReference';
+          if (!existingUserCourseKeys.contains(ucKey)) {
+            userCourseRecords.add({
+              'course_id': courseReference,
+              'user_id': userReference,
+              'role': 'student',
+            });
+            existingUserCourseKeys.add(ucKey);
+          }
+        }
 
         members.add(
           GroupMember(id: userId, name: member.name, username: studentEmail),
@@ -556,6 +497,32 @@ class GroupRepositoryImpl implements IGroupRepository {
       }
 
       groups.add(CourseGroup(id: grpId, name: group.name, members: members));
+    }
+
+    // ── PHASE 5: Bulk insert user_group ──────────────────────────────────────
+    if (userGroupRecords.isNotEmpty) {
+      try {
+        await _db.robleBulkInsert(RobleTables.userGroup, userGroupRecords);
+      } catch (_) {
+        for (final record in userGroupRecords) {
+          try {
+            await _db.robleCreate(RobleTables.userGroup, record);
+          } catch (_) {}
+        }
+      }
+    }
+
+    // ── PHASE 6: Bulk insert user_course ─────────────────────────────────────
+    if (userCourseRecords.isNotEmpty) {
+      try {
+        await _db.robleBulkInsert(RobleTables.userCourse, userCourseRecords);
+      } catch (_) {
+        for (final record in userCourseRecords) {
+          try {
+            await _db.robleCreate(RobleTables.userCourse, record);
+          } catch (_) {}
+        }
+      }
     }
 
     return GroupCategory(
@@ -571,64 +538,54 @@ class GroupRepositoryImpl implements IGroupRepository {
   Future<void> delete(int categoryId) async {
     final catRows = await _db.robleRead(RobleTables.category);
     Map<String, dynamic>? target;
-    String targetCategoryReference = '';
+    String targetCatRef = '';
     for (final row in catRows) {
-      final categoryReference = _categoryReferenceFromRow(row);
-      final domainId = _domainIdFromReference(
-        categoryReference,
-        fallback: rowIdFromMap(row),
-      );
+      final ref = _categoryRef(row);
+      final domainId = _domainId(ref, fallback: rowIdFromMap(row));
       if (domainId == categoryId || rowIdFromMap(row) == categoryId) {
         target = row;
-        targetCategoryReference = categoryReference;
+        targetCatRef = ref;
         break;
       }
     }
     if (target == null) return;
-
-    if (targetCategoryReference.isEmpty) {
-      targetCategoryReference = categoryId.toString();
-    }
+    if (targetCatRef.isEmpty) targetCatRef = categoryId.toString();
 
     var grpRows = await _db.robleRead(
       RobleTables.groups,
-      filters: {'category_id': targetCategoryReference},
+      filters: {'category_id': targetCatRef},
     );
     if (grpRows.isEmpty) {
-      final legacyCategoryReference = categoryId.toString();
-      if (legacyCategoryReference != targetCategoryReference) {
-        grpRows = await _db.robleRead(
-          RobleTables.groups,
-          filters: {'category_id': legacyCategoryReference},
-        );
-      }
+      grpRows = await _db.robleRead(
+        RobleTables.groups,
+        filters: {'category_id': categoryId.toString()},
+      );
     }
 
     for (final grp in grpRows) {
-      final groupReference = _groupReferenceFromRow(grp);
-      final effectiveGroupReference = groupReference.isEmpty
-          ? rowIdFromMap(grp).toString()
-          : groupReference;
+      final groupRef = _groupRef(grp);
+      final effectiveRef =
+          groupRef.isNotEmpty ? groupRef : rowIdFromMap(grp).toString();
       final grpKey = grp['_id']?.toString();
+
       var memRows = await _db.robleRead(
         RobleTables.userGroup,
-        filters: {'group_id': effectiveGroupReference},
+        filters: {'group_id': effectiveRef},
       );
       if (memRows.isEmpty) {
-        final legacyGroupReference = rowIdFromMap(grp).toString();
-        if (legacyGroupReference != effectiveGroupReference) {
-          memRows = await _db.robleRead(
-            RobleTables.userGroup,
-            filters: {'group_id': legacyGroupReference},
-          );
-        }
+        memRows = await _db.robleRead(
+          RobleTables.userGroup,
+          filters: {'group_id': rowIdFromMap(grp).toString()},
+        );
       }
+
       for (final m in memRows) {
         final mk = m['_id']?.toString();
         if (mk != null && mk.isNotEmpty) {
           await _db.robleDelete(RobleTables.userGroup, mk);
         }
       }
+
       if (grpKey != null && grpKey.isNotEmpty) {
         await _db.robleDelete(RobleTables.groups, grpKey);
       }
@@ -638,5 +595,24 @@ class GroupRepositoryImpl implements IGroupRepository {
     if (catKey != null && catKey.isNotEmpty) {
       await _db.robleDelete(RobleTables.category, catKey);
     }
+  }
+
+  // ─── Private: course ref resolution ─────────────────────────────────────
+
+  String _resolveCourseRef(
+    List<Map<String, dynamic>> courseRows,
+    int courseId,
+  ) {
+    for (final row in courseRows) {
+      final ref = _courseRef(row);
+      if (ref.isEmpty) continue;
+      final candidateIds = <int>{
+        asInt(row['course_id'], fallback: -1),
+        asInt(row['id'], fallback: -1),
+        asInt(row['_id'], fallback: -1),
+      };
+      if (candidateIds.contains(courseId)) return ref;
+    }
+    return courseId.toString();
   }
 }
