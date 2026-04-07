@@ -46,6 +46,8 @@ class DatabaseService {
 
   String get studentDefaultPassword => _config.studentDefaultPassword;
 
+  // ─── Auth ────────────────────────────────────────────────────────────────
+
   Future<Map<String, dynamic>> robleLogin({
     required String email,
     required String password,
@@ -53,11 +55,21 @@ class DatabaseService {
     return _auth.robleLogin(email: email, password: password);
   }
 
+  /// Sets the active session tokens on both the auth layer AND the CRUD layer
+  /// so that robleBulkInsert can attach the Authorization header.
   void setSessionTokens({
     required String accessToken,
     required String refreshToken,
   }) {
-    _auth.setSessionTokens(accessToken: accessToken, refreshToken: refreshToken);
+    _auth.setSessionTokens(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+    );
+    // Keep CRUD in sync so bulk HTTP calls use the current token.
+    _crud.setCurrentToken(
+      accessToken,
+      _config.buildServiceUrl(_config.dataBase, 'database'),
+    );
   }
 
   Future<void> saveAuthTokens({
@@ -96,6 +108,16 @@ class DatabaseService {
     return _auth.robleLogout(accessToken);
   }
 
+  Map<String, dynamic> decodeJwtClaims(String accessToken) {
+    return _auth.decodeJwtClaims(accessToken);
+  }
+
+  String? roleFromAccessToken(String accessToken) {
+    return _auth.roleFromAccessToken(accessToken);
+  }
+
+  // ─── Table management ────────────────────────────────────────────────────
+
   Future<void> robleCreateTable(
     String tableName,
     List<Map<String, dynamic>> columns,
@@ -106,6 +128,8 @@ class DatabaseService {
   Future<dynamic> robleGetTableData(String tableName) {
     return _crud.robleGetTableData(tableName);
   }
+
+  // ─── Single-record CRUD ──────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> robleCreate(
     String tableName,
@@ -137,19 +161,29 @@ class DatabaseService {
     return _crud.robleDelete(tableName, id);
   }
 
-  Map<String, dynamic> decodeJwtClaims(String accessToken) {
-    return _auth.decodeJwtClaims(accessToken);
+  /// Inserts multiple records in a SINGLE Roble API call.
+  ///
+  /// Uses POST /:dbName/insert with body { tableName, records: [...] }.
+  /// Dramatically faster than N individual [robleCreate] calls when importing
+  /// CSVs or batch-creating relations.
+  ///
+  /// Returns the list of successfully inserted rows.
+  Future<List<Map<String, dynamic>>> robleBulkInsert(
+    String tableName,
+    List<Map<String, dynamic>> records,
+  ) {
+    return _crud.robleBulkInsert(tableName, records);
   }
 
-  String? roleFromAccessToken(String accessToken) {
-    return _auth.roleFromAccessToken(accessToken);
-  }
+  // ─── ID helpers ─────────────────────────────────────────────────────────
 
   static int stableNumericIdFromSeed(String seed) {
     final parsed = int.tryParse(seed);
     if (parsed != null) return parsed;
     return seed.hashCode.abs();
   }
+
+  // ─── Session ─────────────────────────────────────────────────────────────
 
   Future<void> saveStudentSession(Map<String, dynamic> session) {
     return _session.saveStudentSession(session);

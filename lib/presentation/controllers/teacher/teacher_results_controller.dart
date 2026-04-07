@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:example/data/utils/error_parser.dart';
 import 'package:example/domain/models/evaluation.dart';
 import 'package:example/domain/models/teacher_data.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
@@ -24,7 +25,7 @@ class TeacherResultsController extends GetxController {
       groupResults.assignAll(results);
     } catch (e) {
       groupResults.clear();
-      resultsError.value = 'Error al cargar resultados: $e';
+      resultsError.value = parseApiError(e, fallback: 'Error al cargar resultados');
     } finally {
       resultsLoading.value = false;
     }

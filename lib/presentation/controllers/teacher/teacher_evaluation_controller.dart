@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:example/data/utils/error_parser.dart';
 import 'package:example/domain/models/evaluation.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
 import 'package:example/domain/use_case/teacher/teacher_create_evaluation_use_case.dart';
@@ -64,7 +65,7 @@ class TeacherEvaluationController extends GetxController {
       evaluations.assignAll(all);
       activeEval.value = all.firstWhereOrNull((e) => e.isActive);
     } catch (e) {
-      evaluationsLoadError.value = 'Error al cargar evaluaciones: $e';
+      evaluationsLoadError.value = parseApiError(e, fallback: 'Error al cargar evaluaciones');
     }
   }
 
@@ -133,39 +134,49 @@ class TeacherEvaluationController extends GetxController {
         duration: const Duration(seconds: 3),
       );
     } catch (e) {
-      evalError.value = 'Error al crear evaluación: $e';
+      evalError.value = parseApiError(e, fallback: 'Error al crear evaluación');
     } finally {
       isLoading.value = false;
     }
   }
 
   Future<void> renameEvaluation(int evalId, String newName) async {
-    await _evalRepo.rename(evalId, newName, _teacherId);
-    final idx = evaluations.indexWhere((e) => e.id == evalId);
-    if (idx != -1) {
-      final old = evaluations[idx];
-      evaluations[idx] = Evaluation(
-        id: old.id,
-        name: newName,
-        categoryId: old.categoryId,
-        categoryName: old.categoryName,
-        courseName: old.courseName,
-        hours: old.hours,
-        visibility: old.visibility,
-        createdAt: old.createdAt,
-        closesAt: old.closesAt,
-      );
-      if (activeEval.value?.id == evalId) {
-        activeEval.value = evaluations[idx];
+    evalError.value = '';
+    try {
+      await _evalRepo.rename(evalId, newName, _teacherId);
+      final idx = evaluations.indexWhere((e) => e.id == evalId);
+      if (idx != -1) {
+        final old = evaluations[idx];
+        evaluations[idx] = Evaluation(
+          id: old.id,
+          name: newName,
+          categoryId: old.categoryId,
+          categoryName: old.categoryName,
+          courseName: old.courseName,
+          hours: old.hours,
+          visibility: old.visibility,
+          createdAt: old.createdAt,
+          closesAt: old.closesAt,
+        );
+        if (activeEval.value?.id == evalId) {
+          activeEval.value = evaluations[idx];
+        }
       }
+    } catch (e) {
+      evalError.value = parseApiError(e, fallback: 'Error al renombrar la evaluación');
     }
   }
 
   Future<void> deleteEvaluation(int evalId) async {
-    await _evalRepo.delete(evalId);
-    evaluations.removeWhere((e) => e.id == evalId);
-    if (activeEval.value?.id == evalId) {
-      activeEval.value = evaluations.firstWhereOrNull((e) => e.isActive);
+    evalError.value = '';
+    try {
+      await _evalRepo.delete(evalId);
+      evaluations.removeWhere((e) => e.id == evalId);
+      if (activeEval.value?.id == evalId) {
+        activeEval.value = evaluations.firstWhereOrNull((e) => e.isActive);
+      }
+    } catch (e) {
+      evalError.value = parseApiError(e, fallback: 'Error al eliminar la evaluación');
     }
   }
 

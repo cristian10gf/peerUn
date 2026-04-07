@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:example/data/utils/error_parser.dart';
 import 'package:example/domain/models/auth_login_result.dart';
 import 'package:example/domain/repositories/i_unified_auth_repository.dart';
 import 'package:example/presentation/controllers/student_controller.dart';
@@ -18,15 +19,8 @@ class LoginController extends GetxController {
   final isLoading = false.obs;
   final authError = ''.obs;
 
-  String _friendlyError(Object error) {
-    final raw = error.toString().replaceFirst('Exception: ', '').trim();
-    if (raw.isEmpty) return 'Error al iniciar sesion';
-    if (raw.contains('401')) return 'Correo o contrasena incorrectos';
-    if (raw.toLowerCase().contains('sin conexion')) {
-      return 'Sin conexion a internet';
-    }
-    return raw;
-  }
+  String _friendlyError(Object error) =>
+      parseApiErrorFriendly(error, fallback: 'Error al iniciar sesión');
 
   Future<void> login(String email, String password) async {
     if (email.trim().isEmpty || password.isEmpty) {
