@@ -442,61 +442,83 @@ class GroupRepositoryImpl implements IGroupRepository {
     });
     final categoryReference = _categoryRef(catRow);
     final catId = _domainId(categoryReference, fallback: rowIdFromMap(catRow));
+    final catDbKey = catRow['_id']?.toString() ?? '';
 
     // ── PHASE 4: Create groups + collect relation records ────────────────────
+    // If any group creation fails, rollback all created groups and the category
+    // so the DB is not left with a half-populated import.
     final groups = <CourseGroup>[];
     final userGroupRecords = <Map<String, dynamic>>[];
     final userCourseRecords = <Map<String, dynamic>>[];
+    final createdGroupKeys = <String>[]; // rollback stack
 
-    for (final group in parsed.groups) {
-      final grpRow = await _db.robleCreate(RobleTables.groups, {
-        'category_id': categoryReference,
-        'name': group.name,
-      });
-      final groupReference = _groupRef(grpRow);
-      final grpId = _domainId(groupReference, fallback: rowIdFromMap(grpRow));
+    try {
+      for (final group in parsed.groups) {
+        final grpRow = await _db.robleCreate(RobleTables.groups, {
+          'category_id': categoryReference,
+          'name': group.name,
+        });
+        final grpDbKey = grpRow['_id']?.toString() ?? '';
+        if (grpDbKey.isNotEmpty) createdGroupKeys.add(grpDbKey);
 
-      final members = <GroupMember>[];
-      for (final member in group.members) {
-        final studentEmail = normalizeEmail(member.username);
-        final userRow = usersByEmail[studentEmail];
-        final userReference = _asString(userRow?['user_id']).isNotEmpty
-            ? _asString(userRow!['user_id'])
-            : (authIdByEmail[studentEmail] ?? studentEmail);
-        final userId = _domainId(
-          userReference,
-          fallback: asInt(userRow?['id'] ?? userRow?['_id']),
-        );
+        final groupReference = _groupRef(grpRow);
+        final grpId = _domainId(groupReference, fallback: rowIdFromMap(grpRow));
 
-        if (hasUserGroupTable) {
-          final ugKey = '$groupReference::$userReference';
-          if (!existingUserGroupKeys.contains(ugKey)) {
-            userGroupRecords.add({
-              'group_id': groupReference,
-              'user_id': userReference,
-            });
-            existingUserGroupKeys.add(ugKey);
+        final members = <GroupMember>[];
+        for (final member in group.members) {
+          final studentEmail = normalizeEmail(member.username);
+          final userRow = usersByEmail[studentEmail];
+          final userReference = _asString(userRow?['user_id']).isNotEmpty
+              ? _asString(userRow!['user_id'])
+              : (authIdByEmail[studentEmail] ?? studentEmail);
+          final userId = _domainId(
+            userReference,
+            fallback: asInt(userRow?['id'] ?? userRow?['_id']),
+          );
+
+          if (hasUserGroupTable) {
+            final ugKey = '$groupReference::$userReference';
+            if (!existingUserGroupKeys.contains(ugKey)) {
+              userGroupRecords.add({
+                'group_id': groupReference,
+                'user_id': userReference,
+              });
+              existingUserGroupKeys.add(ugKey);
+            }
           }
+
+          if (hasUserCourseTable) {
+            final ucKey = '$courseReference::$userReference';
+            if (!existingUserCourseKeys.contains(ucKey)) {
+              userCourseRecords.add({
+                'course_id': courseReference,
+                'user_id': userReference,
+                'role': 'student',
+              });
+              existingUserCourseKeys.add(ucKey);
+            }
+          }
+
+          members.add(
+            GroupMember(id: userId, name: member.name, username: studentEmail),
+          );
         }
 
-        if (hasUserCourseTable) {
-          final ucKey = '$courseReference::$userReference';
-          if (!existingUserCourseKeys.contains(ucKey)) {
-            userCourseRecords.add({
-              'course_id': courseReference,
-              'user_id': userReference,
-              'role': 'student',
-            });
-            existingUserCourseKeys.add(ucKey);
-          }
-        }
-
-        members.add(
-          GroupMember(id: userId, name: member.name, username: studentEmail),
-        );
+        groups.add(CourseGroup(id: grpId, name: group.name, members: members));
       }
-
-      groups.add(CourseGroup(id: grpId, name: group.name, members: members));
+    } catch (e) {
+      // Rollback: delete created groups in reverse order, then the category.
+      for (final key in createdGroupKeys.reversed) {
+        try {
+          await _db.robleDelete(RobleTables.groups, key);
+        } catch (_) {}
+      }
+      if (catDbKey.isNotEmpty) {
+        try {
+          await _db.robleDelete(RobleTables.category, catDbKey);
+        } catch (_) {}
+      }
+      rethrow;
     }
 
     // ── PHASE 5: Bulk insert user_group ──────────────────────────────────────
