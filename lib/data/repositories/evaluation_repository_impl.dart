@@ -375,22 +375,31 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
   @override
   Future<void> delete(int evalId) async {
-    final responseRows = await _db.robleRead(
-      RobleTables.evaluationCriterium,
-      filters: {'eval_id': evalId},
-    );
-    for (final row in responseRows) {
-      final key = row['_id']?.toString();
-      if (key != null && key.isNotEmpty) {
-        await _db.robleDelete(RobleTables.evaluationCriterium, key);
-      }
-    }
-
+    // Delete the evaluation record first.
+    // If this throws, criteria are still intact — no data is orphaned.
     final evalRows = await _db.robleRead(RobleTables.evaluation);
     final target = _findById(evalRows, evalId);
     final evalKey = target?['_id']?.toString();
     if (evalKey != null && evalKey.isNotEmpty) {
       await _db.robleDelete(RobleTables.evaluation, evalKey);
+    }
+
+    // Evaluation confirmed deleted; clean up criteria best-effort.
+    // Orphaned criterium rows are harmless (no parent evaluation to join against).
+    final criteriumRows = await _db.robleRead(
+      RobleTables.evaluationCriterium,
+      filters: {'eval_id': evalId},
+    );
+    for (final row in criteriumRows) {
+      final key = row['_id']?.toString();
+      if (key != null && key.isNotEmpty) {
+        try {
+          await _db.robleDelete(RobleTables.evaluationCriterium, key);
+        } catch (_) {
+          // Best-effort: orphaned criterium rows without a parent evaluation
+          // are invisible to all queries that filter by eval_id.
+        }
+      }
     }
   }
 
