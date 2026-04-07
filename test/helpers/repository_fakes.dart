@@ -125,6 +125,8 @@ class FakeEvaluationRepository implements IEvaluationRepository {
   String? groupName;
 
   Object? nextError;
+  Object? renameError;
+  Object? deleteError;
   bool completedAllPeers = false;
   bool hasEvaluatedValue = false;
 
@@ -157,6 +159,7 @@ class FakeEvaluationRepository implements IEvaluationRepository {
 
   @override
   Future<void> delete(int evalId) async {
+    if (deleteError != null) throw deleteError!;
     evaluations = evaluations.where((e) => e.id != evalId).toList();
   }
 
@@ -210,6 +213,7 @@ class FakeEvaluationRepository implements IEvaluationRepository {
 
   @override
   Future<void> rename(int evalId, String newName, int teacherId) async {
+    if (renameError != null) throw renameError!;
     final index = evaluations.indexWhere((e) => e.id == evalId);
     if (index == -1) {
       return;
