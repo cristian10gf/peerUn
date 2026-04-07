@@ -915,14 +915,45 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     required int evaluatedMemberId,
     required Map<String, int> scores,
   }) async {
-    for (final entry in scores.entries) {
-      await _db.robleCreate(RobleTables.evaluationCriterium, {
+    // Load existing responses for this evaluator→evaluated pair once
+    // to determine whether to create or update.
+    final existing = await _db.robleRead(
+      RobleTables.evaluationCriterium,
+      filters: {
         'eval_id': evalId,
         'evaluator_id': evaluatorStudentId,
         'evaluated_member_id': evaluatedMemberId,
-        'criterion_id': entry.key,
-        'score': entry.value,
-      });
+      },
+    );
+    final existingByCriterion = <String, String>{}; // criterionId → _id
+    for (final row in existing) {
+      final cid = _asString(row['criterion_id']);
+      final key = _asString(row['_id']);
+      if (cid.isNotEmpty && key.isNotEmpty) {
+        existingByCriterion[cid] = key;
+      }
+    }
+
+    for (final entry in scores.entries) {
+      final criterionId = entry.key;
+      final score = entry.value;
+      final existingKey = existingByCriterion[criterionId];
+      if (existingKey != null) {
+        // Update instead of creating a duplicate.
+        await _db.robleUpdate(
+          RobleTables.evaluationCriterium,
+          existingKey,
+          {'score': score},
+        );
+      } else {
+        await _db.robleCreate(RobleTables.evaluationCriterium, {
+          'eval_id': evalId,
+          'evaluator_id': evaluatorStudentId,
+          'evaluated_member_id': evaluatedMemberId,
+          'criterion_id': criterionId,
+          'score': score,
+        });
+      }
     }
   }
 
