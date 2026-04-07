@@ -128,50 +128,64 @@ class GroupRepositoryImpl implements IGroupRepository {
       }
     }
 
-    final teacherCourseIds = <int>{};
+    final teacherCourseReferences = <String>{};
     if (await tableExists(_db, RobleTables.userCourse)) {
       final claims = await _db.readAuthTokenClaims();
       final email = (claims['email'] ?? '').toString().trim().toLowerCase();
-      if (email.isNotEmpty) {
-        final teacherUser = await _db.robleFindUserByEmail(email);
-        final candidates = <String>{
-          _asString(teacherUser?['user_id']),
-          _asString(teacherUser?['id']),
-          _asString(teacherUser?['_id']),
-        }..removeWhere((v) => v.isEmpty);
+      final authUserId = _asString(claims['sub']);
+      final candidates = <String>{};
+      if (authUserId.isNotEmpty) candidates.add(authUserId);
 
-        for (final candidate in candidates) {
-          final relations = await _db.robleRead(
-            RobleTables.userCourse,
-            filters: {'user_id': candidate, 'role': 'teacher'},
-          );
-          for (final rel in relations) {
-            teacherCourseIds.add(asInt(rel['course_id']));
+      for (final user in usersRows) {
+        final userEmail = _asString(user['email']).toLowerCase();
+        final userAuthId = _asString(user['user_id']);
+        final matchesEmail = email.isNotEmpty && userEmail == email;
+        final matchesAuthId = authUserId.isNotEmpty && userAuthId == authUserId;
+        if (!matchesEmail && !matchesAuthId) continue;
+
+        candidates
+          ..add(_asString(user['user_id']))
+          ..add(_asString(user['id']))
+          ..add(_asString(user['_id']));
+      }
+
+      candidates.removeWhere((v) => v.isEmpty);
+      for (final candidate in candidates) {
+        final relations = await _db.robleRead(
+          RobleTables.userCourse,
+          filters: {'user_id': candidate, 'role': 'teacher'},
+        );
+        for (final rel in relations) {
+          final courseReference = _asString(rel['course_id']);
+          if (courseReference.isNotEmpty) {
+            teacherCourseReferences.add(courseReference);
           }
         }
       }
     }
 
-    if (teacherCourseIds.isEmpty) {
+    if (teacherCourseReferences.isEmpty) {
       for (final c in courseRows) {
         final createdBy = asInt(c['created_by'] ?? c['teacher_id']);
         if (createdBy != teacherId) continue;
         final ref = _courseRef(c);
-        teacherCourseIds.add(
-          _domainId(ref, fallback: rowIdFromMap(c)),
-        );
+        if (ref.isNotEmpty) teacherCourseReferences.add(ref);
       }
     }
 
-    if (teacherCourseIds.isEmpty) return const <GroupCategory>[];
+    if (teacherCourseReferences.isEmpty) return const <GroupCategory>[];
 
     final result = <GroupCategory>[];
     for (final cat in catRows) {
-      final courseId = asInt(cat['course_id']);
-      if (!teacherCourseIds.contains(courseId)) continue;
+      final courseReference = _asString(cat['course_id']);
+      if (!teacherCourseReferences.contains(courseReference)) continue;
 
       final catReference = _categoryRef(cat);
       final catId = _domainId(catReference, fallback: rowIdFromMap(cat));
+      final courseId = _domainId(
+        courseReference,
+        fallback: asInt(cat['course_id']),
+      );
 
       var grpRows = await _db.robleRead(
         RobleTables.groups,

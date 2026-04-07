@@ -24,6 +24,16 @@ class CourseRepositoryImpl implements ICourseRepository {
     return _firstNonEmptyField(row, const ['course_id', 'id', '_id']);
   }
 
+  Set<String> _courseReferenceCandidatesFromRow(Map<String, dynamic> row) {
+    final refs = <String>{
+      _asString(row['course_id']),
+      _asString(row['id']),
+      _asString(row['_id']),
+    };
+    refs.removeWhere((v) => v.isEmpty);
+    return refs;
+  }
+
   String _categoryReferenceFromRow(Map<String, dynamic> row) {
     return _firstNonEmptyField(row, const ['category_id', 'id', '_id']);
   }
@@ -65,20 +75,41 @@ class CourseRepositoryImpl implements ICourseRepository {
   Future<Set<String>> _resolveCurrentTeacherUserReferences() async {
     final claims = await _db.readAuthTokenClaims();
     final email = (claims['email'] ?? '').toString().trim().toLowerCase();
-    if (email.isEmpty) return const <String>{};
-    Map<String, dynamic>? row;
-    try {
-      row = await _db.robleFindUserByEmail(email);
-    } catch (_) {
-      return const <String>{};
-    }
-    if (row == null) return const <String>{};
+    final authUserId = _asString(claims['sub']);
+    final references = <String>{};
+    if (authUserId.isNotEmpty) references.add(authUserId);
 
-    return <String>{
-      _asString(row['user_id']),
-      _asString(row['id']),
-      _asString(row['_id']),
-    }..removeWhere((value) => value.isEmpty);
+    try {
+      final users = await _db.robleRead(RobleTables.users);
+      for (final row in users) {
+        final rowEmail = _asString(row['email']).toLowerCase();
+        final rowUserId = _asString(row['user_id']);
+        final matchesEmail = email.isNotEmpty && rowEmail == email;
+        final matchesAuthId = authUserId.isNotEmpty && rowUserId == authUserId;
+        if (!matchesEmail && !matchesAuthId) continue;
+
+        references
+          ..add(_asString(row['user_id']))
+          ..add(_asString(row['id']))
+          ..add(_asString(row['_id']));
+      }
+    } catch (_) {
+      // Fall back to direct lookup if users table read fails.
+      if (email.isNotEmpty) {
+        try {
+          final row = await _db.robleFindUserByEmail(email);
+          if (row != null) {
+            references
+              ..add(_asString(row['user_id']))
+              ..add(_asString(row['id']))
+              ..add(_asString(row['_id']));
+          }
+        } catch (_) {}
+      }
+    }
+
+    references.removeWhere((value) => value.isEmpty);
+    return references;
   }
 
   Future<Map<String, dynamic>?> _upsertCurrentTeacherUser() async {
@@ -95,6 +126,42 @@ class CourseRepositoryImpl implements ICourseRepository {
       'name': name.isEmpty ? email.split('@').first : name,
       'role': 'teacher',
     };
+
+    // Prefer updating an existing teacher row by email first.
+    // Some Roble deployments do not enforce unique email constraints, so
+    // create-first can silently duplicate users.
+    Map<String, dynamic>? existing;
+    try {
+      final users = await _db.robleRead(RobleTables.users);
+      for (final row in users) {
+        final rowEmail = _asString(row['email']).toLowerCase();
+        if (rowEmail != email) continue;
+        if (_asString(row['user_id']) == authUserId) {
+          existing = row;
+          break;
+        }
+        existing ??= row;
+      }
+    } catch (_) {
+      try {
+        existing = await _db.robleFindUserByEmail(email);
+      } catch (_) {
+        existing = null;
+      }
+    }
+
+    if (existing != null) {
+      final key = existing['_id']?.toString() ?? '';
+      if (key.isNotEmpty) {
+        try {
+          await _db.robleUpdate(RobleTables.users, key, payload);
+          return await _db.robleFindUserByEmail(email) ?? existing;
+        } catch (_) {
+          return existing;
+        }
+      }
+      return existing;
+    }
 
     try {
       return await _db.robleCreate(RobleTables.users, payload);
@@ -127,21 +194,25 @@ class CourseRepositoryImpl implements ICourseRepository {
     final teacherUserReferences = await _resolveCurrentTeacherUserReferences();
     if (teacherUserReferences.isNotEmpty &&
         await tableExists(_db, RobleTables.userCourse)) {
-      final userCourse = <Map<String, dynamic>>[];
+      final allowedCourseReferences = <String>{};
       for (final teacherUserReference in teacherUserReferences) {
         final relations = await _db.robleRead(
           RobleTables.userCourse,
           filters: {'user_id': teacherUserReference, 'role': 'teacher'},
         );
-        userCourse.addAll(relations);
+        for (final rel in relations) {
+          final courseReference = _asString(rel['course_id']);
+          if (courseReference.isNotEmpty) {
+            allowedCourseReferences.add(courseReference);
+          }
+        }
       }
-      final allowedIds = userCourse.map((r) => asInt(r['course_id'])).toSet();
 
-      for (final row in rows) {
-        final canonicalId = _courseIdentityFromRow(row);
-        final legacyId = rowIdFromMap(row);
-        if (allowedIds.contains(canonicalId) || allowedIds.contains(legacyId)) {
-          filtered.add(row);
+      if (allowedCourseReferences.isNotEmpty) {
+        for (final row in rows) {
+          final candidates = _courseReferenceCandidatesFromRow(row);
+          final hasMatch = candidates.any(allowedCourseReferences.contains);
+          if (hasMatch) filtered.add(row);
         }
       }
     } else {
@@ -176,6 +247,9 @@ class CourseRepositoryImpl implements ICourseRepository {
     required String code,
     required int teacherId,
   }) async {
+    final claims = await _db.readAuthTokenClaims();
+    final authUserId = _asString(claims['sub']);
+
     final now = DateTime.now();
     final teacherUserRow = await _upsertCurrentTeacherUser();
     final createdBy = asInt(
@@ -191,8 +265,21 @@ class CourseRepositoryImpl implements ICourseRepository {
 
     if (await tableExists(_db, RobleTables.userCourse)) {
       if (teacherUserRow != null) {
-        final userReference = _userReferenceFromRow(teacherUserRow);
+        final userReference =
+            authUserId.isNotEmpty
+                ? authUserId
+                : _userReferenceFromRow(teacherUserRow);
         final courseReference = _courseReferenceFromRow(row);
+
+        if (userReference.isEmpty || courseReference.isEmpty) {
+          return CourseModel(
+            id: _courseIdentityFromRow(row),
+            teacherId: asInt(row['created_by'] ?? createdBy),
+            name: (row['name'] ?? name).toString(),
+            code: (row['code'] ?? row['description'] ?? code).toString(),
+            createdAt: asDate(row['created_at'] ?? now.toIso8601String()),
+          );
+        }
 
         final existing = await _db.robleRead(
           RobleTables.userCourse,
