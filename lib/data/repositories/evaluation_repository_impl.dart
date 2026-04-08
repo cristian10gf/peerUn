@@ -652,6 +652,13 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       }
     }
 
+    // Map criterium UUIDs → short IDs ('punct', 'contrib', …) so that
+    // buildGroupResults can match them against criteriaIds.
+    final criteriaMap = await _getOrCreateCriteriaMap();
+    final criteriumIdToShortId = {
+      for (final entry in criteriaMap.entries) entry.value: entry.key,
+    };
+
     // Read all resultEvaluation for this evaluation, then their result_criterium.
     final resultEvals = await _db.robleRead(
       RobleTables.resultEvaluation,
@@ -671,9 +678,11 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
         filters: {'result_id': reUUID},
       );
       for (final cr in criteriumRows) {
+        final cUUID = _asString(cr['criterium_id']);
+        final shortId = criteriumIdToShortId[cUUID] ?? cUUID;
         inputResponses.add(GroupResultsInputResponse(
           evaluatedMemberId: evaluatedDomainId,
-          criterionId: _asString(cr['criterium_id']),
+          criterionId: shortId,
           score: _asInt(cr['score']),
         ));
       }
