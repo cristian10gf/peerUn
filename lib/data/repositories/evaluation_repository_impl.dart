@@ -1442,6 +1442,56 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     return peerUUIDs.every(evaluatedUUIDs.contains);
   }
 
+  @override
+  Future<Map<int, Map<String, int>>> getSavedPeerScores({
+    required int evalId,
+    required String email,
+  }) async {
+    final identity = await _resolveStudentIdentity(email);
+    final evaluatorUUID = identity.rawUserId;
+    if (evaluatorUUID.isEmpty) return {};
+
+    final evalRows = await _db.robleRead(RobleTables.evaluation);
+    final eval = _findEvalById(evalRows, evalId);
+    if (eval == null) return {};
+    final evaluationUUID = _asString(eval['evaluation_id']);
+
+    final resultEvals = await _db.robleRead(
+      RobleTables.resultEvaluation,
+      filters: {'evaluation_id': evaluationUUID, 'evaluator_id': evaluatorUUID},
+    );
+    if (resultEvals.isEmpty) return {};
+
+    final criteriaMap = await _getOrCreateCriteriaMap();
+    final criteriumIdToShortId = {
+      for (final entry in criteriaMap.entries) entry.value: entry.key,
+    };
+
+    final result = <int, Map<String, int>>{};
+    for (final re in resultEvals) {
+      final reUUID = _asString(re['resultEvaluation_id']);
+      final evaluatedUUID = _asString(re['evaluated_id']);
+      if (reUUID.isEmpty || evaluatedUUID.isEmpty) continue;
+      final evaluatedDomainId =
+          DatabaseService.stableNumericIdFromSeed(evaluatedUUID);
+
+      final criteriumRows = await _db.robleRead(
+        RobleTables.resultCriterium,
+        filters: {'result_id': reUUID},
+      );
+      final scores = <String, int>{};
+      for (final cr in criteriumRows) {
+        final cUUID = _asString(cr['criterium_id']);
+        final shortId = criteriumIdToShortId[cUUID] ?? cUUID;
+        final score = _asInt(cr['score']);
+        if (score > 0) scores[shortId] = score;
+      }
+      if (scores.isNotEmpty) result[evaluatedDomainId] = scores;
+    }
+
+    return result;
+  }
+
   // ── TEST ───────────────────────────────────────────────────────────────────
 
   @override

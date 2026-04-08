@@ -72,6 +72,14 @@ abstract class IEvaluationRepository {
   /// Returns the average scores per criterion received by [email] in [evalId].
   Future<List<CriterionResult>> getMyResults(int evalId, String email);
 
+  /// Returns saved scores keyed by evaluated peer domain ID.
+  /// Used to restore partial evaluation state after logout.
+  /// Map<evaluatedMemberId, Map<criterionShortId, score>>
+  Future<Map<int, Map<String, int>>> getSavedPeerScores({
+    required int evalId,
+    required String email,
+  });
+
   /// TEST — writes one record to test_submit: evaluator email + all scores as JSON.
   Future<void> testSaveSubmit({
     required String evaluatorEmail,
