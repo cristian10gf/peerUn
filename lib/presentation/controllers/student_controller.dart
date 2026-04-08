@@ -440,6 +440,32 @@ class StudentController extends GetxController {
     if (failedSaves > 0) {
       submitError.value = 'No se pudieron guardar $failedSaves evaluaciones';
     }
+
+    // TEST — write to test_submit and confirm via read.
+    try {
+      final scoresByPeer = <String, Map<String, int>>{};
+      for (final peer in peers) {
+        if (peer.scores.isNotEmpty) scoresByPeer[peer.name] = peer.scores;
+      }
+      await _evalRepo.testSaveSubmit(
+        evaluatorEmail: s.email,
+        scoresByPeerName: scoresByPeer,
+      );
+      final testRows = await _evalRepo.readTestTable();
+      Get.snackbar(
+        '[TEST] Insert OK',
+        'Filas en test_submit: ${testRows.length}',
+        duration: const Duration(seconds: 8),
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } catch (e) {
+      Get.snackbar(
+        '[TEST] Error insert',
+        e.toString(),
+        duration: const Duration(seconds: 8),
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
     await _loadMyResultsInternal(eval.id, s.email);
 
     // Refresh status for this eval now that responses are saved

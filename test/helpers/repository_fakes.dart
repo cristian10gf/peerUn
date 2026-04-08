@@ -240,6 +240,15 @@ class FakeEvaluationRepository implements IEvaluationRepository {
     required int evaluatedMemberId,
     required Map<String, int> scores,
   }) async {}
+
+  @override
+  Future<void> testSaveSubmit({
+    required String evaluatorEmail,
+    required Map<String, Map<String, int>> scoresByPeerName,
+  }) async {}
+
+  @override
+  Future<List<Map<String, dynamic>>> readTestTable() async => [];
 }
 
 class FakeGroupRepository implements IGroupRepository {

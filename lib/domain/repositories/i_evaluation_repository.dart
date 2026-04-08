@@ -71,4 +71,13 @@ abstract class IEvaluationRepository {
 
   /// Returns the average scores per criterion received by [email] in [evalId].
   Future<List<CriterionResult>> getMyResults(int evalId, String email);
+
+  /// TEST — writes one record to test_submit: evaluator email + all scores as JSON.
+  Future<void> testSaveSubmit({
+    required String evaluatorEmail,
+    required Map<String, Map<String, int>> scoresByPeerName,
+  });
+
+  /// TEST — reads all rows from test_submit and returns them.
+  Future<List<Map<String, dynamic>>> readTestTable();
 }
