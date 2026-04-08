@@ -242,6 +242,13 @@ class FakeEvaluationRepository implements IEvaluationRepository {
   }) async {}
 
   @override
+  Future<Map<int, Map<String, int>>> getSavedPeerScores({
+    required int evalId,
+    required String email,
+  }) async =>
+      const <int, Map<String, int>>{};
+
+  @override
   Future<void> testSaveSubmit({
     required String evaluatorEmail,
     required Map<String, Map<String, int>> scoresByPeerName,

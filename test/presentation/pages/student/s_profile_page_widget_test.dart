@@ -10,7 +10,8 @@ import '../../../helpers/getx_test_harness.dart';
 void main() {
   setUp(resetGetxTestState);
 
-  testWidgets('SProfilePage shows student data and logout action', (tester) async {
+  testWidgets('SProfilePage shows student name and logout calls controller',
+      (tester) async {
     final ctrl = SpyStudentController();
     ctrl.setStudentSession(
       const Student(
@@ -29,6 +30,40 @@ void main() {
     await tester.tap(find.text('Salir'));
     await tester.pumpAndSettle();
 
-    expect(ctrl.logoutCalled, true);
+    expect(ctrl.logoutCalled, isTrue);
+  });
+
+  testWidgets('SProfilePage displays student email', (tester) async {
+    final ctrl = SpyStudentController();
+    ctrl.setStudentSession(
+      const Student(
+        id: '9',
+        name: 'Ana Perez',
+        email: 'ana@uni.edu',
+        initials: 'AP',
+      ),
+    );
+
+    Get.put<StudentController>(ctrl);
+    await tester.pumpWidget(buildGetxTestApp(home: const SProfilePage()));
+
+    expect(find.text('ana@uni.edu'), findsOneWidget);
+  });
+
+  testWidgets('SProfilePage shows student initials avatar', (tester) async {
+    final ctrl = SpyStudentController();
+    ctrl.setStudentSession(
+      const Student(
+        id: '2',
+        name: 'Carlos Ruiz',
+        email: 'carlos@uni.edu',
+        initials: 'CR',
+      ),
+    );
+
+    Get.put<StudentController>(ctrl);
+    await tester.pumpWidget(buildGetxTestApp(home: const SProfilePage()));
+
+    expect(find.text('CR'), findsOneWidget);
   });
 }
