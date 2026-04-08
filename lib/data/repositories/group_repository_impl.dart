@@ -49,7 +49,7 @@ class GroupRepositoryImpl implements IGroupRepository {
   String _groupRef(Map<String, dynamic> row) =>
       _firstNonEmpty(row, const ['group_id', 'id', '_id']);
 
-  int _domainId(String reference, {required int fallback}) {
+  int _domainId(String reference, {int fallback = 0}) {
     if (reference.isEmpty) return fallback;
     return DatabaseService.stableNumericIdFromSeed(reference);
   }
@@ -165,9 +165,12 @@ class GroupRepositoryImpl implements IGroupRepository {
     }
 
     if (teacherCourseReferences.isEmpty) {
+      // Legacy fallback: match course by created_by / teacher_id.
+      // Both fields are varchar in Roble — use stableNumericIdFromSeed to
+      // convert to a domain int before comparing with teacherId.
       for (final c in courseRows) {
-        final createdBy = asInt(c['created_by'] ?? c['teacher_id']);
-        if (createdBy != teacherId) continue;
+        final createdByRef = _asString(c['created_by'] ?? c['teacher_id']);
+        if (_domainId(createdByRef, fallback: -1) != teacherId) continue;
         final ref = _courseRef(c);
         if (ref.isNotEmpty) teacherCourseReferences.add(ref);
       }
@@ -182,10 +185,7 @@ class GroupRepositoryImpl implements IGroupRepository {
 
       final catReference = _categoryRef(cat);
       final catId = _domainId(catReference, fallback: rowIdFromMap(cat));
-      final courseId = _domainId(
-        courseReference,
-        fallback: asInt(cat['course_id']),
-      );
+      final courseId = _domainId(courseReference);
 
       var grpRows = await _db.robleRead(
         RobleTables.groups,
@@ -222,7 +222,7 @@ class GroupRepositoryImpl implements IGroupRepository {
           if (user == null) continue;
           final userId = _domainId(
             userReference,
-            fallback: asInt(user['id'] ?? user['_id']),
+            fallback: 0,
           );
           members.add(
             GroupMember(
@@ -333,8 +333,40 @@ class GroupRepositoryImpl implements IGroupRepository {
       if (authId.isNotEmpty) authIdByEmail[email] = authId;
     }
 
-    // Resolve the course's canonical reference (used for user_course FK).
+    // Mark the currently-logged-in teacher's email as already-known so that
+    // (a) they are never signed up as a student (Phase 1),
+    // (b) they are never inserted as a new student row (Phase 2), and
+    // (c) no student user_course / user_group is created for them (Phase 4-6).
+    final teacherClaims = _db.decodeJwtClaims(teacherAccessToken);
+    final teacherJwtSub = _asString(teacherClaims['sub']);
+    final teacherJwtEmail = normalizeEmail(
+      (teacherClaims['email'] ?? '').toString(),
+    );
+    if (teacherJwtEmail.isNotEmpty) {
+      if (teacherJwtSub.isNotEmpty) {
+        authIdByEmail.putIfAbsent(teacherJwtEmail, () => teacherJwtSub);
+      }
+      if (!usersByEmail.containsKey(teacherJwtEmail)) {
+        // Teacher has no user-table row yet (registration row missing or not
+        // synced). Add a sentinel so Phase 2 never creates a student row for
+        // them.  The real row will be created/updated by
+        // _upsertCurrentTeacherUser() the next time a course is saved.
+        usersByEmail[teacherJwtEmail] = {
+          'user_id': teacherJwtSub,
+          'email': teacherJwtEmail,
+          'role': 'teacher',
+        };
+      }
+    }
+
+    // Resolve the course's canonical varchar reference (used for user_course FK).
     final courseReference = _resolveCourseRef(allCourses, courseId);
+    if (courseReference.isEmpty) {
+      throw Exception(
+        'No se encontró el curso con id $courseId. '
+        'Recarga la lista de cursos e intenta de nuevo.',
+      );
+    }
 
     // ── Collect unique emails from CSV ───────────────────────────────────────
     final uniqueEmails = <String>{};
@@ -481,6 +513,17 @@ class GroupRepositoryImpl implements IGroupRepository {
         final members = <GroupMember>[];
         for (final member in group.members) {
           final studentEmail = normalizeEmail(member.username);
+
+          // Never create student-role DB relations for the teacher themselves.
+          // The teacher may appear in the Brightspace CSV (e.g. enrolled in a
+          // group for testing); if we processed them here we would create a
+          // spurious user_course/user_group with role='student' or, worse,
+          // duplicate their user row.  Skip them entirely — they already have
+          // a teacher user_course relation from CourseRepositoryImpl.create().
+          if (teacherJwtEmail.isNotEmpty && studentEmail == teacherJwtEmail) {
+            continue;
+          }
+
           final userRow = usersByEmail[studentEmail];
           final userReference = _asString(userRow?['user_id']).isNotEmpty
               ? _asString(userRow!['user_id'])
@@ -642,13 +685,10 @@ class GroupRepositoryImpl implements IGroupRepository {
     for (final row in courseRows) {
       final ref = _courseRef(row);
       if (ref.isEmpty) continue;
-      final candidateIds = <int>{
-        asInt(row['course_id'], fallback: -1),
-        asInt(row['id'], fallback: -1),
-        asInt(row['_id'], fallback: -1),
-      };
-      if (candidateIds.contains(courseId)) return ref;
+      // All IDs are varchar — use stableNumericIdFromSeed (same derivation as
+      // CourseRepositoryImpl.getAll) to match the domain courseId.
+      if (_domainId(ref) == courseId) return ref;
     }
-    return courseId.toString();
+    return '';
   }
 }
