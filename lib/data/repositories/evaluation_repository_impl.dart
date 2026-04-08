@@ -138,6 +138,34 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     return !hasSpace && hasLetters && hasDigits;
   }
 
+  /// Returns all groups whose category_id UUID hashes to [categoryDomainId].
+  /// Evaluations store category_id as stableNumericIdFromSeed(categoryUUID),
+  /// so we reverse-match by computing the same hash for each group's ref.
+  List<Map<String, dynamic>> _groupsForCategoryDomain(
+    List<Map<String, dynamic>> groups,
+    int categoryDomainId,
+  ) {
+    return groups.where((g) {
+      final ref = _asString(g['category_id']);
+      return ref.isNotEmpty &&
+          DatabaseService.stableNumericIdFromSeed(ref) == categoryDomainId;
+    }).toList();
+  }
+
+  /// Returns all user_group rows that belong to [group], matched by the group's
+  /// UUID ref (group['group_id']).  Using _rowId() here would fail because
+  /// user_group.group_id stores the UUID, not an integer.
+  List<Map<String, dynamic>> _membersForGroup(
+    List<Map<String, dynamic>> allMembers,
+    Map<String, dynamic> group,
+  ) {
+    final groupRef = _asString(group['group_id']);
+    if (groupRef.isEmpty) return const [];
+    return allMembers
+        .where((m) => _asString(m['group_id']) == groupRef)
+        .toList();
+  }
+
   bool _isOwnedByTeacher(Map<String, dynamic> row, int teacherId) {
     final legacyTeacher = _asInt(row['teacher_id'], fallback: -1);
     final schemaTeacher = _asInt(row['created_by'], fallback: -1);
@@ -474,27 +502,48 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     final courses = await _db.robleRead(RobleTables.course);
     final evals = await _db.robleRead(RobleTables.evaluation);
 
-    final myGroupIds = members
+    // group_id and category_id are stored as UUID strings — use string refs.
+    final myGroupRefs = members
         .where((m) => _matchesStudentMembership(m, identity))
-        .map((m) => _asInt(m['group_id'], fallback: -1))
-        .where((groupId) => groupId > 0)
+        .map((m) => _asString(m['group_id']))
+        .where((ref) => ref.isNotEmpty)
         .toSet();
 
-    if (myGroupIds.isEmpty) return [];
+    if (myGroupRefs.isEmpty) return [];
 
-    final myCategoryIds = groups
-        .where((g) => myGroupIds.contains(_rowId(g)))
-        .map((g) => _asInt(g['category_id']))
+    // Build group ref → group row lookup.
+    final groupByRef = <String, Map<String, dynamic>>{};
+    for (final g in groups) {
+      final ref = _asString(g['group_id']);
+      if (ref.isNotEmpty) groupByRef[ref] = g;
+    }
+
+    // Evaluations store category_id as stableNumericIdFromSeed(categoryRef).
+    final myCategoryIds = myGroupRefs
+        .map((ref) => groupByRef[ref])
+        .where((g) => g != null)
+        .map((g) => DatabaseService.stableNumericIdFromSeed(
+              _asString(g!['category_id']),
+            ))
         .toSet();
 
+    // Key by domain integer (stableNumericIdFromSeed of the UUID ref) to match
+    // the value stored in evaluation.category_id / category.course_id.
     final catById = <int, Map<String, dynamic>>{};
     for (final c in categories) {
-      catById[_rowId(c)] = c;
+      final ref = _asString(c['category_id']);
+      if (ref.isNotEmpty) {
+        catById[DatabaseService.stableNumericIdFromSeed(ref)] = c;
+      }
     }
 
     final courseById = <int, String>{};
     for (final c in courses) {
-      courseById[_rowId(c)] = _asString(c['name']);
+      final ref = _asString(c['course_id']);
+      if (ref.isNotEmpty) {
+        courseById[DatabaseService.stableNumericIdFromSeed(ref)] =
+            _asString(c['name']);
+      }
     }
 
     final list = evals
@@ -504,7 +553,10 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
           final cat = catById[catId];
           final courseName = cat == null
               ? ''
-              : (courseById[_asInt(cat['course_id'])] ?? '');
+              : (courseById[DatabaseService.stableNumericIdFromSeed(
+                    _asString(cat['course_id']),
+                  )] ??
+                  '');
 
           final createdAt = _evalCreatedAt(row, fallback: DateTime.now());
           final closesAt = _evalClosesAt(row, fallback: createdAt);
@@ -548,20 +600,15 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     if (eval == null) return null;
 
     final categoryId = _asInt(eval['category_id']);
-    final groups = await _db.robleRead(
-      RobleTables.groups,
-      filters: {'category_id': categoryId},
-    );
+    final allGroups = await _db.robleRead(RobleTables.groups);
+    final allMembers = await _db.robleRead(RobleTables.userGroup);
 
-    for (final g in groups) {
-      final members = await _db.robleRead(
-        RobleTables.userGroup,
-        filters: {'group_id': _rowId(g)},
-      );
-      final found = members.any((m) => _matchesStudentMembership(m, identity));
-      if (found) return _asString(g['name']);
+    for (final g in _groupsForCategoryDomain(allGroups, categoryId)) {
+      final members = _membersForGroup(allMembers, g);
+      if (members.any((m) => _matchesStudentMembership(m, identity))) {
+        return _asString(g['name']);
+      }
     }
-
     return null;
   }
 
@@ -574,41 +621,31 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     if (eval == null) return [];
 
     final categoryId = _asInt(eval['category_id']);
-    final groups = await _db.robleRead(
-      RobleTables.groups,
-      filters: {'category_id': categoryId},
-    );
+    final allGroups = await _db.robleRead(RobleTables.groups);
+    final allMembers = await _db.robleRead(RobleTables.userGroup);
 
-    int? groupId;
-    for (final g in groups) {
-      final gid = _rowId(g);
-      final members = await _db.robleRead(
-        RobleTables.userGroup,
-        filters: {'group_id': gid},
-      );
-      final isInGroup = members.any(
-        (m) => _matchesStudentMembership(m, identity),
-      );
-      if (isInGroup) {
-        groupId = gid;
+    List<Map<String, dynamic>>? myGroupMembers;
+    for (final g in _groupsForCategoryDomain(allGroups, categoryId)) {
+      final members = _membersForGroup(allMembers, g);
+      if (members.any((m) => _matchesStudentMembership(m, identity))) {
+        myGroupMembers = members;
         break;
       }
     }
 
-    if (groupId == null) return [];
+    if (myGroupMembers == null) return [];
 
-    final rows = await _db.robleRead(
-      RobleTables.userGroup,
-      filters: {'group_id': groupId},
-    );
-    return rows.where((m) => !_matchesStudentMembership(m, identity)).map((m) {
-      final name = _memberDisplayName(m);
-      return Peer(
-        id: _rowId(m).toString(),
-        name: name,
-        initials: buildInitials(name),
-      );
-    }).toList();
+    return myGroupMembers
+        .where((m) => !_matchesStudentMembership(m, identity))
+        .map((m) {
+          final name = _memberDisplayName(m);
+          return Peer(
+            id: _rowId(m).toString(),
+            name: name,
+            initials: buildInitials(name),
+          );
+        })
+        .toList();
   }
 
   @override
@@ -687,7 +724,11 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       }
     }
 
-    final enrolledCourseIds = <int>{};
+    // Use string UUID refs as map keys — FK fields like group_id / category_id
+    // are stored as UUID strings, not integers, so _asInt() would return 0 for
+    // all of them and collapse every lookup to the same bucket.
+
+    final enrolledCourseRefs = <String>{};
     for (final row in userCourses) {
       final role = _asString(row['role']).toLowerCase();
       if (role.isNotEmpty && role != 'student') continue;
@@ -697,40 +738,49 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
         studentUserId,
         studentRawUserId: identity.rawUserId,
       )) {
-        enrolledCourseIds.add(_asInt(row['course_id']));
+        final courseRef = _asString(row['course_id']);
+        if (courseRef.isNotEmpty) enrolledCourseRefs.add(courseRef);
       }
     }
 
-    final groupsByCategory = <int, List<Map<String, dynamic>>>{};
+    // group['category_id'] is the category UUID ref.
+    final groupsByCategoryRef = <String, List<Map<String, dynamic>>>{};
     for (final group in groups) {
-      final categoryId = _asInt(group['category_id']);
-      groupsByCategory.putIfAbsent(categoryId, () => []).add(group);
+      final categoryRef = _asString(group['category_id']);
+      if (categoryRef.isNotEmpty) {
+        groupsByCategoryRef.putIfAbsent(categoryRef, () => []).add(group);
+      }
     }
 
-    final membersByGroup = <int, List<Map<String, dynamic>>>{};
+    // member['group_id'] is the group UUID ref.
+    final membersByGroupRef = <String, List<Map<String, dynamic>>>{};
     for (final member in members) {
-      final groupId = _asInt(member['group_id']);
-      membersByGroup.putIfAbsent(groupId, () => []).add(member);
+      final groupRef = _asString(member['group_id']);
+      if (groupRef.isNotEmpty) {
+        membersByGroupRef.putIfAbsent(groupRef, () => []).add(member);
+      }
     }
 
-    final categoryById = <int, Map<String, dynamic>>{};
-    final categoriesByCourse = <int, List<Map<String, dynamic>>>{};
+    // category['course_id'] is the course UUID ref.
+    final categoriesByCourseRef = <String, List<Map<String, dynamic>>>{};
     for (final category in categories) {
-      final categoryId = _rowId(category);
-      final courseId = _asInt(category['course_id']);
-      categoryById[categoryId] = category;
-      categoriesByCourse.putIfAbsent(courseId, () => []).add(category);
+      final courseRef = _asString(category['course_id']);
+      if (courseRef.isNotEmpty) {
+        categoriesByCourseRef.putIfAbsent(courseRef, () => []).add(category);
+      }
     }
 
-    final myGroupByCategory = <int, Map<String, dynamic>>{};
-    final myMemberIdByCategory = <int, int>{};
+    // Keyed by category UUID ref.
+    final myGroupByCategoryRef = <String, Map<String, dynamic>>{};
+    final myMemberByCategoryRef = <String, Map<String, dynamic>>{};
 
     for (final category in categories) {
-      final categoryId = _rowId(category);
-      final categoryGroups = groupsByCategory[categoryId] ?? const [];
+      final categoryRef = _asString(category['category_id']);
+      if (categoryRef.isEmpty) continue;
+      final categoryGroups = groupsByCategoryRef[categoryRef] ?? const [];
       for (final group in categoryGroups) {
-        final groupId = _rowId(group);
-        final groupMembers = membersByGroup[groupId] ?? const [];
+        final groupRef = _asString(group['group_id']);
+        final groupMembers = membersByGroupRef[groupRef] ?? const [];
 
         Map<String, dynamic>? myMember;
         for (final member in groupMembers) {
@@ -746,14 +796,17 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
         }
 
         if (myMember != null) {
-          myGroupByCategory[categoryId] = group;
-          myMemberIdByCategory[categoryId] = _rowId(myMember);
-          enrolledCourseIds.add(_asInt(category['course_id']));
+          myGroupByCategoryRef[categoryRef] = group;
+          myMemberByCategoryRef[categoryRef] = myMember;
+          final courseRef = _asString(category['course_id']);
+          if (courseRef.isNotEmpty) enrolledCourseRefs.add(courseRef);
           break;
         }
       }
     }
 
+    // Evaluations store category_id as the domain integer produced by
+    // stableNumericIdFromSeed(categoryRef), so key this map the same way.
     final activeEvalByCategory = <int, Map<String, dynamic>>{};
     for (final row in evaluations) {
       final createdAt = _evalCreatedAt(row, fallback: now);
@@ -783,26 +836,40 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
           .add(evaluatedMemberId);
     }
 
-    final coursesById = <int, Map<String, dynamic>>{};
+    // course['course_id'] is the course UUID ref.
+    final coursesByRef = <String, Map<String, dynamic>>{};
     for (final course in courses) {
-      coursesById[_rowId(course)] = course;
+      final courseRef = _asString(course['course_id']);
+      if (courseRef.isNotEmpty) coursesByRef[courseRef] = course;
     }
 
     final result = <StudentHomeCourse>[];
-    for (final courseId in enrolledCourseIds) {
-      final course = coursesById[courseId];
-      final categoryRows = categoriesByCourse[courseId] ?? const [];
+    for (final courseRef in enrolledCourseRefs) {
+      final course = coursesByRef[courseRef];
+      final categoryRows = categoriesByCourseRef[courseRef] ?? const [];
 
       final homeCategories = <StudentHomeCategory>[];
       for (final category in categoryRows) {
-        final categoryId = _rowId(category);
-        final group = myGroupByCategory[categoryId];
+        final categoryRef = _asString(category['category_id']);
+        final group = myGroupByCategoryRef[categoryRef];
         if (group == null) continue;
 
-        final groupId = _rowId(group);
-        final groupMembers = membersByGroup[groupId] ?? const [];
+        final groupRef = _asString(group['group_id']);
+        final groupMembers = membersByGroupRef[groupRef] ?? const [];
+
+        // Build peer list — exclude the current student (Bug fix: student was
+        // previously included in their own group member display).
         final mappedMembers = <GroupMember>[];
         for (final member in groupMembers) {
+          if (_isMembershipForStudent(
+            member,
+            normalized,
+            studentUserId,
+            studentRawUserId: identity.rawUserId,
+          )) {
+            continue; // skip self
+          }
+
           final memberRowId = _rowId(member);
           final rawMemberUserId = _asString(member['user_id']);
           final linkedUser =
@@ -844,14 +911,20 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
           );
         }
 
-        final activeEval = activeEvalByCategory[categoryId];
+        // categoryRef → domain integer: evaluations store category_id using
+        // stableNumericIdFromSeed(categoryRef), so use the same conversion.
+        final categoryDomainId =
+            DatabaseService.stableNumericIdFromSeed(categoryRef);
+        final activeEval = activeEvalByCategory[categoryDomainId];
         final activeEvalId = activeEval == null ? 0 : _rowId(activeEval);
         final activeEvalName = activeEval == null ? '' : _evalName(activeEval);
 
-        final myMemberId = myMemberIdByCategory[categoryId];
+        // Peer IDs for completion tracking (exclude student, keep integer IDs).
+        final myMemberRow = myMemberByCategoryRef[categoryRef];
+        final myMemberId = myMemberRow == null ? -1 : _rowId(myMemberRow);
         final peerMemberIds = groupMembers
             .map(_rowId)
-            .where((memberId) => memberId != myMemberId)
+            .where((id) => id != myMemberId)
             .toSet();
 
         var completedPeerCount = 0;
@@ -866,12 +939,17 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
               .length;
         }
 
+        final categoryDomainIdForModel =
+            DatabaseService.stableNumericIdFromSeed(categoryRef);
+        final groupDomainId =
+            DatabaseService.stableNumericIdFromSeed(_asString(group['group_id']));
+
         homeCategories.add(
           StudentHomeCategory(
-            id: categoryId,
+            id: categoryDomainIdForModel,
             name: _asString(category['name']),
             group: StudentHomeGroup(
-              id: groupId,
+              id: groupDomainId,
               name: _asString(group['name']),
               members: mappedMembers,
             ),
@@ -889,7 +967,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
       result.add(
         StudentHomeCourse(
-          id: courseId,
+          id: DatabaseService.stableNumericIdFromSeed(courseRef),
           name: course == null ? '' : _asString(course['name']),
           hasGroupAssignment: homeCategories.isNotEmpty,
           categories: homeCategories,
@@ -983,19 +1061,12 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     if (eval == null) return [];
 
     final categoryId = _asInt(eval['category_id']);
-    final groups = await _db.robleRead(
-      RobleTables.groups,
-      filters: {'category_id': categoryId},
-    );
+    final allGroups = await _db.robleRead(RobleTables.groups);
+    final allMembers = await _db.robleRead(RobleTables.userGroup);
 
     final myMemberIds = <int>{};
-    for (final g in groups) {
-      final gid = _rowId(g);
-      final members = await _db.robleRead(
-        RobleTables.userGroup,
-        filters: {'group_id': gid},
-      );
-      for (final m in members) {
+    for (final g in _groupsForCategoryDomain(allGroups, categoryId)) {
+      for (final m in _membersForGroup(allMembers, g)) {
         if (_matchesStudentMembership(m, identity)) {
           myMemberIds.add(_rowId(m));
         }
@@ -1045,32 +1116,21 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     if (eval == null) return false;
 
     final categoryId = _asInt(eval['category_id']);
-    final groups = await _db.robleRead(
-      RobleTables.groups,
-      filters: {'category_id': categoryId},
-    );
+    final allGroups = await _db.robleRead(RobleTables.groups);
+    final allMembers = await _db.robleRead(RobleTables.userGroup);
 
-    int? groupId;
-    for (final g in groups) {
-      final gid = _rowId(g);
-      final members = await _db.robleRead(
-        RobleTables.userGroup,
-        filters: {'group_id': gid},
-      );
-      final found = members.any((m) => _matchesStudentMembership(m, identity));
-      if (found) {
-        groupId = gid;
+    List<Map<String, dynamic>>? myGroupMembers;
+    for (final g in _groupsForCategoryDomain(allGroups, categoryId)) {
+      final members = _membersForGroup(allMembers, g);
+      if (members.any((m) => _matchesStudentMembership(m, identity))) {
+        myGroupMembers = members;
         break;
       }
     }
 
-    if (groupId == null) return false;
+    if (myGroupMembers == null) return false;
 
-    final groupMembers = await _db.robleRead(
-      RobleTables.userGroup,
-      filters: {'group_id': groupId},
-    );
-    final peerIds = groupMembers
+    final peerIds = myGroupMembers
         .where((m) => !_matchesStudentMembership(m, identity))
         .map(_rowId)
         .toSet();
