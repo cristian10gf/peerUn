@@ -11,53 +11,74 @@ import '../../../helpers/controller_spies.dart';
 import '../../../helpers/getx_test_harness.dart';
 import '../../../helpers/repository_fakes.dart';
 
+final _extraRoutes = <GetPage>[
+  GetPage(name: '/teacher/import',  page: () => const SizedBox.shrink()),
+  GetPage(name: '/teacher/profile', page: () => const SizedBox.shrink()),
+  GetPage(name: '/login',           page: () => const SizedBox.shrink()),
+];
+
+void _register(SpyTeacherSessionController session) {
+  final gr = FakeGroupRepository();
+  Get.put<TeacherSessionController>(session);
+  Get.put<TeacherCourseImportController>(
+    TeacherCourseImportController(
+      session, gr, FakeCourseRepository(), TeacherImportCsvUseCase(gr),
+    ),
+  );
+}
+
 void main() {
   setUp(resetGetxTestState);
 
-  testWidgets('TProfilePage renders teacher identity and logout button',
+  testWidgets('TProfilePage renders teacher name and logout button',
       (tester) async {
     final session = SpyTeacherSessionController();
     session.setTeacherSession(
-      const Teacher(
-        id: '1',
-        name: 'Docente Uno',
-        email: 'doc@uni.edu',
-        initials: 'DU',
-      ),
+      const Teacher(id: '1', name: 'Docente Uno', email: 'doc@uni.edu', initials: 'DU'),
     );
-
-    final groupRepo = FakeGroupRepository();
-
-    Get.put<TeacherSessionController>(session);
-    Get.put<TeacherCourseImportController>(
-      TeacherCourseImportController(
-        session,
-        groupRepo,
-        FakeCourseRepository(),
-        TeacherImportCsvUseCase(groupRepo),
-      ),
-    );
+    _register(session);
 
     await tester.pumpWidget(
-      buildGetxTestApp(
-        home: const TProfilePage(),
-        extraRoutes: <GetPage<dynamic>>[
-          GetPage<dynamic>(
-            name: '/teacher/import',
-            page: () => const SizedBox.shrink(),
-          ),
-          GetPage<dynamic>(
-            name: '/teacher/profile',
-            page: () => const SizedBox.shrink(),
-          ),
-        ],
-      ),
+      buildGetxTestApp(home: const TProfilePage(), extraRoutes: _extraRoutes),
     );
 
     expect(find.text('Docente Uno'), findsOneWidget);
     await tester.tap(find.text('Salir'));
     await tester.pumpAndSettle();
 
-    expect(session.logoutCalled, true);
+    expect(session.logoutCalled, isTrue);
+  });
+
+  testWidgets('TProfilePage displays teacher email', (tester) async {
+    final session = SpyTeacherSessionController();
+    session.setTeacherSession(
+      const Teacher(
+        id: '2',
+        name: 'Docente Dos',
+        email: 'docente2@uni.edu',
+        initials: 'DD',
+      ),
+    );
+    _register(session);
+
+    await tester.pumpWidget(
+      buildGetxTestApp(home: const TProfilePage(), extraRoutes: _extraRoutes),
+    );
+
+    expect(find.text('docente2@uni.edu'), findsOneWidget);
+  });
+
+  testWidgets('TProfilePage shows initials avatar', (tester) async {
+    final session = SpyTeacherSessionController();
+    session.setTeacherSession(
+      const Teacher(id: '3', name: 'Pedro Cruz', email: 'p@uni.edu', initials: 'PC'),
+    );
+    _register(session);
+
+    await tester.pumpWidget(
+      buildGetxTestApp(home: const TProfilePage(), extraRoutes: _extraRoutes),
+    );
+
+    expect(find.text('PC'), findsOneWidget);
   });
 }

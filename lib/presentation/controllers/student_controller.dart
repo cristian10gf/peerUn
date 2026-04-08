@@ -108,6 +108,7 @@ class StudentController extends GetxController {
   final peerLoadError    = ''.obs;
   final myResultsError   = ''.obs;
   final submitError      = ''.obs;
+  final isSubmitting     = false.obs;
   final isLoadingHome    = false.obs;
 
   final homeCourses = <StudentHomeCourse>[].obs;
@@ -341,6 +342,28 @@ class StudentController extends GetxController {
       peerLoadError.value = parseApiError(e, fallback: 'Error al cargar pares');
     }
     peers.assignAll(peerList);
+
+    // Restore any previously saved scores so the student can resume.
+    if (peerList.isNotEmpty) {
+      try {
+        final saved = await _evalRepo.getSavedPeerScores(
+          evalId: eval.id,
+          email:  s.email,
+        );
+        if (saved.isNotEmpty) {
+          for (final peer in peers) {
+            final savedScores = saved[int.parse(peer.id)];
+            if (savedScores != null && savedScores.isNotEmpty) {
+              peer.scores    = Map<String, int>.from(savedScores);
+              peer.evaluated = true;
+            }
+          }
+          peers.refresh();
+        }
+      } catch (_) {
+        // Best-effort: peer list is still usable without restored scores.
+      }
+    }
   }
 
   /// Select an eval for peer-scoring (loads peers, sets active eval).
@@ -403,19 +426,37 @@ class StudentController extends GetxController {
   bool get allCriteriaScored =>
       EvalCriterion.defaults.every((c) => scores.containsKey(c.id));
 
-  void savePeerScore() {
+  Future<void> savePeerScore() async {
     final peer = currentPeer.value;
     if (peer == null || !allCriteriaScored) return;
     peer.scores    = Map<String, int>.from(scores);
     peer.evaluated = true;
     peers.refresh();
     _refreshActiveEvalCard();
-  }
 
-  Future<void> submitEvaluation() async {
+    // Persist immediately so partial progress survives logout.
     final s    = student.value;
     final eval = activeEvalDb.value;
     if (s == null || eval == null) return;
+    try {
+      await _evalRepo.saveResponses(
+        evalId:             eval.id,
+        evaluatorStudentId: int.parse(s.id),
+        evaluatedMemberId:  int.parse(peer.id),
+        scores:             peer.scores,
+      );
+    } catch (_) {
+      // Best-effort: the score is already in memory and will be
+      // re-saved on final submit.
+    }
+  }
+
+  Future<void> submitEvaluation() async {
+    if (isSubmitting.value) return;
+    final s    = student.value;
+    final eval = activeEvalDb.value;
+    if (s == null || eval == null) return;
+    isSubmitting.value = true;
 
     submitError.value = '';
     final studentId = int.parse(s.id);
@@ -440,6 +481,7 @@ class StudentController extends GetxController {
     if (failedSaves > 0) {
       submitError.value = 'No se pudieron guardar $failedSaves evaluaciones';
     }
+
     await _loadMyResultsInternal(eval.id, s.email);
 
     // Refresh status for this eval now that responses are saved
@@ -457,6 +499,8 @@ class StudentController extends GetxController {
       submitError.value = submitError.value.isEmpty
           ? 'No se pudo actualizar el estado: $e'
           : submitError.value;
+    } finally {
+      isSubmitting.value = false;
     }
   }
 

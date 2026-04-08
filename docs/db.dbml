@@ -102,12 +102,14 @@ Table evaluation_criterium {
 // RESULT EVALUATION (una evaluación de A -> B)
 // =====================
 Table "resultEvaluation" as resultEvaluation {
+  resultEvaluation
+
   _id varchar [not null]
   resultEvaluation_id varchar [primary key, not null]
   evaluation_id varchar [not null, ref: > evaluation.evaluation_id]
   evaluator_id varchar [not null, ref: > users.user_id]
   evaluated_id varchar [not null, ref: > users.user_id]
-  comment text
+  comment texts
   created_at timestamp [not null]
   group_id varchar [not null, ref: > groups.group_id]
 }

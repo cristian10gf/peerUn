@@ -4,9 +4,9 @@
       "Bash(flutter analyze:*)",
       "Bash(git *)",
       "Bash(flutter test:*)",
-      "Bash(ls *)"
-      
-
+      "Bash(ls *)",
+      "Bash(npx skills:*)",
+      "Bash(dart analyze:*)"
     ]
   }
 }
