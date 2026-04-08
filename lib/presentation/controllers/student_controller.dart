@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:example/data/utils/error_parser.dart';
 import 'package:example/domain/models/student.dart';
 import 'package:example/domain/models/evaluation.dart';
 import 'package:example/domain/models/peer_evaluation.dart';
@@ -249,7 +250,7 @@ class StudentController extends GetxController {
       expandedCategoryIds.clear();
     } catch (e) {
       homeCourses.clear();
-      homeLoadError.value = 'Error al cargar cursos: $e';
+      homeLoadError.value = parseApiError(e, fallback: 'Error al cargar cursos');
     } finally {
       isLoadingHome.value = false;
     }
@@ -260,7 +261,7 @@ class StudentController extends GetxController {
       evalList = await _evalRepo.getEvaluationsForStudent(s.email);
       evaluations.assignAll(evalList);
     } catch (e) {
-      evalLoadError.value = 'Error al cargar evaluaciones: $e';
+      evalLoadError.value = parseApiError(e, fallback: 'Error al cargar evaluaciones');
       evaluations.clear();
     }
 
@@ -308,7 +309,7 @@ class StudentController extends GetxController {
           completed: false,
         );
         if (evalLoadError.value.isEmpty) {
-          evalLoadError.value = 'No se pudo calcular el estado de algunas evaluaciones: $e';
+          evalLoadError.value = parseApiError(e, fallback: 'No se pudo calcular el estado de algunas evaluaciones');
         }
       }
     }
@@ -322,7 +323,7 @@ class StudentController extends GetxController {
       currentGroupName.value = gName ?? eval.categoryName;
     } catch (e) {
       currentGroupName.value = eval.categoryName;
-      peerLoadError.value = 'Error al cargar el grupo: $e';
+      peerLoadError.value = parseApiError(e, fallback: 'Error al cargar el grupo');
     }
 
     final studentId = int.parse(s.id);
@@ -337,7 +338,7 @@ class StudentController extends GetxController {
         );
       }
     } catch (e) {
-      peerLoadError.value = 'Error al cargar pares: $e';
+      peerLoadError.value = parseApiError(e, fallback: 'Error al cargar pares');
     }
     peers.assignAll(peerList);
   }
@@ -364,7 +365,7 @@ class StudentController extends GetxController {
       currentGroupName.value = gName ?? eval.categoryName;
     } catch (e) {
       currentGroupName.value = eval.categoryName;
-      peerLoadError.value = 'Error al cargar el grupo: $e';
+      peerLoadError.value = parseApiError(e, fallback: 'Error al cargar el grupo');
     }
     await _loadMyResultsInternal(eval.id, s.email);
   }
@@ -375,7 +376,7 @@ class StudentController extends GetxController {
       final results = await _evalRepo.getMyResults(evalId, email);
       myResults.assignAll(results);
     } catch (e) {
-      myResultsError.value = 'Error al cargar resultados: $e';
+      myResultsError.value = parseApiError(e, fallback: 'Error al cargar resultados');
       myResults.clear();
     }
   }
@@ -431,7 +432,7 @@ class StudentController extends GetxController {
         } catch (e) {
           failedSaves++;
           if (submitError.value.isEmpty) {
-            submitError.value = 'Error al guardar algunas evaluaciones: $e';
+            submitError.value = parseApiError(e, fallback: 'Error al guardar algunas evaluaciones');
           }
         }
       }

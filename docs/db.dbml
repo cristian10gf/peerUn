@@ -1,107 +1,123 @@
 // =====================
 // USERS
 // =====================
-Table users {
-  id integer [primary key]
-  name varchar
-  email varchar [unique]
-  password varchar
-  role varchar // 'student' | 'teacher' | 'admin'
-  created_at timestamp [default: `now()`]
+Table "user" as users {
+  _id varchar [not null]
+  user_id varchar [primary key, not null]
+  name varchar [not null]
+  email varchar [not null]
+  role varchar [not null]
+  created_at timestamp
 }
 
 // =====================
 // COURSES
 // =====================
-Table courses {
-  id integer [primary key]
-  name varchar
+Table course {
+  _id varchar [not null]
+  course_id varchar [primary key, not null]
+  name varchar [not null]
+  nrc varchar
   description text
-  created_by integer [ref: > users.id, not null]
-  created_at timestamp [default: `now()`]
+  created_at timestamp
+  created_by varchar [not null, ref: > users.user_id]
+}
+
+// =====================
+// CATEGORIES (ej: Sprint, Proyecto final)
+// =====================
+Table category {
+  _id varchar [not null]
+  category_id varchar [primary key, not null]
+  name varchar [not null]
+  description varchar [not null]
+  course_id varchar [not null, ref: > course.course_id]
 }
 
 // =====================
 // GROUPS (equipos dentro de cursos)
 // =====================
-Table groups {
-  id integer [primary key]
-  name varchar
+Table "group" as groups {
+  _id varchar [not null]
+  group_id varchar [primary key, not null]
+  name varchar [not null]
+  category_id varchar [not null, ref: > category.category_id]
   created_at timestamp
-  category_id integer [ref: > categories.id, not null]
 }
 
 // =====================
 // USER_COURSE (relación muchos a muchos)
 // =====================
 Table user_course {
-  id integer [primary key]
-  course_id integer [ref: > courses.id, not null]
-  user_id integer [ref: > users.id, not null]
-  role varchar [not null] // 'student' | 'teacher'
+  _id varchar [primary key, not null]
+  course_id varchar [not null, ref: > course.course_id]
+  user_id varchar [not null, ref: > users.user_id]
+  role varchar [not null]
 }
 
 // =====================
 // USER_GROUP (miembros de equipos)
 // =====================
 Table user_group {
-  id integer [primary key]
-  user_id integer [ref: > users.id]
-  group_id integer [ref: > groups.id, not null]
-}
-
-// =====================
-// CATEGORIES (ej: Sprint, Proyecto final)
-// =====================
-Table categories {
-  id integer [primary key]
-  name varchar
-  description text
-  course_id integer [ref: > courses.id, not null]
+  _id varchar [primary key, not null]
+  user_id varchar [not null, ref: > users.user_id]
+  group_id varchar [not null, ref: > groups.group_id]
 }
 
 // =====================
 // EVALUATIONS
 // =====================
-Table evaluations {
-  id integer [primary key]
-  created_by integer [ref: > users.id, not null]
-  category_id integer [ref: > categories.id, not null]
-  title varchar
-  description text
-  start_date timestamp
-  end_date timestamp
+Table evaluation {
+  _id varchar [not null]
+  evaluation_id varchar [primary key, not null]
+  title varchar [not null]
+  description text [not null]
+  start_date timestamp [not null]
+  end_date timestamp [not null]
+  category_id varchar [not null, ref: > category.category_id]
+  created_by varchar [not null, ref: > users.user_id]
 }
 
 // =====================
 // CRITERIA (criterios de evaluación)
 // =====================
 Table criterium {
-  id integer [primary key]
-  name varchar
-  description text
-  max_score integer
+  _id varchar [not null]
+  criterium_id varchar [primary key, not null]
+  name varchar [not null]
+  description text [not null]
+  max_score bigint [not null]
 }
 
 // =====================
-// RESULT EVALUATION (una evaluación de A → B)
+// EVALUATION_CRITERIUM
 // =====================
-Table resultEvaluation {
-  id integer [primary key]
-  evaluation_id integer [ref: > evaluations.id, not null]
-  evaluator_id integer [ref: > users.id, not null] // quien evalúa
-  evaluated_id integer [ref: > users.id, not null] // a quien evalúan
+Table evaluation_criterium {
+  _id varchar [not null]
+  evaluation_id varchar [not null, ref: > evaluation.evaluation_id]
+  criterium_id varchar [not null, ref: > criterium.criterium_id]
+}
+
+// =====================
+// RESULT EVALUATION (una evaluación de A -> B)
+// =====================
+Table "resultEvaluation" as resultEvaluation {
+  _id varchar [not null]
+  resultEvaluation_id varchar [primary key, not null]
+  evaluation_id varchar [not null, ref: > evaluation.evaluation_id]
+  evaluator_id varchar [not null, ref: > users.user_id]
+  evaluated_id varchar [not null, ref: > users.user_id]
   comment text
-  created_at timestamp [default: `now()`]
-  group_id integer [ref: > groups.id, not null]
+  created_at timestamp [not null]
+  group_id varchar [not null, ref: > groups.group_id]
 }
 
 // =====================
 // RESULT DETAILS (puntaje por criterio)
 // =====================
 Table result_criterium {
-  id integer [primary key]
-  result_id integer [ref: > resultEvaluation.id, not null]
-  criterium_id integer [ref: > criterium.id, not null]
-  score integer
+  _id varchar [not null]
+  result_id varchar [not null, ref: > resultEvaluation.resultEvaluation_id]
+  criterium_id varchar [not null, ref: > criterium.criterium_id]
+  score bigint [not null]
 }

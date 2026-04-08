@@ -27,6 +27,7 @@
 13. [Integración con n8n y Brightspace](#13-integración-con-n8n-y-brightspace)
 14. [KPIs y métricas de éxito](#14-kpis-y-métricas-de-éxito)
 15. [Limitaciones y evolución](#15-limitaciones-y-evolución)
+16. [Estrategia de pruebas](#16-estrategia-de-pruebas)
 
 ---
 
@@ -505,3 +506,54 @@ Ver sección 13. Actualmente no implementada.
 ---
 
 *Evalia unifica los aportes del equipo: arquitectura limpia (Cristian), identidad visual y nombre (Sandro), motor de evaluación y n8n (Jorge), análisis competitivo (Flavio).*
+
+---
+
+## 16. Estrategia de pruebas
+
+La validación técnica se organiza por niveles alineados al patrón de referencia usado por el equipo.
+Este esquema se adapta del enfoque del repositorio de referencia `augustosalazar/f_web_authentication`.
+
+### Nivel 1 - Widget tests con dobles de controladores
+
+- Auth: `test/presentation/pages/auth/*_widget_test.dart`
+- Student: `test/presentation/pages/student/*_widget_test.dart`
+- Teacher: `test/presentation/pages/teacher/*_widget_test.dart`
+
+### Nivel 2 - Data source (opcional)
+
+- Este nivel no es obligatorio para la entrega actual.
+- En su lugar, el proyecto mantiene pruebas de compatibilidad de repositorios en `test/data/repositories`.
+
+### Nivel 3 - Widget test integrado
+
+- `test/presentation/integration/login_level3_real_chain_widget_test.dart`
+- Este caso usa controladores y repositorios reales con un `FakeDatabaseServiceLevel3` como capa externa simulada.
+
+### Pruebas unitarias
+
+- Servicios de dominio: `test/domain/services`
+- Use cases de profesor: `test/domain/use_case/teacher`
+- Controladores: `test/presentation/controllers`
+- Compatibilidad de repositorios (capa data): `test/data/repositories`
+
+### Infraestructura de pruebas
+
+- Host GetX para widgets: `test/helpers/getx_test_harness.dart`
+- Fakes de repositorios y conectividad: `test/helpers/repository_fakes.dart`
+- Spies de controladores: `test/helpers/controller_spies.dart`
+- Fake de base de datos para nivel 3: `test/helpers/fake_database_service_level3.dart`
+
+### Comandos de ejecución
+
+- Ejecutar todo: `flutter test`
+- Solo unitarias: `flutter test test/domain test/presentation/controllers`
+- Widgets nivel 1: `flutter test test/presentation/pages`
+- Integrada nivel 3: `flutter test test/presentation/integration`
+- Cobertura: `flutter test --coverage`
+
+### Criterios de verificación
+
+- La suite completa debe terminar sin fallos con `flutter test`.
+- La corrida de cobertura debe terminar sin fallos con `flutter test --coverage`.
+- Debe generarse el artefacto `coverage/lcov.info`.

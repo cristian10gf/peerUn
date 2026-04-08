@@ -2,7 +2,7 @@ int asInt(dynamic value, {int fallback = 0}) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   if (value == null) return fallback;
-  return int.tryParse(value.toString()) ?? value.toString().hashCode.abs();
+  return int.tryParse(value.toString()) ?? fallback;
 }
 
 double asDouble(dynamic value, {double fallback = 0}) {

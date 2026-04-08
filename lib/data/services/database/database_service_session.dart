@@ -25,6 +25,8 @@ class DatabaseServiceSession {
 
   Future<void> saveStudentSession(Map<String, dynamic> session) async {
     final prefs = await SharedPreferences.getInstance();
+    // Clear the opposing role's session to prevent stale role data.
+    await prefs.remove(teacherSessionKey);
     await prefs.setString(studentSessionKey, jsonEncode(session));
     final accessToken = session['access_token']?.toString() ?? '';
     final refreshToken = session['refresh_token']?.toString() ?? '';
@@ -39,6 +41,8 @@ class DatabaseServiceSession {
 
   Future<void> saveTeacherSession(Map<String, dynamic> session) async {
     final prefs = await SharedPreferences.getInstance();
+    // Clear the opposing role's session to prevent stale role data.
+    await prefs.remove(studentSessionKey);
     await prefs.setString(teacherSessionKey, jsonEncode(session));
     final accessToken = session['access_token']?.toString() ?? '';
     final refreshToken = session['refresh_token']?.toString() ?? '';

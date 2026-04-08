@@ -82,20 +82,57 @@ class TeacherAuthRepositoryImpl implements ITeacherAuthRepository {
       );
     }
 
+    // After login we have a valid JWT — extract sub to use as canonical user_id.
+    final jwtClaims = _db.decodeJwtClaims(accessToken);
+    final authUserId = (jwtClaims['sub'] ?? '').toString().trim();
+
     final userPayload = {
+      if (authUserId.isNotEmpty) 'user_id': authUserId,
       'name': cleanName,
       'email': normalized,
       'role': 'teacher',
     };
 
+    // READ-FIRST: avoid creating a duplicate user row when Roble's robleSignupDirect
+    // may have already auto-created one, or when the user re-registers.
+    List<Map<String, dynamic>> allUsers;
     try {
-      await _db.robleCreate(RobleTables.users, userPayload);
-    } catch (e) {
-      final existing = await _db.robleFindUserByEmail(normalized);
-      final key = existing?['_id']?.toString() ?? '';
+      allUsers = await _db.robleRead(RobleTables.users);
+    } catch (_) {
+      allUsers = const [];
+    }
+
+    Map<String, dynamic>? existingRow;
+    for (final row in allUsers) {
+      final rowUserId = row['user_id']?.toString() ?? '';
+      if (authUserId.isNotEmpty && rowUserId == authUserId) {
+        existingRow = row;
+        break;
+      }
+    }
+    if (existingRow == null) {
+      for (final row in allUsers) {
+        final rowEmail = (row['email'] ?? '').toString().trim().toLowerCase();
+        if (rowEmail == normalized) {
+          existingRow = row;
+          break;
+        }
+      }
+    }
+
+    if (existingRow != null) {
+      final key = existingRow['_id']?.toString() ?? '';
       if (key.isNotEmpty) {
-        await _db.robleUpdate(RobleTables.users, key, userPayload);
-      } else {
+        try {
+          await _db.robleUpdate(RobleTables.users, key, userPayload);
+        } catch (_) {
+          // best-effort; login will still work
+        }
+      }
+    } else {
+      try {
+        await _db.robleCreate(RobleTables.users, userPayload);
+      } catch (e) {
         throw Exception(
           'Registro en auth completado, pero no se pudo sincronizar users: $e',
         );

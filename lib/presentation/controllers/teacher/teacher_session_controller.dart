@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:example/data/utils/error_parser.dart';
 import 'package:example/domain/models/teacher.dart';
 import 'package:example/domain/repositories/i_teacher_auth_repository.dart';
 
@@ -14,14 +15,12 @@ class TeacherSessionController extends GetxController {
   Teacher get currentTeacher => teacher.value!;
   bool get isLoggedIn => teacher.value != null;
 
-  String _friendlyRegisterError(Object error) {
-    final raw = error.toString().replaceFirst('Exception: ', '').trim();
-    if (raw.isEmpty) return 'No se pudo completar el registro';
-    if (raw.contains('409') || raw.toLowerCase().contains('registrado')) {
-      return 'El correo ya esta registrado';
-    }
-    return raw;
-  }
+  String _friendlyRegisterError(Object error) =>
+      parseApiErrorFriendly(
+        error,
+        fallback: 'No se pudo completar el registro',
+        overrides: const {'409': 'El correo ya está registrado'},
+      );
 
   Future<void> checkSession() async {
     isLoading.value = true;
