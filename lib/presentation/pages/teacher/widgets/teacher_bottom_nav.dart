@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/teacher_colors.dart';
 
 class TeacherBottomNav extends StatelessWidget {
@@ -16,69 +15,56 @@ class TeacherBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      _NavItem(
-        icon: Icons.home_rounded,
-        label: 'INICIO',
-        route: '/teacher/dash',
-      ),
-      _NavItem(
-        icon: Icons.rate_review_rounded,
-        label: 'EVALUAR',
-        route: '/teacher/new-eval',
-      ),
-      _NavItem(
-        icon: Icons.bar_chart_rounded,
-        label: 'DATOS',
-        route: '/teacher/results',
-      ),
-      _NavItem(
-        icon: Icons.upload_file_rounded,
-        label: 'IMPORTAR',
-        route: importRoute,
-      ),
+      _NavItem(icon: Icons.home_rounded, route: '/teacher/dash'),
+      _NavItem(icon: Icons.rate_review_rounded, route: '/teacher/new-eval'),
+      _NavItem(icon: Icons.bar_chart_rounded, route: '/teacher/results'),
+      _NavItem(icon: Icons.upload_file_rounded, route: importRoute),
     ];
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: tkSurface,
-        border: Border(top: BorderSide(color: tkBorder)),
-      ),
-      padding: const EdgeInsets.fromLTRB(0, 10, 0, 20),
-      child: Row(
-        children: items.asMap().entries.map((entry) {
-          final isActive = entry.key == activeIndex;
-          final item = entry.value;
-          return Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+        decoration: BoxDecoration(
+          color: tkSurface,
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: items.asMap().entries.map((entry) {
+            final index = entry.key;
+            final item = entry.value;
+            final isActive = index == activeIndex;
+
+            return GestureDetector(
               onTap: () {
                 if (!Get.currentRoute.endsWith(item.route)) {
                   Get.offNamed(item.route);
                 }
               },
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    item.icon,
-                    size: 18,
-                    color: isActive ? tkGold : tkTextFaint,
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    item.label,
-                    style: GoogleFonts.sora(
-                      fontSize: 9,
-                      letterSpacing: 0.3,
-                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                      color: isActive ? tkGold : tkTextFaint,
-                    ),
-                  ),
-                ],
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isActive ? tkGold.withOpacity(0.15) : Colors.transparent,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  item.icon,
+                  size: 22,
+                  color: isActive ? tkGold : tkTextFaint,
+                ),
               ),
-            ),
-          );
-        }).toList(),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -86,12 +72,10 @@ class TeacherBottomNav extends StatelessWidget {
 
 class _NavItem {
   final IconData icon;
-  final String label;
   final String route;
 
   const _NavItem({
     required this.icon,
-    required this.label,
     required this.route,
   });
 }

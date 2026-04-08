@@ -17,35 +17,35 @@ class TImportHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      color: tkSurface,
-      padding: const EdgeInsets.fromLTRB(22, 16, 22, 20),
+      padding: const EdgeInsets.fromLTRB(22, 16, 22, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          /// 👤 Perfil + acción
           Row(
             children: [
+              /// Avatar moderno (círculo)
               Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [tkGold, Color(0xFFE3C26E)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: tkGold,
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   teacher.initials,
                   style: GoogleFonts.dmMono(
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.w800,
                     color: tkBackground,
                   ),
                 ),
               ),
-              const SizedBox(width: 14),
+
+              const SizedBox(width: 12),
+
+              /// Nombre + email
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,9 +53,8 @@ class TImportHeader extends StatelessWidget {
                     Text(
                       teacher.name,
                       style: GoogleFonts.sora(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.3,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
                         color: tkText,
                       ),
                       maxLines: 1,
@@ -74,27 +73,36 @@ class TImportHeader extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
+
+              const SizedBox(width: 8),
+
+              /// Botón "Cursos" (pill moderna)
               GestureDetector(
                 onTap: onCoursesTap,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 7,
+                  ),
                   decoration: BoxDecoration(
-                    color: tkGold.withValues(alpha: 0.1),
-                    border: Border.all(color: tkGold.withValues(alpha: 0.3)),
-                    borderRadius: BorderRadius.circular(10),
+                    color: tkSurfaceAlt,
+                    borderRadius: BorderRadius.circular(999),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.school_rounded, size: 13, color: tkGold),
-                      const SizedBox(width: 6),
+                      const Icon(
+                        Icons.school_rounded,
+                        size: 14,
+                        color: tkGold,
+                      ),
+                      const SizedBox(width: 5),
                       Text(
                         'Cursos',
                         style: GoogleFonts.sora(
                           fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: tkGold,
+                          fontWeight: FontWeight.w600,
+                          color: tkText,
                         ),
                       ),
                     ],
@@ -103,21 +111,25 @@ class TImportHeader extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+
+          const SizedBox(height: 18),
+
           Text(
             'Importar grupos',
             style: GoogleFonts.sora(
-              fontSize: 20,
+              fontSize: 22,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.5,
               color: tkText,
             ),
           ),
-          const SizedBox(height: 2),
+
+          const SizedBox(height: 4),
+
           Text(
             'Desde archivo CSV de Brightspace',
-            style: GoogleFonts.dmMono(
-              fontSize: 11,
+            style: GoogleFonts.sora(
+              fontSize: 12,
               color: tkTextFaint,
             ),
           ),

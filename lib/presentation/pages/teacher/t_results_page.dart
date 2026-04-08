@@ -6,7 +6,6 @@ import 'package:example/presentation/controllers/teacher/teacher_results_control
 import 'package:example/presentation/constants/evaluation_ui_constants.dart';
 import 'package:example/domain/models/teacher_data.dart';
 import 'package:example/presentation/pages/teacher/widgets/teacher_back_button.dart';
-// ignore_for_file: unused_import
 
 Color _tkScore(double v) => v >= 4.0 ? tkSuccess : tkWarning;
 const _kAvatarColors = [tkBlue, tkPurple, tkSuccess, tkPink];
@@ -28,19 +27,24 @@ class TResultsPage extends StatelessWidget {
               Container(
                 width: double.infinity,
                 color: tkSurface,
-                padding: const EdgeInsets.fromLTRB(22, 4, 22, 16),
+                padding: const EdgeInsets.fromLTRB(22, 10, 22, 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TeacherBackButton(
-                      label: drill != null ? 'Grupos' : 'Volver',
-                      onTap: () {
-                        if (drill != null) {
-                          ctrl.drill.value = null;
-                        } else {
-                          Get.offNamed('/teacher/dash');
-                        }
-                      },
+                    Row(
+                      children: [
+                        TeacherBackButton(
+                          backgroundColor: tkSurfaceAlt,
+                          iconColor: tkText,
+                          onTap: () {
+                            if (drill != null) {
+                              ctrl.drill.value = null;
+                            } else {
+                              Get.offNamed('/teacher/dash');
+                            }
+                          },
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -108,7 +112,6 @@ class _OverviewBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Stats
           Obx(
             () => Row(
               children: [
@@ -333,7 +336,6 @@ class _DetailBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Criteria rings
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(18),

@@ -1,13 +1,19 @@
-import 'package:example/domain/models/evaluation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/teacher_colors.dart';
+
 import 'package:example/presentation/controllers/teacher/teacher_course_import_controller.dart';
 import 'package:example/presentation/controllers/teacher/teacher_evaluation_controller.dart';
 import 'package:example/presentation/controllers/teacher/teacher_results_controller.dart';
 import 'package:example/presentation/controllers/teacher/teacher_session_controller.dart';
+
 import 'package:example/presentation/pages/teacher/widgets/teacher_bottom_nav.dart';
+import 'package:example/presentation/pages/teacher/widgets/teacher_dash_header.dart';
+import 'package:example/presentation/pages/teacher/widgets/teacher_dash_stats_row.dart';
+import 'package:example/presentation/pages/teacher/widgets/teacher_active_eval_card.dart';
+import 'package:example/presentation/pages/teacher/widgets/teacher_eval_card.dart';
+
+import 'package:google_fonts/google_fonts.dart';
 
 class TDashPage extends StatelessWidget {
   const TDashPage({super.key});
@@ -18,138 +24,56 @@ class TDashPage extends StatelessWidget {
     final courseCtrl = Get.find<TeacherCourseImportController>();
     final evalCtrl = Get.find<TeacherEvaluationController>();
     final resultsCtrl = Get.find<TeacherResultsController>();
+
     return Scaffold(
       backgroundColor: tkBackground,
       body: SafeArea(
         child: Column(
           children: [
-            // ── Header ─────────────────────────────────────────────────────
-            Container(
-              width: double.infinity,
-              color: tkSurface,
-              padding: const EdgeInsets.fromLTRB(22, 4, 22, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Panel docente',
-                              style: GoogleFonts.sora(
-                                fontSize: 12,
-                                color: tkTextFaint,
-                                letterSpacing: 0.5,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            Obx(() {
-                              final t = sessionCtrl.teacher.value;
-                              if (t == null) return const SizedBox.shrink();
-                              return Text(
-                                t.name,
-                                style: GoogleFonts.sora(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.5,
-                                  color: tkText,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              );
-                            }),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Obx(() {
-                        final t = sessionCtrl.teacher.value;
-                        if (t == null) return const SizedBox.shrink();
-                        return GestureDetector(
-                          onTap: () => _showProfileSheet(context, sessionCtrl),
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [tkGold, Color(0xFFE3C26E)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(13),
-                            ),
-                            padding: const EdgeInsets.all(4),
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(
-                                t.initials,
-                                style: GoogleFonts.dmMono(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color: tkBackground,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  // Stats row — real data
-                  Obx(
-                    () => Row(
-                      children: [
-                        _StatCard(
-                          value: courseCtrl.categories.length.toString(),
-                          label: 'CATEGORÍAS',
-                        ),
-                        const SizedBox(width: 8),
-                        _StatCard(
-                          value: evalCtrl.evaluations
-                              .where((e) => e.isActive)
-                              .length
-                              .toString(),
-                          label: 'ACTIVAS',
-                        ),
-                        const SizedBox(width: 8),
-                        _StatCard(
-                          value: courseCtrl.totalGroups.toString(),
-                          label: 'GRUPOS',
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+            // ── Header ─────────────────────────────────────────────
+            TDashHeader(
+              onProfileTap: () => _showProfileSheet(context, sessionCtrl),
             ),
+
             const Divider(height: 1, color: tkBorder),
 
-            // ── Body ───────────────────────────────────────────────────────
+            // ── Body ───────────────────────────────────────────────
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(22),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Active eval card (only when there is one)
+                    // ── Stats ──────────────────────────────────────
+                    Obx(() => TDashStatsRow(
+                          categories:
+                              courseCtrl.categories.length.toString(),
+                          active: evalCtrl.evaluations
+                              .where((e) => e.isActive)
+                              .length
+                              .toString(),
+                          groups: courseCtrl.totalGroups.toString(),
+                        )),
+
+                    const SizedBox(height: 20),
+
+                    // ── Active evaluation ──────────────────────────
                     Obx(() {
                       final eval = evalCtrl.activeEval.value;
                       if (eval == null) return const SizedBox.shrink();
+
                       return Column(
                         children: [
-                          _ActiveEvalCard(eval: eval, resultsCtrl: resultsCtrl),
+                          TActiveEvalCard(
+                            eval: eval,
+                            resultsCtrl: resultsCtrl,
+                          ),
                           const SizedBox(height: 20),
                         ],
                       );
                     }),
 
-                    // Evaluations section
+                    // ── Section header ─────────────────────────────
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -167,7 +91,7 @@ class TDashPage extends StatelessWidget {
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
-                              vertical: 5,
+                              vertical: 6,
                             ),
                             decoration: BoxDecoration(
                               color: tkGold,
@@ -178,7 +102,7 @@ class TDashPage extends StatelessWidget {
                               children: [
                                 const Icon(
                                   Icons.add_rounded,
-                                  size: 13,
+                                  size: 14,
                                   color: tkBackground,
                                 ),
                                 const SizedBox(width: 4),
@@ -196,56 +120,20 @@ class TDashPage extends StatelessWidget {
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 10),
 
+                    // ── Evaluations list ───────────────────────────
                     Obx(() {
                       if (evalCtrl.evaluations.isEmpty) {
-                        return Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 32,
-                            horizontal: 24,
-                          ),
-                          decoration: BoxDecoration(
-                            color: tkSurface,
-                            border: Border.all(color: tkBorder),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Column(
-                            children: [
-                              const Icon(
-                                Icons.rate_review_outlined,
-                                size: 32,
-                                color: tkTextFaint,
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                'Sin evaluaciones aún',
-                                style: GoogleFonts.sora(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: tkTextMid,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Importa grupos y crea tu primera evaluación',
-                                style: GoogleFonts.sora(
-                                  fontSize: 11,
-                                  color: tkTextFaint,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        );
+                        return _EmptyState();
                       }
+
                       return Column(
                         children: evalCtrl.evaluations
                             .map(
-                              (e) => _EvalCard(
+                              (e) => TEvalCard(
                                 eval: e,
-                                evalCtrl: evalCtrl,
                                 resultsCtrl: resultsCtrl,
                               ),
                             )
@@ -257,13 +145,15 @@ class TDashPage extends StatelessWidget {
               ),
             ),
 
-            // ── Bottom nav ─────────────────────────────────────────────────
-            TeacherBottomNav(activeIndex: 0),
+            // ── Bottom navigation ─────────────────────────────────
+            const TeacherBottomNav(activeIndex: 0),
           ],
         ),
       ),
     );
   }
+
+  // ── Profile modal ───────────────────────────────────────────────
 
   void _showProfileSheet(
     BuildContext context,
@@ -271,6 +161,7 @@ class TDashPage extends StatelessWidget {
   ) {
     final teacher = sessionCtrl.teacher.value;
     if (teacher == null) return;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: tkSurface,
@@ -291,6 +182,8 @@ class TDashPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
+
+            // Info
             Row(
               children: [
                 Container(
@@ -299,8 +192,6 @@ class TDashPage extends StatelessWidget {
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [tkGold, Color(0xFFE3C26E)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -340,9 +231,13 @@ class TDashPage extends StatelessWidget {
                 ),
               ],
             ),
+
             const SizedBox(height: 20),
-            const Divider(color: tkBorder, height: 1),
+            const Divider(color: tkBorder),
+
             const SizedBox(height: 12),
+
+            // Logout
             GestureDetector(
               onTap: () {
                 Get.back();
@@ -359,7 +254,7 @@ class TDashPage extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.logout_rounded, size: 16, color: tkDanger),
+                    const Icon(Icons.logout_rounded, size: 16, color: tkDanger),
                     const SizedBox(width: 8),
                     Text(
                       'Cerrar sesión',
@@ -380,530 +275,45 @@ class TDashPage extends StatelessWidget {
   }
 }
 
-// ── Active eval card (pulsing, real data) ──────────────────────────────────────
+// ── Empty state ───────────────────────────────────────────────────
 
-class _ActiveEvalCard extends StatefulWidget {
-  final Evaluation eval;
-  final TeacherResultsController resultsCtrl;
-  const _ActiveEvalCard({required this.eval, required this.resultsCtrl});
-
-  @override
-  State<_ActiveEvalCard> createState() => _ActiveEvalCardState();
-}
-
-class _ActiveEvalCardState extends State<_ActiveEvalCard>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ac;
-  late final Animation<double> _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    _ac = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1800),
-    )..repeat(reverse: true);
-    _anim = Tween<double>(
-      begin: 1.0,
-      end: 0.35,
-    ).animate(CurvedAnimation(parent: _ac, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _ac.dispose();
-    super.dispose();
-  }
-
+class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final eval = widget.eval;
-    final closesIn = eval.closesAt.difference(DateTime.now());
-    final closesLabel = _formatDuration(closesIn);
-
-    return GestureDetector(
-      onTap: () async {
-        await widget.resultsCtrl.loadGroupResults(eval);
-        Get.toNamed('/teacher/results');
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: tkGoldLight,
-          border: Border.all(color: tkGoldBorder),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                AnimatedBuilder(
-                  animation: _anim,
-                  builder: (_, __) => Opacity(
-                    opacity: _anim.value,
-                    child: Container(
-                      width: 7,
-                      height: 7,
-                      decoration: const BoxDecoration(
-                        color: tkGold,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'EN CURSO',
-                  style: GoogleFonts.sora(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: tkGold,
-                    letterSpacing: 1.5,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        eval.name,
-                        style: GoogleFonts.sora(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: tkText,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        '${eval.categoryName} · $closesLabel',
-                        style: GoogleFonts.dmMono(
-                          fontSize: 9,
-                          color: tkTextFaint,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      'Activa',
-                      style: GoogleFonts.dmMono(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: tkGold,
-                      ),
-                    ),
-                    Text(
-                      'ver resultados',
-                      style: GoogleFonts.sora(fontSize: 8, color: tkTextFaint),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatDuration(Duration d) {
-    if (d.isNegative) return 'Cerrada';
-    if (d.inDays > 0) return 'Cierra en ${d.inDays}d';
-    if (d.inHours > 0) return 'Cierra en ${d.inHours}h';
-    return 'Cierra en ${d.inMinutes}m';
-  }
-}
-
-// ── Evaluation card ────────────────────────────────────────────────────────────
-
-class _EvalCard extends StatelessWidget {
-  final Evaluation eval;
-  final TeacherEvaluationController evalCtrl;
-  final TeacherResultsController resultsCtrl;
-  const _EvalCard({
-    required this.eval,
-    required this.evalCtrl,
-    required this.resultsCtrl,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isActive = eval.isActive;
-    final closesIn = eval.closesAt.difference(DateTime.now());
-
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
       decoration: BoxDecoration(
         color: tkSurface,
         border: Border.all(color: tkBorder),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  eval.name,
-                  style: GoogleFonts.sora(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: tkText,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Container(
-                margin: const EdgeInsets.only(left: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: isActive
-                      ? tkSuccess.withValues(alpha: 0.12)
-                      : tkSurfaceAlt,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  isActive ? 'ACTIVA' : 'CERRADA',
-                  style: GoogleFonts.sora(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: isActive ? tkSuccess : tkTextFaint,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
-              GestureDetector(
-                onTap: () => _showActions(context),
-                child: const Padding(
-                  padding: EdgeInsets.all(4),
-                  child: Icon(
-                    Icons.more_vert_rounded,
-                    size: 16,
-                    color: tkTextFaint,
-                  ),
-                ),
-              ),
-            ],
+          const Icon(
+            Icons.rate_review_outlined,
+            size: 32,
+            color: tkTextFaint,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Sin evaluaciones aún',
+            style: GoogleFonts.sora(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: tkTextMid,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
-            '${eval.categoryName} · ${eval.hours}h · '
-            '${eval.visibility == 'public' ? 'Pública' : 'Privada'}'
-            '${isActive ? ' · ${_fmt(closesIn)}' : ''}',
-            style: GoogleFonts.dmMono(fontSize: 11, color: tkTextFaint),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 12),
-          _CourseBtn(
-            icon: Icons.bar_chart_rounded,
-            label: 'Ver resultados',
-            gold: true,
-            onTap: () async {
-              await resultsCtrl.loadGroupResults(eval);
-              Get.toNamed('/teacher/results');
-            },
+            'Importa grupos y crea tu primera evaluación',
+            style: GoogleFonts.sora(
+              fontSize: 11,
+              color: tkTextFaint,
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
-      ),
-    );
-  }
-
-  void _showActions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: tkSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: tkBorder,
-                borderRadius: BorderRadius.circular(99),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              eval.name,
-              style: GoogleFonts.sora(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: tkText,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 16),
-            const Divider(color: tkBorder, height: 1),
-            const SizedBox(height: 8),
-            ListTile(
-              leading: const Icon(
-                Icons.edit_rounded,
-                size: 18,
-                color: tkTextMid,
-              ),
-              title: Text(
-                'Renombrar',
-                style: GoogleFonts.sora(fontSize: 14, color: tkText),
-              ),
-              onTap: () {
-                Get.back();
-                _showRenameDialog(context);
-              },
-            ),
-            ListTile(
-              leading: Icon(
-                Icons.delete_outline_rounded,
-                size: 18,
-                color: tkDanger,
-              ),
-              title: Text(
-                'Eliminar evaluación',
-                style: GoogleFonts.sora(fontSize: 14, color: tkDanger),
-              ),
-              onTap: () {
-                Get.back();
-                _showDeleteDialog(context);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showRenameDialog(BuildContext context) {
-    final nameCtrl = TextEditingController(text: eval.name);
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: tkSurface,
-        title: Text(
-          'Renombrar evaluación',
-          style: GoogleFonts.sora(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: tkText,
-          ),
-        ),
-        content: TextField(
-          controller: nameCtrl,
-          autofocus: true,
-          style: GoogleFonts.sora(fontSize: 14, color: tkText),
-          decoration: InputDecoration(
-            hintText: 'Nombre de la evaluación',
-            hintStyle: GoogleFonts.sora(color: tkTextFaint),
-            enabledBorder: OutlineInputBorder(
-              borderSide: const BorderSide(color: tkBorder),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderSide: const BorderSide(color: tkGold),
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: Text(
-              'Cancelar',
-              style: GoogleFonts.sora(color: tkTextFaint),
-            ),
-          ),
-          TextButton(
-            onPressed: () async {
-              final newName = nameCtrl.text.trim();
-              if (newName.isEmpty) return;
-              Get.back();
-              try {
-                await evalCtrl.renameEvaluation(eval.id, newName);
-              } catch (e) {
-                Get.snackbar(
-                  'Error',
-                  e.toString().replaceFirst('Exception: ', ''),
-                  snackPosition: SnackPosition.BOTTOM,
-                );
-              }
-            },
-            child: Text(
-              'Guardar',
-              style: GoogleFonts.sora(
-                color: tkGold,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: tkSurface,
-        title: Text(
-          'Eliminar evaluación',
-          style: GoogleFonts.sora(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: tkText,
-          ),
-        ),
-        content: Text(
-          'Se eliminarán todas las respuestas de "${eval.name}". Esta acción no se puede deshacer.',
-          style: GoogleFonts.sora(fontSize: 13, color: tkTextMid),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: Text(
-              'Cancelar',
-              style: GoogleFonts.sora(color: tkTextFaint),
-            ),
-          ),
-          TextButton(
-            onPressed: () async {
-              Get.back();
-              await evalCtrl.deleteEvaluation(eval.id);
-            },
-            child: Text(
-              'Eliminar',
-              style: GoogleFonts.sora(
-                color: tkDanger,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _fmt(Duration d) {
-    if (d.isNegative) return 'Cerrada';
-    if (d.inDays > 0) return 'Cierra en ${d.inDays}d';
-    if (d.inHours > 0) return 'Cierra en ${d.inHours}h';
-    return 'Cierra en ${d.inMinutes}m';
-  }
-}
-
-// ── Shared widgets ─────────────────────────────────────────────────────────────
-
-class _StatCard extends StatelessWidget {
-  final String value;
-  final String label;
-  const _StatCard({required this.value, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: tkSurfaceAlt,
-          border: Border.all(color: tkBorder),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: GoogleFonts.dmMono(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: tkText,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: GoogleFonts.sora(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: tkTextFaint,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CourseBtn extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool gold;
-  final VoidCallback onTap;
-
-  const _CourseBtn({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.gold = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 9),
-        decoration: BoxDecoration(
-          color: gold ? tkGold : tkSurfaceAlt,
-          border: Border.all(color: gold ? tkGold : tkBorder),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 12, color: gold ? tkBackground : tkTextMid),
-            const SizedBox(width: 4),
-            Flexible(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  label,
-                  style: GoogleFonts.sora(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: gold ? tkBackground : tkTextMid,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -9,31 +9,47 @@ class TImportEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
+      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
       decoration: BoxDecoration(
-        color: tkSurface,
-        border: Border.all(color: tkBorder),
-        borderRadius: BorderRadius.circular(14),
+        color: tkSurfaceAlt,
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.folder_open_rounded, size: 32, color: tkTextFaint),
-          const SizedBox(height: 10),
-          Text(
-            'Sin categorías importadas',
-            style: GoogleFonts.sora(
-              fontSize: 13,
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: tkTextFaint.withOpacity(0.08),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.folder_open_rounded,
+              size: 28,
               color: tkTextFaint,
-              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 4),
+
+          const SizedBox(height: 14),
+
           Text(
-            'Usa el botón de arriba para cargar un CSV',
+            'Sin categorías',
             style: GoogleFonts.sora(
-              fontSize: 11,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: tkText,
+            ),
+          ),
+
+          const SizedBox(height: 4),
+
+          Text(
+            'Importa un archivo CSV para comenzar',
+            style: GoogleFonts.sora(
+              fontSize: 12,
               color: tkTextFaint,
             ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
