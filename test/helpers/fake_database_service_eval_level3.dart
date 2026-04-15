@@ -32,6 +32,9 @@ class FakeDatabaseServiceEvalLevel3 extends FakeDatabaseServiceLevel3 {
   int _reCounter = 0;
   int _rcCounter = 0;
 
+  // ── Read counter for cache verification ─────────────────────────────────────
+  final Map<String, int> readCallsByTable = {};
+
   // ── Fixture tables ─────────────────────────────────────────────────────────
 
   final _users = <Map<String, dynamic>>[
@@ -128,6 +131,7 @@ class FakeDatabaseServiceEvalLevel3 extends FakeDatabaseServiceLevel3 {
     String tableName, {
     Map<String, dynamic>? filters,
   }) async {
+    readCallsByTable[tableName] = (readCallsByTable[tableName] ?? 0) + 1;
     final data = _tableData(tableName);
     if (filters == null || filters.isEmpty) return List.from(data);
     return data.where((row) {
