@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -30,10 +31,18 @@ class AuthField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // On web, <input type="email"> does not support setSelectionRange(), which
+    // the Flutter Web semantics engine calls during text editing. Fall back to
+    // TextInputType.text (<input type="text">) to avoid that browser error.
+    final effectiveKeyboardType =
+        kIsWeb && keyboardType == TextInputType.emailAddress
+            ? TextInputType.text
+            : keyboardType;
+
     return TextField(
       controller: controller,
       obscureText: obscure,
-      keyboardType: keyboardType,
+      keyboardType: effectiveKeyboardType,
       style: GoogleFonts.sora(fontSize: 13, color: textColor),
       cursorColor: accentColor,
       decoration: InputDecoration(
