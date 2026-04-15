@@ -96,4 +96,32 @@ void main() {
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
+
+  testWidgets('TResultsPage shows error card when resultsError is set',
+      (tester) async {
+    final er = FakeEvaluationRepository();
+    er.groupResults = const [
+      GroupResult(
+        name: 'Equipo Alfa',
+        average: 4.2,
+        criteria: [4.0, 4.5, 4.0, 4.3],
+        students: [],
+      ),
+    ];
+
+    final ctrl = TeacherResultsController(er);
+    Get.put<TeacherResultsController>(ctrl);
+
+    ctrl.groupResults.assignAll(er.groupResults);
+    ctrl.resultsError.value = 'Fallo de red';
+
+    await tester.pumpWidget(
+      buildGetxTestApp(home: const TResultsPage(), extraRoutes: _extraRoutes),
+    );
+    await tester.pump();
+
+    expect(find.text('No se pudieron cargar los resultados'), findsOneWidget);
+    expect(find.text('Fallo de red'), findsOneWidget);
+    expect(find.text('Equipo Alfa'), findsNothing);
+  });
 }
