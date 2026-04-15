@@ -116,7 +116,7 @@ void main() {
     await tester.pump();
 
     expect(find.byKey(const Key('results-detail-panel')), findsOneWidget);
-    expect(find.text('ESTUDIANTES'), findsOneWidget);
+    expect(find.byKey(const Key('results-overview-panel')), findsNothing);
   });
 
   testWidgets('TResultsPage back button closes detail and returns to overview',
