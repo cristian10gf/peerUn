@@ -107,8 +107,7 @@ class StudentController extends GetxController {
   }
 
   /// Clears cached home + eval data and reloads from API.
-  @override
-  Future<void> refresh() async {
+  Future<void> refreshData() async {
     final s = student.value;
     if (s == null) return;
     await _cache.invalidate('student_home_v1_${s.email}');
@@ -271,10 +270,14 @@ class StudentController extends GetxController {
             .toList();
       } else {
         courses = await _evalRepo.getStudentHomeCourses(s.email);
-        await _cache.set(
-          homeKey,
-          jsonEncode(courses.map((c) => c.toJson()).toList()),
-        );
+        try {
+          await _cache.set(
+            homeKey,
+            jsonEncode(courses.map((c) => c.toJson()).toList()),
+          );
+        } catch (_) {
+          // cache write failure is non-fatal
+        }
       }
       homeCourses.assignAll(courses);
       expandedCourseIds
@@ -299,10 +302,14 @@ class StudentController extends GetxController {
             .toList();
       } else {
         evalList = await _evalRepo.getEvaluationsForStudent(s.email);
-        await _cache.set(
-          evalsKey,
-          jsonEncode(evalList.map((e) => e.toJson()).toList()),
-        );
+        try {
+          await _cache.set(
+            evalsKey,
+            jsonEncode(evalList.map((e) => e.toJson()).toList()),
+          );
+        } catch (_) {
+          // cache write failure is non-fatal
+        }
       }
       evaluations.assignAll(evalList);
     } catch (e) {
