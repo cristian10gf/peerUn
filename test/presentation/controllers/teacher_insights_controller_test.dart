@@ -178,6 +178,84 @@ void main() {
     expect(ctrl.lastUpdatedAt.value, isNotNull);
     expect(ctrl.lastUpdatedAt.value!.isAfter(firstUpdate!), isTrue);
   });
+
+  test('loadInsights resets and sets error when no teacher session', () async {
+    final session = SpyTeacherSessionController(); // no teacher set — value is null
+
+    final ctrl = TeacherInsightsController(
+      FakeEvaluationRepository(),
+      const TeacherInsightsDomainService(),
+      const TeacherInsightsViewMapper(),
+      session,
+    );
+
+    await ctrl.loadInsights();
+
+    expect(ctrl.isLoading.value, isFalse);
+    expect(ctrl.overviewVm, isNull);
+    expect(ctrl.loadError.value, 'Sesion docente no disponible');
+    expect(ctrl.lastUpdatedAt.value, isNull);
+  });
+
+  test('loadInsights resets and sets error when teacher id is not an integer', () async {
+    final session = SpyTeacherSessionController();
+    session.setTeacherSession(
+      const Teacher(
+        id: 'not-a-number',
+        name: 'Docente',
+        email: 'docente@uninorte.edu.co',
+        initials: 'DO',
+      ),
+    );
+
+    final ctrl = TeacherInsightsController(
+      FakeEvaluationRepository(),
+      const TeacherInsightsDomainService(),
+      const TeacherInsightsViewMapper(),
+      session,
+    );
+
+    await ctrl.loadInsights();
+
+    expect(ctrl.isLoading.value, isFalse);
+    expect(ctrl.overviewVm, isNull);
+    expect(ctrl.loadError.value, 'Sesion docente invalida');
+  });
+
+  test('resetState clears all observable state', () async {
+    final repo = FakeEvaluationRepository()
+      ..teacherInsightsInput = const TeacherInsightsInput(
+        scorePoints: <TeacherInsightsScorePoint>[],
+        evaluations: <TeacherInsightsEvaluationCoverage>[
+          TeacherInsightsEvaluationCoverage(
+            evaluationId: 'e1',
+            evaluationName: 'Eval 1',
+            courseId: 'c1',
+            courseName: 'IS',
+            categoryId: 'cat1',
+            categoryName: 'Sprint',
+          ),
+        ],
+      );
+
+    final ctrl = TeacherInsightsController(
+      repo,
+      const TeacherInsightsDomainService(),
+      const TeacherInsightsViewMapper(),
+      buildLoggedTeacherSession(),
+    );
+
+    await ctrl.loadInsights();
+    expect(ctrl.overviewVm, isNotNull);
+    expect(ctrl.lastUpdatedAt.value, isNotNull);
+
+    ctrl.resetState();
+
+    expect(ctrl.isLoading.value, isFalse);
+    expect(ctrl.loadError.value, isEmpty);
+    expect(ctrl.overviewVm, isNull);
+    expect(ctrl.lastUpdatedAt.value, isNull);
+  });
 }
 
 class _CountingInsightsRepository extends FakeEvaluationRepository {
