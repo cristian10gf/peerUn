@@ -132,10 +132,19 @@ class TeacherAuthRepositoryImpl implements ITeacherAuthRepository {
     } else {
       try {
         await _db.robleCreate(RobleTables.users, userPayload);
-      } catch (e) {
-        throw Exception(
-          'Registro en auth completado, pero no se pudo sincronizar users: $e',
-        );
+      } catch (_) {
+        // Possible duplicate row — look up by email and update best-effort.
+        final found = await _db.robleFindUserByEmail(normalized);
+        if (found != null) {
+          final key = (found['_id'] ?? '').toString();
+          if (key.isNotEmpty) {
+            try {
+              await _db.robleUpdate(RobleTables.users, key, userPayload);
+            } catch (_) {
+              // best-effort; login will still work
+            }
+          }
+        }
       }
     }
 
