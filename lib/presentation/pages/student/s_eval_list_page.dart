@@ -37,62 +37,72 @@ class SEvalListPage extends StatelessWidget {
 
             // ── Body ───────────────────────────────────────────────────────
             Expanded(
-              child: Obx(() {
-                final evals = ctrl.evaluations;
-                if (evals.isEmpty) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.history_rounded,
-                            size: 40,
-                            color: skTextFaint,
-                          ),
-                          const SizedBox(height: 14),
-                          Text(
-                            'Sin historial',
-                            style: GoogleFonts.sora(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: skTextMid,
+              child: RefreshIndicator(
+                color: skPrimary,
+                onRefresh: () => ctrl.refreshData(),
+                child: Obx(() {
+                  final evals = ctrl.evaluations;
+                  if (evals.isEmpty) {
+                    return ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.history_rounded,
+                                  size: 40,
+                                  color: skTextFaint,
+                                ),
+                                const SizedBox(height: 14),
+                                Text(
+                                  'Sin historial',
+                                  style: GoogleFonts.sora(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: skTextMid,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Las evaluaciones en las que participes\naparecerán aquí',
+                                  style: GoogleFonts.sora(
+                                    fontSize: 12,
+                                    color: skTextFaint,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Las evaluaciones en las que participes\naparecerán aquí',
-                            style: GoogleFonts.sora(
-                              fontSize: 12,
-                              color: skTextFaint,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
+                        ),
+                      ],
+                    );
+                  }
+                  final grouped = ctrl.groupedAllEvaluationsByCourse;
+                  final sections = grouped.entries.toList();
+                  // Build flat list of widgets: [header?, item, item, ...]
+                  final widgets = <Widget>[];
+                  for (final entry in sections) {
+                    if (sections.length > 1) {
+                      widgets.add(StudentCourseHeader(name: entry.key));
+                      widgets.add(const SizedBox(height: 8));
+                    }
+                    for (final e in entry.value) {
+                      widgets.add(_HistorialItem(eval: e, ctrl: ctrl));
+                      widgets.add(const SizedBox(height: 10));
+                    }
+                  }
+                  return ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(22),
+                    children: widgets,
                   );
-                }
-                final grouped = ctrl.groupedAllEvaluationsByCourse;
-                final sections = grouped.entries.toList();
-                // Build flat list of widgets: [header?, item, item, ...]
-                final widgets = <Widget>[];
-                for (final entry in sections) {
-                  if (sections.length > 1) {
-                    widgets.add(StudentCourseHeader(name: entry.key));
-                    widgets.add(const SizedBox(height: 8));
-                  }
-                  for (final e in entry.value) {
-                    widgets.add(_HistorialItem(eval: e, ctrl: ctrl));
-                    widgets.add(const SizedBox(height: 10));
-                  }
-                }
-                return ListView(
-                  padding: const EdgeInsets.all(22),
-                  children: widgets,
-                );
-              }),
+                }),
+              ),
             ),
 
             // ── Bottom nav ─────────────────────────────────────────────────

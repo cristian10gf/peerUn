@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 
 import '../../../helpers/controller_spies.dart';
+import '../../../helpers/fake_cache_service.dart';
 import '../../../helpers/getx_test_harness.dart';
 import '../../../helpers/repository_fakes.dart';
 
@@ -25,7 +26,7 @@ TeacherCourseImportController _buildCtrl({List<CourseModel> courses = const []})
   final gr = FakeGroupRepository();
   final cr = FakeCourseRepository()..courses = [...courses];
   final ctrl = TeacherCourseImportController(
-    session, gr, cr, TeacherImportCsvUseCase(gr),
+    session, gr, cr, TeacherImportCsvUseCase(gr), FakeCacheService(),
   );
   Get.put<TeacherSessionController>(session);
   Get.put<TeacherCourseImportController>(ctrl);

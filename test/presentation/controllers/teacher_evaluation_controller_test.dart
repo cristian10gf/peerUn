@@ -7,6 +7,7 @@ import 'package:example/presentation/controllers/teacher/teacher_evaluation_cont
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../helpers/controller_spies.dart';
+import '../../helpers/fake_cache_service.dart';
 import '../../helpers/repository_fakes.dart';
 
 void main() {
@@ -29,6 +30,7 @@ void main() {
       groupRepo,
       courseRepo,
       TeacherImportCsvUseCase(groupRepo),
+      FakeCacheService(),
     );
 
     final ctrl = TeacherEvaluationController(
@@ -36,6 +38,7 @@ void main() {
       importCtrl,
       evalRepo,
       TeacherCreateEvaluationUseCase(evalRepo),
+      FakeCacheService(),
     );
 
     await ctrl.createEvaluation();
@@ -72,12 +75,14 @@ void main() {
       groupRepo,
       courseRepo,
       TeacherImportCsvUseCase(groupRepo),
+      FakeCacheService(),
     );
     final ctrl = TeacherEvaluationController(
       session,
       importCtrl,
       evalRepo,
       TeacherCreateEvaluationUseCase(evalRepo),
+      FakeCacheService(),
     );
     await ctrl.loadEvaluations();
 
@@ -118,12 +123,14 @@ void main() {
       groupRepo,
       courseRepo,
       TeacherImportCsvUseCase(groupRepo),
+      FakeCacheService(),
     );
     final ctrl = TeacherEvaluationController(
       session,
       importCtrl,
       evalRepo,
       TeacherCreateEvaluationUseCase(evalRepo),
+      FakeCacheService(),
     );
     await ctrl.loadEvaluations();
 

@@ -3,6 +3,7 @@ import 'package:example/domain/models/student_home.dart';
 import 'package:example/presentation/controllers/student_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../helpers/fake_cache_service.dart';
 import '../../helpers/repository_fakes.dart';
 
 void main() {
@@ -15,7 +16,7 @@ void main() {
         initials: 'AP',
       );
 
-    final ctrl = StudentController(auth, FakeEvaluationRepository());
+    final ctrl = StudentController(auth, FakeEvaluationRepository(), FakeCacheService());
     await ctrl.checkSession();
 
     expect(ctrl.isLoading.value, false);
@@ -24,7 +25,7 @@ void main() {
   });
 
   test('clearSessionStateForRoleSwitch resets auth + evaluation state', () {
-    final ctrl = StudentController(FakeAuthRepository(), FakeEvaluationRepository());
+    final ctrl = StudentController(FakeAuthRepository(), FakeEvaluationRepository(), FakeCacheService());
 
     ctrl.authError.value = 'x';
     ctrl.evalLoadError.value = 'y';

@@ -18,6 +18,8 @@ import 'package:example/domain/repositories/i_group_repository.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
 import 'package:example/domain/repositories/i_course_repository.dart';
 import 'package:example/domain/repositories/i_unified_auth_repository.dart';
+import 'package:example/domain/services/i_cache_service.dart';
+import 'package:example/data/services/cache/shared_prefs_cache_service.dart';
 import 'package:example/domain/use_case/teacher/teacher_import_csv_use_case.dart';
 import 'package:example/domain/use_case/teacher/teacher_create_evaluation_use_case.dart';
 import 'package:example/presentation/bindings/teacher_module_binding.dart';
@@ -75,6 +77,11 @@ class _AppBindings extends Bindings {
       ConnectivityController(Get.find<IConnectivityRepository>()),
       permanent: true,
     );
+
+    // ── Cache ── registered before any controller that depends on it ──────────
+    Get.put<ICacheService>(SharedPreferencesCacheService(), permanent: true);
+    // ─────────────────────────────────────────────────────────────────────────
+
     Get.put<IAuthRepository>(AuthRepositoryImpl(db), permanent: true);
     Get.put<ITeacherAuthRepository>(
       TeacherAuthRepositoryImpl(db),
@@ -98,6 +105,7 @@ class _AppBindings extends Bindings {
       StudentController(
         Get.find<IAuthRepository>(),
         Get.find<IEvaluationRepository>(),
+        Get.find<ICacheService>(),
       ),
       permanent: true,
     );

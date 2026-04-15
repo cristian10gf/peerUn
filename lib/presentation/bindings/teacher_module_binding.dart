@@ -3,6 +3,7 @@ import 'package:example/domain/repositories/i_course_repository.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
 import 'package:example/domain/repositories/i_group_repository.dart';
 import 'package:example/domain/services/teacher_insights_domain_service.dart';
+import 'package:example/domain/services/i_cache_service.dart';
 import 'package:example/domain/use_case/teacher/teacher_create_evaluation_use_case.dart';
 import 'package:example/domain/use_case/teacher/teacher_import_csv_use_case.dart';
 import 'package:example/presentation/controllers/teacher/teacher_course_import_controller.dart';
@@ -23,6 +24,7 @@ class TeacherModuleBinding extends Bindings {
           Get.find<IGroupRepository>(),
           Get.find<ICourseRepository>(),
           Get.find<TeacherImportCsvUseCase>(),
+          Get.find<ICacheService>(),
         ),
         permanent: true,
       );
@@ -35,6 +37,7 @@ class TeacherModuleBinding extends Bindings {
           Get.find<TeacherCourseImportController>(),
           Get.find<IEvaluationRepository>(),
           Get.find<TeacherCreateEvaluationUseCase>(),
+          Get.find<ICacheService>(),
         ),
         permanent: true,
       );
@@ -78,6 +81,7 @@ class TeacherModuleBinding extends Bindings {
           Get.find<TeacherInsightsDomainService>(),
           Get.find<TeacherInsightsViewMapper>(),
           Get.find<TeacherSessionController>(),
+          Get.find<ICacheService>(),
         ),
         permanent: true,
       );

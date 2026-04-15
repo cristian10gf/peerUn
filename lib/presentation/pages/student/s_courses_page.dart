@@ -94,11 +94,15 @@ class SCoursesPage extends StatelessWidget {
 
             // ── Body ───────────────────────────────────────────────────────
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(22),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+              child: RefreshIndicator(
+                color: skPrimary,
+                onRefresh: () => ctrl.refreshData(),
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(22),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                     Text(
                       'MIS CURSOS',
                       style: GoogleFonts.sora(
@@ -282,7 +286,8 @@ class SCoursesPage extends StatelessWidget {
                             .toList(),
                       );
                     }),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

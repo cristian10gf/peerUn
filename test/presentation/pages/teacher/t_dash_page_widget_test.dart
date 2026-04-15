@@ -12,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart' hide Evaluation;
 import 'package:get/get.dart';
 
 import '../../../helpers/controller_spies.dart';
+import '../../../helpers/fake_cache_service.dart';
 import '../../../helpers/getx_test_harness.dart';
 import '../../../helpers/repository_fakes.dart';
 
@@ -33,15 +34,15 @@ void _registerControllers({
 
   Get.put<TeacherSessionController>(session);
   final importCtrl = TeacherCourseImportController(
-    session, gr, cr, TeacherImportCsvUseCase(gr),
+    session, gr, cr, TeacherImportCsvUseCase(gr), FakeCacheService(),
   );
   Get.put<TeacherCourseImportController>(importCtrl);
   Get.put<TeacherEvaluationController>(
     TeacherEvaluationController(
-      session, importCtrl, er, TeacherCreateEvaluationUseCase(er),
+      session, importCtrl, er, TeacherCreateEvaluationUseCase(er), FakeCacheService(),
     ),
   );
-  Get.put<TeacherResultsController>(TeacherResultsController(er));
+  Get.put<TeacherResultsController>(TeacherResultsController(er, FakeCacheService()));
 }
 
 void main() {

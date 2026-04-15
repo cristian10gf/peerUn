@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 
 import '../../../helpers/controller_spies.dart';
+import '../../../helpers/fake_cache_service.dart';
 import '../../../helpers/getx_test_harness.dart';
 import '../../../helpers/repository_fakes.dart';
 
@@ -31,10 +32,10 @@ final _extraRoutes = <GetPage>[
   final cr = FakeCourseRepository();
 
   final importCtrl = TeacherCourseImportController(
-    session, gr, cr, TeacherImportCsvUseCase(gr),
+    session, gr, cr, TeacherImportCsvUseCase(gr), FakeCacheService(),
   );
   final evalCtrl = TeacherEvaluationController(
-    session, importCtrl, er, TeacherCreateEvaluationUseCase(er),
+    session, importCtrl, er, TeacherCreateEvaluationUseCase(er), FakeCacheService(),
   );
 
   Get.put<TeacherSessionController>(session);

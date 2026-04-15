@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 
+import '../../helpers/fake_cache_service.dart';
 import '../../helpers/fake_database_service_level3.dart';
 import '../../helpers/getx_test_harness.dart';
 import '../../helpers/repository_fakes.dart';
@@ -25,6 +26,7 @@ void main() {
     final studentCtrl = StudentController(
       AuthRepositoryImpl(db),
       EvaluationRepositoryImpl(db),
+      FakeCacheService(),
     );
     final teacherCtrl = TeacherSessionController(TeacherAuthRepositoryImpl(db));
 

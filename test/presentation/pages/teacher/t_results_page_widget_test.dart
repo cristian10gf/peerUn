@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart' hide Evaluation;
 import 'package:get/get.dart';
 
+import '../../../helpers/fake_cache_service.dart';
 import '../../../helpers/getx_test_harness.dart';
 import '../../../helpers/repository_fakes.dart';
 
@@ -18,7 +19,7 @@ void main() {
 
   testWidgets('TResultsPage shows empty overview state', (tester) async {
     Get.put<TeacherResultsController>(
-      TeacherResultsController(FakeEvaluationRepository()),
+      TeacherResultsController(FakeEvaluationRepository(), FakeCacheService()),
     );
 
     await tester.pumpWidget(
@@ -46,7 +47,7 @@ void main() {
       ),
     ];
 
-    final ctrl = TeacherResultsController(er);
+    final ctrl = TeacherResultsController(er, FakeCacheService());
     Get.put<TeacherResultsController>(ctrl);
 
     // Simulate results already loaded (bypass the real async load).
@@ -172,7 +173,7 @@ void main() {
   testWidgets('TResultsPage header shows Resultados when not drilling',
       (tester) async {
     Get.put<TeacherResultsController>(
-      TeacherResultsController(FakeEvaluationRepository()),
+      TeacherResultsController(FakeEvaluationRepository(), FakeCacheService()),
     );
 
     await tester.pumpWidget(
@@ -183,7 +184,7 @@ void main() {
   });
 
   testWidgets('TResultsPage shows loading indicator while loading', (tester) async {
-    final ctrl = TeacherResultsController(FakeEvaluationRepository());
+    final ctrl = TeacherResultsController(FakeEvaluationRepository(), FakeCacheService());
     Get.put<TeacherResultsController>(ctrl);
     ctrl.resultsLoading.value = true;
 

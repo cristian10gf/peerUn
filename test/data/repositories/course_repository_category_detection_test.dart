@@ -10,7 +10,7 @@ class _FakeCourseDatabaseService extends DatabaseService {
 
   @override
   Future<Map<String, dynamic>> readAuthTokenClaims() async {
-    return const <String, dynamic>{};
+    return const <String, dynamic>{'sub': '777'};
   }
 
   @override
