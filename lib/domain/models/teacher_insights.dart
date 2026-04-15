@@ -6,6 +6,21 @@ class TeacherInsightsInput {
     required this.scorePoints,
     required this.evaluations,
   });
+
+  Map<String, dynamic> toJson() => {
+        'scorePoints': scorePoints.map((sp) => sp.toJson()).toList(),
+        'evaluations': evaluations.map((e) => e.toJson()).toList(),
+      };
+
+  factory TeacherInsightsInput.fromJson(Map<String, dynamic> json) =>
+      TeacherInsightsInput(
+        scorePoints: (json['scorePoints'] as List)
+            .map((e) => TeacherInsightsScorePoint.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        evaluations: (json['evaluations'] as List)
+            .map((e) => TeacherInsightsEvaluationCoverage.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
 }
 
 class TeacherInsightsScorePoint {
@@ -32,6 +47,33 @@ class TeacherInsightsScorePoint {
     required this.studentName,
     required this.score,
   });
+
+  Map<String, dynamic> toJson() => {
+        'evaluationId': evaluationId,
+        'courseId': courseId,
+        'courseName': courseName,
+        'categoryId': categoryId,
+        'categoryName': categoryName,
+        'groupId': groupId,
+        'groupName': groupName,
+        'studentId': studentId,
+        'studentName': studentName,
+        'score': score,
+      };
+
+  factory TeacherInsightsScorePoint.fromJson(Map<String, dynamic> json) =>
+      TeacherInsightsScorePoint(
+        evaluationId: json['evaluationId'] as String,
+        courseId: json['courseId'] as String,
+        courseName: json['courseName'] as String,
+        categoryId: json['categoryId'] as String,
+        categoryName: json['categoryName'] as String,
+        groupId: json['groupId'] as String,
+        groupName: json['groupName'] as String,
+        studentId: json['studentId'] as String,
+        studentName: json['studentName'] as String,
+        score: json['score'] as int,
+      );
 }
 
 class TeacherInsightsEvaluationCoverage {
@@ -50,6 +92,25 @@ class TeacherInsightsEvaluationCoverage {
     required this.categoryId,
     required this.categoryName,
   });
+
+  Map<String, dynamic> toJson() => {
+        'evaluationId': evaluationId,
+        'evaluationName': evaluationName,
+        'courseId': courseId,
+        'courseName': courseName,
+        'categoryId': categoryId,
+        'categoryName': categoryName,
+      };
+
+  factory TeacherInsightsEvaluationCoverage.fromJson(Map<String, dynamic> json) =>
+      TeacherInsightsEvaluationCoverage(
+        evaluationId: json['evaluationId'] as String,
+        evaluationName: json['evaluationName'] as String,
+        courseId: json['courseId'] as String,
+        courseName: json['courseName'] as String,
+        categoryId: json['categoryId'] as String,
+        categoryName: json['categoryName'] as String,
+      );
 }
 
 class TeacherInsightsAggregate {
