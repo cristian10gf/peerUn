@@ -39,8 +39,6 @@ class SharedPreferencesCacheService implements ICacheService {
         .getKeys()
         .where((k) => k.startsWith(_prefix))
         .toList();
-    for (final k in cacheKeys) {
-      await prefs.remove(k);
-    }
+    await Future.wait(cacheKeys.map((k) => prefs.remove(k)));
   }
 }

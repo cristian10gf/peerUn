@@ -56,6 +56,11 @@ void main() {
       expect(prefs.getString('student_session'), 'should_survive');
     });
 
+    test('invalidateAll on empty store is no-op', () async {
+      final cache = SharedPreferencesCacheService();
+      await cache.invalidateAll(); // must not throw when no cache keys exist
+    });
+
     test('different keys are independent', () async {
       final cache = SharedPreferencesCacheService();
       await cache.set('x', 'X');
