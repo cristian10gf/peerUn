@@ -15,16 +15,18 @@ class TeacherResultsController extends GetxController {
     TeacherResultsViewMapper viewMapper = const TeacherResultsViewMapper(),
   }) : _viewMapper = viewMapper;
 
-  final drill = Rx<int?>(null);
+  final _drill = Rx<int?>(null);
   final groupResults = <GroupResult>[].obs;
   final resultsLoading = false.obs;
   final selectedEval = Rx<Evaluation?>(null);
   final resultsError = ''.obs;
 
+  int? get selectedGroupIndex => _drill.value;
+
   TeacherResultsOverviewVm get overviewVm => _viewMapper.buildOverview(groupResults);
 
   TeacherResultsDetailVm? get selectedDetailVm {
-    final index = drill.value;
+    final index = selectedGroupIndex;
     if (index == null || index < 0 || index >= groupResults.length) {
       return null;
     }
@@ -35,11 +37,11 @@ class TeacherResultsController extends GetxController {
     if (index < 0 || index >= groupResults.length) {
       return;
     }
-    drill.value = index;
+    _drill.value = index;
   }
 
   void closeGroupDetail() {
-    drill.value = null;
+    _drill.value = null;
   }
 
   Future<void> loadGroupResults(Evaluation eval) async {

@@ -21,7 +21,7 @@ class TResultsPage extends StatelessWidget {
       backgroundColor: tkBackground,
       body: SafeArea(
         child: Obx(() {
-          final drill = ctrl.drill.value;
+          final drill = ctrl.selectedGroupIndex;
           return Column(
             children: [
               // ── Header ───────────────────────────────────────────────────
@@ -36,7 +36,7 @@ class TResultsPage extends StatelessWidget {
                       label: drill != null ? 'Grupos' : 'Volver',
                       onTap: () {
                         if (drill != null) {
-                          ctrl.drill.value = null;
+                          ctrl.closeGroupDetail();
                         } else {
                           Get.offNamed('/teacher/dash');
                         }
@@ -81,7 +81,7 @@ class TResultsPage extends StatelessWidget {
                       ),
                     );
                   }
-                  final d = ctrl.drill.value;
+                  final d = ctrl.selectedGroupIndex;
                   return d == null
                       ? _OverviewBody(ctrl: ctrl)
                       : _DetailBody(ctrl: ctrl, group: ctrl.groupResults[d]);
@@ -188,7 +188,7 @@ class _OverviewBody extends StatelessWidget {
                   .map(
                     (e) => _GroupCard(
                       group: e.value,
-                      onTap: () => ctrl.drill.value = e.key,
+                          onTap: () => ctrl.openGroupDetail(e.key),
                     ),
                   )
                   .toList(),
