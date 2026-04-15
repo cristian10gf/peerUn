@@ -68,6 +68,7 @@ class TeacherModuleBinding extends Bindings {
       Get.put<TeacherResultsController>(
         TeacherResultsController(
           Get.find<IEvaluationRepository>(),
+          Get.find<ICacheService>(),
           viewMapper: Get.find<TeacherResultsViewMapper>(),
         ),
         permanent: true,

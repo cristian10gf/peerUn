@@ -14,9 +14,9 @@ class TeacherResultsController extends GetxController {
   final ICacheService _cache;
 
   TeacherResultsController(
-    this._evalRepo, {
+    this._evalRepo,
+    this._cache, {
     TeacherResultsViewMapper viewMapper = const TeacherResultsViewMapper(),
-    this._cache
   }) : _viewMapper = viewMapper;
 
   final _drill = Rx<int?>(null);
@@ -99,7 +99,7 @@ class TeacherResultsController extends GetxController {
     if (eval != null) {
       await _cache.invalidate('teacher_results_v1_${eval.id}');
     }
-    drill.value = null;
+    _drill.value = null;
     groupResults.clear();
     resultsLoading.value = false;
     selectedEval.value = null;
