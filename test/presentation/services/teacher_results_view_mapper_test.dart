@@ -9,7 +9,7 @@ void main() {
     mapper = const TeacherResultsViewMapper();
   });
 
-  test('buildOverview ignores zero-score groups for overall average', () {
+  test('buildOverview matches Task 1 overview contract', () {
     final groups = <GroupResult>[
       const GroupResult(
         name: 'Equipo A',
@@ -32,24 +32,64 @@ void main() {
     ];
 
     final vm = mapper.buildOverview(groups);
+    final dynamic overview = vm;
 
-    expect(vm.overallAverage, 4.0);
-    expect(vm.overallAverageLabel, '4.0');
-    expect(vm.groupCountLabel, '3');
+    expect(vm.runtimeType.toString(), 'TeacherResultsOverviewVm');
+    expect(overview.overallAverageLabel, '4.0');
+    expect(overview.groupCountLabel, '3');
+    expect(overview.hasGroups, isTrue);
 
-    expect(vm.groups, hasLength(3));
-    expect(vm.groups[0].index, 0);
-    expect(vm.groups[0].average, 4.0);
-    expect(vm.groups[0].progress, closeTo(0.6666666667, 1e-9));
-    expect(vm.groups[0].averageLabel, '4.0');
+    // Minimal contract should not expose deprecated aggregate internals.
+    expect(() => overview.overallAverage, throwsA(isA<NoSuchMethodError>()));
 
-    expect(vm.groups[1].index, 1);
-    expect(vm.groups[1].average, 0.0);
-    expect(vm.groups[1].progress, 0.0);
-    expect(vm.groups[1].averageLabel, '0.0');
+    expect(overview.groups, hasLength(3));
+    final dynamic firstGroup = overview.groups[0];
+    expect(firstGroup.runtimeType.toString(), 'TeacherResultsGroupCardVm');
+    expect(firstGroup.index, 0);
+    expect(firstGroup.name, 'Equipo A');
+    expect(firstGroup.average, 4.0);
+    expect(firstGroup.progress, closeTo(0.6666666667, 1e-9));
+    expect(firstGroup.averageLabel, '4.0');
+
+    final dynamic secondGroup = overview.groups[1];
+    expect(secondGroup.index, 1);
+    expect(secondGroup.average, 0.0);
+    expect(secondGroup.progress, 0.0);
+    expect(secondGroup.averageLabel, '0.0');
   });
 
-  test('buildDetail maps criteria and students with progress values', () {
+  test('buildOverview uses dash label when all averages are non-positive', () {
+    final groups = <GroupResult>[
+      const GroupResult(
+        name: 'Equipo B',
+        average: 0.0,
+        criteria: <double>[0.0, 0.0, 0.0, 0.0],
+        students: <StudentResult>[],
+      ),
+      const GroupResult(
+        name: 'Equipo C',
+        average: -1.0,
+        criteria: <double>[0.0, 0.0, 0.0, 0.0],
+        students: <StudentResult>[],
+      ),
+    ];
+
+    final dynamic overview = mapper.buildOverview(groups);
+
+    expect(overview.overallAverageLabel, '-');
+    expect(overview.groupCountLabel, '2');
+    expect(overview.hasGroups, isTrue);
+  });
+
+  test('buildOverview sets hasGroups false for empty input', () {
+    final dynamic overview = mapper.buildOverview(const <GroupResult>[]);
+
+    expect(overview.groupCountLabel, '0');
+    expect(overview.overallAverageLabel, '-');
+    expect(overview.hasGroups, isFalse);
+  });
+
+  test('buildDetail matches Task 1 detail contract', () {
     const group = GroupResult(
       name: 'Equipo Delta',
       average: 3.5,
@@ -61,46 +101,85 @@ void main() {
     );
 
     final vm = mapper.buildDetail(group, groupIndex: 7);
+    final dynamic detail = vm;
 
-    expect(vm.groupName, 'Equipo Delta');
-    expect(vm.groupIndex, 7);
+    expect(vm.runtimeType.toString(), 'TeacherResultsDetailVm');
+    expect(detail.groupName, 'Equipo Delta');
 
-    expect(vm.criteria, hasLength(4));
-    expect(vm.criteria[0].id, 'punct');
-    expect(vm.criteria[0].label, 'PUNTU');
-    expect(vm.criteria[0].value, 5.0);
-    expect(vm.criteria[0].progress, 1.0);
-    expect(vm.criteria[0].scoreLabel, '5.0');
+    // Minimal contract should not expose deprecated detail aggregate internals.
+    expect(() => detail.groupIndex, throwsA(isA<NoSuchMethodError>()));
+    expect(() => detail.average, throwsA(isA<NoSuchMethodError>()));
+    expect(() => detail.progress, throwsA(isA<NoSuchMethodError>()));
+    expect(() => detail.averageLabel, throwsA(isA<NoSuchMethodError>()));
 
-    expect(vm.criteria[1].id, 'contrib');
-    expect(vm.criteria[1].label, 'CONTRIB');
-    expect(vm.criteria[1].value, 3.5);
-    expect(vm.criteria[1].progress, 0.5);
-    expect(vm.criteria[1].scoreLabel, '3.5');
+    expect(detail.criteria, hasLength(4));
+    expect(
+      detail.criteria.map((dynamic criterion) => criterion.id).toList(),
+      const <String>['punct', 'contrib', 'commit', 'attitude'],
+    );
+    expect(
+      detail.criteria.map((dynamic criterion) => criterion.label).toList(),
+      const <String>['PUNTU', 'CONTRIB', 'COMPRO', 'ACTITU'],
+    );
 
-    expect(vm.criteria[2].id, 'commit');
-    expect(vm.criteria[2].label, 'COMPRO');
-    expect(vm.criteria[2].value, 0.0);
-    expect(vm.criteria[2].progress, 0.0);
-    expect(vm.criteria[2].scoreLabel, '-');
+    final dynamic criterion0 = detail.criteria[0];
+    expect(criterion0.runtimeType.toString(), 'TeacherResultsCriterionVm');
+    expect(criterion0.score, 5.0);
+    expect(criterion0.progress, 1.0);
+    expect(criterion0.scoreLabel, '5.0');
+    expect(() => criterion0.value, throwsA(isA<NoSuchMethodError>()));
 
-    expect(vm.criteria[3].id, 'attitude');
-    expect(vm.criteria[3].label, 'ACTITU');
-    expect(vm.criteria[3].value, 0.0);
-    expect(vm.criteria[3].progress, 0.0);
-    expect(vm.criteria[3].scoreLabel, '-');
+    final dynamic criterion1 = detail.criteria[1];
+    expect(criterion1.id, 'contrib');
+    expect(criterion1.label, 'CONTRIB');
+    expect(criterion1.score, 3.5);
+    expect(criterion1.progress, 0.5);
+    expect(criterion1.scoreLabel, '3.5');
 
-    expect(vm.students, hasLength(2));
-    expect(vm.students[0].initial, 'A');
-    expect(vm.students[0].name, 'Ana');
-    expect(vm.students[0].score, 4.5);
-    expect(vm.students[0].progress, closeTo(0.8333333333, 1e-9));
-    expect(vm.students[0].scoreLabel, '4.5');
+    final dynamic criterion2 = detail.criteria[2];
+    expect(criterion2.id, 'commit');
+    expect(criterion2.label, 'COMPRO');
+    expect(criterion2.score, 0.0);
+    expect(criterion2.progress, 0.0);
+    expect(criterion2.scoreLabel, '0.0');
 
-    expect(vm.students[1].initial, 'B');
-    expect(vm.students[1].name, 'Beto');
-    expect(vm.students[1].score, 0.0);
-    expect(vm.students[1].progress, 0.0);
-    expect(vm.students[1].scoreLabel, '-');
+    final dynamic criterion3 = detail.criteria[3];
+    expect(criterion3.id, 'attitude');
+    expect(criterion3.label, 'ACTITU');
+    expect(criterion3.score, 0.0);
+    expect(criterion3.progress, 0.0);
+    expect(criterion3.scoreLabel, '0.0');
+
+    expect(detail.students, hasLength(2));
+
+    final dynamic student0 = detail.students[0];
+    expect(student0.runtimeType.toString(), 'TeacherResultsStudentVm');
+    expect(student0.initial, 'A');
+    expect(student0.name, 'Ana');
+    expect(student0.score, 4.5);
+    expect(student0.scoreLabel, '4.5');
+    expect(() => student0.progress, throwsA(isA<NoSuchMethodError>()));
+
+    final dynamic student1 = detail.students[1];
+    expect(student1.initial, 'B');
+    expect(student1.name, 'Beto');
+    expect(student1.score, 0.0);
+    expect(student1.scoreLabel, '0.0');
+  });
+
+  test('scoreLabel follows Task 1 zero and precision rules', () {
+    expect(mapper.scoreLabel(0.0, dashWhenZero: true), '-');
+    expect(mapper.scoreLabel(-5.0, dashWhenZero: true), '-');
+    expect(mapper.scoreLabel(0.0), '0.0');
+    expect(mapper.scoreLabel(-2.0), '0.0');
+    expect(mapper.scoreLabel(3.14159), '3.1');
+  });
+
+  test('toProgress follows the fixed formula and clamp range', () {
+    expect(mapper.toProgress(1.0), 0.0);
+    expect(mapper.toProgress(2.0), 0.0);
+    expect(mapper.toProgress(3.5), 0.5);
+    expect(mapper.toProgress(5.0), 1.0);
+    expect(mapper.toProgress(8.0), 1.0);
   });
 }

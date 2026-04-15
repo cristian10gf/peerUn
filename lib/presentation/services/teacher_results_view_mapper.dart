@@ -18,12 +18,12 @@ class TeacherResultsViewMapper {
 
   const TeacherResultsViewMapper();
 
-  TeacherResultsOverviewViewModel buildOverview(List<GroupResult> groups) {
+  TeacherResultsOverviewVm buildOverview(List<GroupResult> groups) {
     final mappedGroups = groups
         .asMap()
         .entries
         .map(
-          (entry) => TeacherResultsOverviewGroupViewModel(
+          (entry) => TeacherResultsGroupCardVm(
             index: entry.key,
             name: entry.value.name,
             average: entry.value.average,
@@ -40,49 +40,44 @@ class TeacherResultsViewMapper {
 
     final overallAverage = _average(nonZeroAverages);
 
-    return TeacherResultsOverviewViewModel(
-      overallAverage: overallAverage,
-      overallAverageLabel: scoreLabel(overallAverage),
+    return TeacherResultsOverviewVm(
+      overallAverageLabel: scoreLabel(overallAverage, dashWhenZero: true),
       groupCountLabel: groups.length.toString(),
       groups: mappedGroups,
+      hasGroups: groups.isNotEmpty,
     );
   }
 
-  TeacherResultsDetailViewModel buildDetail(
+  TeacherResultsDetailVm buildDetail(
     GroupResult group, {
     int groupIndex = 0,
   }) {
-    final criteria = List<TeacherResultsCriterionViewModel>.generate(4, (
+    final criteria = List<TeacherResultsCriterionVm>.generate(4, (
       index,
     ) {
       final value = index < group.criteria.length ? group.criteria[index] : 0.0;
-      return TeacherResultsCriterionViewModel(
+      return TeacherResultsCriterionVm(
         id: criteriaIds[index],
         label: criteriaLabels[index],
-        value: value,
+        score: value,
         progress: toProgress(value),
-        scoreLabel: scoreLabel(value, dashWhenZero: true),
+        scoreLabel: scoreLabel(value),
       );
     }, growable: false);
 
     final students = group.students
         .map(
-          (student) => TeacherResultsStudentViewModel(
+          (student) => TeacherResultsStudentVm(
             initial: student.initial,
             name: student.name,
             score: student.score,
-            progress: toProgress(student.score),
-            scoreLabel: scoreLabel(student.score, dashWhenZero: true),
+            scoreLabel: scoreLabel(student.score),
           ),
         )
         .toList(growable: false);
 
-    return TeacherResultsDetailViewModel(
-      groupIndex: groupIndex,
+    return TeacherResultsDetailVm(
       groupName: group.name,
-      average: group.average,
-      progress: toProgress(group.average),
-      averageLabel: scoreLabel(group.average),
       criteria: criteria,
       students: students,
     );
