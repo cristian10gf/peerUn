@@ -2,12 +2,15 @@ import 'package:get/get.dart';
 import 'package:example/domain/repositories/i_course_repository.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
 import 'package:example/domain/repositories/i_group_repository.dart';
+import 'package:example/domain/services/teacher_insights_domain_service.dart';
 import 'package:example/domain/use_case/teacher/teacher_create_evaluation_use_case.dart';
 import 'package:example/domain/use_case/teacher/teacher_import_csv_use_case.dart';
 import 'package:example/presentation/controllers/teacher/teacher_course_import_controller.dart';
 import 'package:example/presentation/controllers/teacher/teacher_evaluation_controller.dart';
+import 'package:example/presentation/controllers/teacher/teacher_insights_controller.dart';
 import 'package:example/presentation/controllers/teacher/teacher_results_controller.dart';
 import 'package:example/presentation/controllers/teacher/teacher_session_controller.dart';
+import 'package:example/presentation/services/teacher_insights_view_mapper.dart';
 import 'package:example/presentation/services/teacher_results_view_mapper.dart';
 
 class TeacherModuleBinding extends Bindings {
@@ -44,11 +47,37 @@ class TeacherModuleBinding extends Bindings {
       );
     }
 
+    if (!Get.isRegistered<TeacherInsightsDomainService>()) {
+      Get.put<TeacherInsightsDomainService>(
+        const TeacherInsightsDomainService(),
+        permanent: true,
+      );
+    }
+
+    if (!Get.isRegistered<TeacherInsightsViewMapper>()) {
+      Get.put<TeacherInsightsViewMapper>(
+        const TeacherInsightsViewMapper(),
+        permanent: true,
+      );
+    }
+
     if (!Get.isRegistered<TeacherResultsController>()) {
       Get.put<TeacherResultsController>(
         TeacherResultsController(
           Get.find<IEvaluationRepository>(),
           viewMapper: Get.find<TeacherResultsViewMapper>(),
+        ),
+        permanent: true,
+      );
+    }
+
+    if (!Get.isRegistered<TeacherInsightsController>()) {
+      Get.put<TeacherInsightsController>(
+        TeacherInsightsController(
+          Get.find<IEvaluationRepository>(),
+          Get.find<TeacherInsightsDomainService>(),
+          Get.find<TeacherInsightsViewMapper>(),
+          Get.find<TeacherSessionController>(),
         ),
         permanent: true,
       );
