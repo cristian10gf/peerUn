@@ -5,12 +5,13 @@ import 'package:example/domain/services/evaluation_domain_service.dart';
 import 'package:example/presentation/controllers/student_controller.dart';
 import 'package:flutter_test/flutter_test.dart' hide Evaluation;
 
+import '../../helpers/fake_cache_service.dart';
 import '../../helpers/repository_fakes.dart';
 
 void main() {
   test('selectPeer + savePeerScore marks peer as evaluated when all criteria scored',
       () {
-    final ctrl = StudentController(FakeAuthRepository(), FakeEvaluationRepository());
+    final ctrl = StudentController(FakeAuthRepository(), FakeEvaluationRepository(), FakeCacheService());
 
     final peer = Peer(id: '7', name: 'Luis', initials: 'LR');
     ctrl.peers.add(peer);
@@ -27,7 +28,7 @@ void main() {
 
   test('submitEvaluation refreshes status map for active evaluation', () async {
     final evalRepo = FakeEvaluationRepository()..completedAllPeers = true;
-    final ctrl = StudentController(FakeAuthRepository(), evalRepo);
+    final ctrl = StudentController(FakeAuthRepository(), evalRepo, FakeCacheService());
 
     ctrl.student.value = const Student(
       id: '77',
