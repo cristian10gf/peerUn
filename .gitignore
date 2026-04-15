@@ -98,3 +98,4 @@ skills-*
 .env.*
 !.env.example
 *.png
+/docs/superpowers/plans
