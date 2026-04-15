@@ -42,6 +42,7 @@ import 'package:example/presentation/controllers/login_controller.dart';
 import 'package:example/presentation/pages/teacher/t_dash_page.dart';
 import 'package:example/presentation/pages/teacher/t_import_page.dart';
 import 'package:example/presentation/pages/teacher/t_new_eval_page.dart';
+import 'package:example/presentation/pages/teacher/t_data_insights_page.dart';
 import 'package:example/presentation/pages/teacher/t_results_page.dart';
 import 'package:example/presentation/pages/teacher/t_profile_page.dart';
 import 'package:example/presentation/pages/teacher/t_course_manage_page.dart';
@@ -80,7 +81,10 @@ class _AppBindings extends Bindings {
       permanent: true,
     );
     Get.put<IGroupRepository>(GroupRepositoryImpl(db), permanent: true);
-    Get.put<IEvaluationRepository>(EvaluationRepositoryImpl(db), permanent: true);
+    Get.put<IEvaluationRepository>(
+      EvaluationRepositoryImpl(db),
+      permanent: true,
+    );
     Get.put<ICourseRepository>(CourseRepositoryImpl(db), permanent: true);
     Get.put(
       TeacherImportCsvUseCase(Get.find<IGroupRepository>()),
@@ -122,7 +126,9 @@ class PeerEvalApp extends StatelessWidget {
   const PeerEvalApp({super.key});
 
   String get _appName {
-    final fromEnv = dotenv.isInitialized ? dotenv.env['APP_NAME']?.trim() : null;
+    final fromEnv = dotenv.isInitialized
+        ? dotenv.env['APP_NAME']?.trim()
+        : null;
     if (fromEnv != null && fromEnv.isNotEmpty) return fromEnv;
     return 'Evalia';
   }
@@ -162,7 +168,7 @@ class PeerEvalApp extends StatelessWidget {
           name: '/student/peer-score',
           page: () => const SPeerScorePage(),
         ),
-        GetPage(name: '/student/peers',  page: () => const SPeersPage()),
+        GetPage(name: '/student/peers', page: () => const SPeersPage()),
         GetPage(name: '/student/results', page: () => const SMyResultsPage()),
         GetPage(name: '/student/profile', page: () => const SProfilePage()),
         // Teacher
@@ -184,6 +190,11 @@ class PeerEvalApp extends StatelessWidget {
         GetPage(
           name: '/teacher/results',
           page: () => const TResultsPage(),
+          binding: TeacherModuleBinding(),
+        ),
+        GetPage(
+          name: '/teacher/data-insights',
+          page: () => const TDataInsightsPage(),
           binding: TeacherModuleBinding(),
         ),
         GetPage(
@@ -222,8 +233,10 @@ class _SplashPageState extends State<_SplashPage> {
     final teacher = Get.find<TeacherSessionController>();
 
     try {
-      await Future.wait([student.checkSession(), teacher.checkSession()])
-          .timeout(const Duration(seconds: 8));
+      await Future.wait([
+        student.checkSession(),
+        teacher.checkSession(),
+      ]).timeout(const Duration(seconds: 8));
     } catch (_) {
       // timeout or error — fall through to login
     }

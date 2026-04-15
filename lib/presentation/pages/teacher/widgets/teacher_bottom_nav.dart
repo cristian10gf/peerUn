@@ -29,7 +29,7 @@ class TeacherBottomNav extends StatelessWidget {
       _NavItem(
         icon: Icons.bar_chart_rounded,
         label: 'DATOS',
-        route: '/teacher/results',
+        route: '/teacher/data-insights',
       ),
       _NavItem(
         icon: Icons.upload_file_rounded,
@@ -52,9 +52,16 @@ class TeacherBottomNav extends StatelessWidget {
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () {
-                if (!Get.currentRoute.endsWith(item.route)) {
-                  Get.offNamed(item.route);
+                if (entry.key == activeIndex) {
+                  return;
                 }
+
+                final currentRouteName = ModalRoute.of(context)?.settings.name;
+                if (currentRouteName == item.route) {
+                  return;
+                }
+
+                Get.offNamed(item.route);
               },
               child: Column(
                 mainAxisSize: MainAxisSize.min,

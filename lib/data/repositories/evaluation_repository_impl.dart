@@ -7,6 +7,7 @@ import 'package:example/domain/models/evaluation.dart';
 import 'package:example/domain/models/group_category.dart';
 import 'package:example/domain/models/peer_evaluation.dart';
 import 'package:example/domain/models/student_home.dart';
+import 'package:example/domain/models/teacher_insights.dart';
 import 'package:example/domain/models/teacher_data.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
 import 'package:example/domain/services/group_results_domain_service.dart';
@@ -20,6 +21,40 @@ class _StudentIdentity {
     required this.normalizedEmail,
     required this.numericId,
     required this.rawUserId,
+  });
+}
+
+class _TeacherInsightsMembership {
+  final String userIdRef;
+  final String groupId;
+  final String groupName;
+  final String categoryRef;
+  final int categoryDomainId;
+
+  const _TeacherInsightsMembership({
+    required this.userIdRef,
+    required this.groupId,
+    required this.groupName,
+    required this.categoryRef,
+    required this.categoryDomainId,
+  });
+}
+
+class _ScopedInsightsResult {
+  final String resultEvaluationId;
+  final String evaluatedUserId;
+  final TeacherInsightsEvaluationCoverage coverage;
+  final String categoryRef;
+  final int categoryDomainId;
+  final _TeacherInsightsMembership membership;
+
+  const _ScopedInsightsResult({
+    required this.resultEvaluationId,
+    required this.evaluatedUserId,
+    required this.coverage,
+    required this.categoryRef,
+    required this.categoryDomainId,
+    required this.membership,
   });
 }
 
@@ -63,12 +98,55 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
   /// Finds an evaluation row by its stable domain ID (stableNumericIdFromSeed
   /// of the evaluation_id UUID).  _findById is unreliable for evaluations
   /// because _rowId returns 0 for UUID-keyed rows.
-  Map<String, dynamic>? _findEvalById(
-      List<Map<String, dynamic>> rows, int id) {
+  Map<String, dynamic>? _findEvalById(List<Map<String, dynamic>> rows, int id) {
     for (final row in rows) {
       if (_evalDomainId(row) == id) return row;
     }
     return null;
+  }
+
+  int _domainIdFromValue(dynamic value, {int fallback = -1}) {
+    if (value == null) return fallback;
+
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+
+    final raw = value.toString().trim();
+    if (raw.isEmpty) return fallback;
+
+    final parsed = int.tryParse(raw);
+    if (parsed != null) return parsed;
+
+    return DatabaseService.stableNumericIdFromSeed(raw);
+  }
+
+  Set<int> _domainCandidatesForRow(Map<String, dynamic> row, String refField) {
+    final ids = <int>{};
+
+    final rowId = _rowId(row);
+    if (rowId > 0) ids.add(rowId);
+
+    final idField = _asInt(row['id'], fallback: -1);
+    if (idField > 0) ids.add(idField);
+
+    final ref = _asString(row[refField]);
+    if (ref.isNotEmpty) {
+      final parsed = int.tryParse(ref);
+      if (parsed != null && parsed > 0) {
+        ids.add(parsed);
+      }
+      ids.add(DatabaseService.stableNumericIdFromSeed(ref));
+    }
+
+    return ids;
+  }
+
+  String _displayNameFromUserRow(
+    Map<String, dynamic>? userRow,
+    String fallback,
+  ) {
+    if (userRow == null) return fallback;
+    return _memberDisplayName(userRow);
   }
 
   Future<_StudentIdentity> _resolveStudentIdentity(String email) async {
@@ -305,7 +383,9 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
           'max_score': 5,
         });
         final criteriumId = _asString(created['criterium_id']);
-        result[criterion.id] = criteriumId.isNotEmpty ? criteriumId : criterion.id;
+        result[criterion.id] = criteriumId.isNotEmpty
+            ? criteriumId
+            : criterion.id;
       } catch (_) {
         result[criterion.id] = criterion.id; // best-effort fallback
       }
@@ -644,11 +724,13 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
         final name = user != null
             ? _memberNameFromUsers(m, usersByRef)
             : _memberDisplayName(m);
-        inputMembers.add(GroupResultsInputMember(
-          groupId: groupDomainId,
-          memberId: memberDomainId,
-          name: name,
-        ));
+        inputMembers.add(
+          GroupResultsInputMember(
+            groupId: groupDomainId,
+            memberId: memberDomainId,
+            name: name,
+          ),
+        );
       }
     }
 
@@ -670,8 +752,9 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       final reUUID = _asString(re['resultEvaluation_id']);
       final evaluatedUUID = _asString(re['evaluated_id']);
       if (reUUID.isEmpty || evaluatedUUID.isEmpty) continue;
-      final evaluatedDomainId =
-          DatabaseService.stableNumericIdFromSeed(evaluatedUUID);
+      final evaluatedDomainId = DatabaseService.stableNumericIdFromSeed(
+        evaluatedUUID,
+      );
 
       final criteriumRows = await _db.robleRead(
         RobleTables.resultCriterium,
@@ -680,11 +763,13 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       for (final cr in criteriumRows) {
         final cUUID = _asString(cr['criterium_id']);
         final shortId = criteriumIdToShortId[cUUID] ?? cUUID;
-        inputResponses.add(GroupResultsInputResponse(
-          evaluatedMemberId: evaluatedDomainId,
-          criterionId: shortId,
-          score: _asInt(cr['score']),
-        ));
+        inputResponses.add(
+          GroupResultsInputResponse(
+            evaluatedMemberId: evaluatedDomainId,
+            criterionId: shortId,
+            score: _asInt(cr['score']),
+          ),
+        );
       }
     }
 
@@ -692,6 +777,317 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       groups: inputGroups,
       members: inputMembers,
       responses: inputResponses,
+    );
+  }
+
+  @override
+  Future<TeacherInsightsInput> getTeacherInsightsInput(int teacherId) async {
+    final evalRows = await _db.robleRead(RobleTables.evaluation);
+    final teacherEvalRows = evalRows
+        .where((row) => _isOwnedByTeacher(row, teacherId))
+        .toList(growable: false);
+
+    if (teacherEvalRows.isEmpty) {
+      return const TeacherInsightsInput(
+        scorePoints: <TeacherInsightsScorePoint>[],
+        evaluations: <TeacherInsightsEvaluationCoverage>[],
+      );
+    }
+
+    final categoryRows = await _db.robleRead(RobleTables.category);
+    final courseRows = await _db.robleRead(RobleTables.course);
+    final groupRows = await _db.robleRead(RobleTables.groups);
+    final memberRows = await _db.robleRead(RobleTables.userGroup);
+    final userRows = await _db.robleRead(RobleTables.users);
+    final resultEvalRows = await _db.robleRead(RobleTables.resultEvaluation);
+    final resultScoreRows = await _db.robleRead(RobleTables.resultCriterium);
+
+    final categoryByDomain = <int, Map<String, dynamic>>{};
+    for (final row in categoryRows) {
+      for (final id in _domainCandidatesForRow(row, 'category_id')) {
+        categoryByDomain.putIfAbsent(id, () => row);
+      }
+    }
+
+    final courseByDomain = <int, Map<String, dynamic>>{};
+    for (final row in courseRows) {
+      for (final id in _domainCandidatesForRow(row, 'course_id')) {
+        courseByDomain.putIfAbsent(id, () => row);
+      }
+    }
+
+    final userByRef = <String, Map<String, dynamic>>{};
+    final userByDomain = <int, Map<String, dynamic>>{};
+    for (final row in userRows) {
+      final userRef = _asString(row['user_id']);
+      if (userRef.isNotEmpty) {
+        userByRef[userRef] = row;
+      }
+
+      final seeds = <String>[
+        _asString(row['id']),
+        _asString(row['_id']),
+        userRef,
+        _asString(row['email']).toLowerCase(),
+      ];
+      for (final seed in seeds) {
+        if (seed.isEmpty) continue;
+        userByDomain.putIfAbsent(
+          DatabaseService.stableNumericIdFromSeed(seed),
+          () => row,
+        );
+      }
+    }
+
+    final coverageByEvalRef = <String, TeacherInsightsEvaluationCoverage>{};
+    final evalCategoryRefByEvalRef = <String, String>{};
+    final evalCategoryDomainByEvalRef = <String, int>{};
+
+    for (final eval in teacherEvalRows) {
+      final evalRef = _asString(eval['evaluation_id']);
+      if (evalRef.isEmpty) continue;
+
+      final categoryDomainId = _domainIdFromValue(eval['category_id']);
+      final category = categoryByDomain[categoryDomainId];
+      final categoryRef = _asString(category?['category_id']);
+      final categoryName = _asString(category?['name']);
+
+      final courseDomainId = _domainIdFromValue(category?['course_id']);
+      final course = courseByDomain[courseDomainId];
+      final courseRef = _asString(course?['course_id']);
+      final courseName = _asString(course?['name']);
+
+      coverageByEvalRef[evalRef] = TeacherInsightsEvaluationCoverage(
+        evaluationId: evalRef,
+        evaluationName: _evalName(eval, fallback: 'Evaluacion $evalRef'),
+        courseId: courseRef.isNotEmpty ? courseRef : courseDomainId.toString(),
+        courseName: courseName,
+        categoryId: categoryRef.isNotEmpty
+            ? categoryRef
+            : categoryDomainId.toString(),
+        categoryName: categoryName,
+      );
+
+      evalCategoryRefByEvalRef[evalRef] = categoryRef;
+      evalCategoryDomainByEvalRef[evalRef] = categoryDomainId;
+    }
+
+    if (coverageByEvalRef.isEmpty) {
+      return const TeacherInsightsInput(
+        scorePoints: <TeacherInsightsScorePoint>[],
+        evaluations: <TeacherInsightsEvaluationCoverage>[],
+      );
+    }
+
+    final scopedCategoryRefs = evalCategoryRefByEvalRef.values
+        .where((value) => value.isNotEmpty)
+        .toSet();
+    final scopedCategoryDomainIds = evalCategoryDomainByEvalRef.values
+        .where((value) => value > 0)
+        .toSet();
+
+    final scopedGroupsByRef = <String, Map<String, dynamic>>{};
+    final scopedGroupsByDomain = <int, Map<String, dynamic>>{};
+
+    for (final group in groupRows) {
+      final categoryRef = _asString(group['category_id']);
+      final categoryDomainId = _domainIdFromValue(group['category_id']);
+
+      final inScope =
+          (categoryRef.isNotEmpty &&
+              scopedCategoryRefs.contains(categoryRef)) ||
+          scopedCategoryDomainIds.contains(categoryDomainId);
+      if (!inScope) continue;
+
+      final groupRef = _asString(group['group_id']);
+      if (groupRef.isNotEmpty) {
+        scopedGroupsByRef[groupRef] = group;
+      }
+
+      final groupDomainId = _domainIdFromValue(group['group_id']);
+      if (groupDomainId > 0) {
+        scopedGroupsByDomain[groupDomainId] = group;
+      }
+    }
+
+    final membershipsByUserRef = <String, List<_TeacherInsightsMembership>>{};
+    for (final member in memberRows) {
+      final memberGroupRef = _asString(member['group_id']);
+      final memberGroupDomainId = _domainIdFromValue(member['group_id']);
+
+      final group =
+          (memberGroupRef.isNotEmpty
+              ? scopedGroupsByRef[memberGroupRef]
+              : null) ??
+          scopedGroupsByDomain[memberGroupDomainId];
+      if (group == null) continue;
+
+      var userRef = _asString(member['user_id']);
+      if (userRef.isEmpty) {
+        final userDomainId = _domainIdFromValue(member['user_id']);
+        final user = userByDomain[userDomainId];
+        userRef = _asString(user?['user_id']);
+      }
+      if (userRef.isEmpty) continue;
+
+      final resolvedGroupRef = _asString(group['group_id']);
+      final groupId = resolvedGroupRef.isNotEmpty
+          ? resolvedGroupRef
+          : _domainIdFromValue(group['group_id']).toString();
+
+      membershipsByUserRef
+          .putIfAbsent(userRef, () => <_TeacherInsightsMembership>[])
+          .add(
+            _TeacherInsightsMembership(
+              userIdRef: userRef,
+              groupId: groupId,
+              groupName: _asString(group['name']),
+              categoryRef: _asString(group['category_id']),
+              categoryDomainId: _domainIdFromValue(group['category_id']),
+            ),
+          );
+    }
+
+    final scoreRowsByResultId = <String, List<Map<String, dynamic>>>{};
+    for (final scoreRow in resultScoreRows) {
+      final resultId = _asString(scoreRow['result_id']);
+      if (resultId.isEmpty) continue;
+      scoreRowsByResultId
+          .putIfAbsent(resultId, () => <Map<String, dynamic>>[])
+          .add(scoreRow);
+    }
+
+    final scopedResults = <_ScopedInsightsResult>[];
+    for (final resultEval in resultEvalRows) {
+      final evalRef = _asString(resultEval['evaluation_id']);
+      final coverage = coverageByEvalRef[evalRef];
+      if (coverage == null) continue;
+
+      final resultId = _asString(resultEval['resultEvaluation_id']);
+      if (resultId.isEmpty) continue;
+
+      var evaluatedUserRef = _asString(resultEval['evaluated_id']);
+      if (evaluatedUserRef.isEmpty) {
+        final evaluatedDomainId = _domainIdFromValue(
+          resultEval['evaluated_id'],
+        );
+        final user = userByDomain[evaluatedDomainId];
+        evaluatedUserRef = _asString(user?['user_id']);
+      }
+      if (evaluatedUserRef.isEmpty) continue;
+
+      final memberships =
+          membershipsByUserRef[evaluatedUserRef] ??
+          const <_TeacherInsightsMembership>[];
+      if (memberships.isEmpty) continue;
+
+      final evalCategoryRef = evalCategoryRefByEvalRef[evalRef] ?? '';
+      final evalCategoryDomainId = evalCategoryDomainByEvalRef[evalRef] ?? -1;
+
+      _TeacherInsightsMembership? membership;
+      for (final item in memberships) {
+        if (evalCategoryRef.isNotEmpty) {
+          if (item.categoryRef == evalCategoryRef) {
+            membership = item;
+            break;
+          }
+          continue;
+        }
+
+        if (evalCategoryDomainId > 0 &&
+            item.categoryDomainId == evalCategoryDomainId) {
+          membership = item;
+          break;
+        }
+      }
+
+      if (membership == null && memberships.length == 1) {
+        membership = memberships.first;
+      }
+      if (membership == null) continue;
+
+      scopedResults.add(
+        _ScopedInsightsResult(
+          resultEvaluationId: resultId,
+          evaluatedUserId: evaluatedUserRef,
+          coverage: coverage,
+          categoryRef: evalCategoryRef,
+          categoryDomainId: evalCategoryDomainId,
+          membership: membership,
+        ),
+      );
+    }
+
+    final scorePoints = <TeacherInsightsScorePoint>[];
+    for (final scoped in scopedResults) {
+      var userRow = userByRef[scoped.evaluatedUserId];
+      if (userRow == null) {
+        final userDomainId = DatabaseService.stableNumericIdFromSeed(
+          scoped.evaluatedUserId,
+        );
+        userRow = userByDomain[userDomainId];
+      }
+
+      final studentName = _displayNameFromUserRow(
+        userRow,
+        'Estudiante ${scoped.evaluatedUserId}',
+      );
+
+      final rows =
+          scoreRowsByResultId[scoped.resultEvaluationId] ??
+          const <Map<String, dynamic>>[];
+      for (final row in rows) {
+        scorePoints.add(
+          TeacherInsightsScorePoint(
+            evaluationId: scoped.coverage.evaluationId,
+            courseId: scoped.coverage.courseId,
+            courseName: scoped.coverage.courseName,
+            categoryId: scoped.coverage.categoryId,
+            categoryName: scoped.coverage.categoryName,
+            groupId: scoped.membership.groupId,
+            groupName: scoped.membership.groupName,
+            studentId: scoped.evaluatedUserId,
+            studentName: studentName,
+            score: _asInt(row['score']),
+          ),
+        );
+      }
+    }
+
+    final evaluations = coverageByEvalRef.values.toList(growable: false)
+      ..sort((a, b) {
+        final byCourse = a.courseName.toLowerCase().compareTo(
+          b.courseName.toLowerCase(),
+        );
+        if (byCourse != 0) return byCourse;
+        final byCategory = a.categoryName.toLowerCase().compareTo(
+          b.categoryName.toLowerCase(),
+        );
+        if (byCategory != 0) return byCategory;
+        final byEval = a.evaluationName.toLowerCase().compareTo(
+          b.evaluationName.toLowerCase(),
+        );
+        if (byEval != 0) return byEval;
+        return a.evaluationId.compareTo(b.evaluationId);
+      });
+
+    scorePoints.sort((a, b) {
+      final byEval = a.evaluationId.compareTo(b.evaluationId);
+      if (byEval != 0) return byEval;
+      final byGroup = a.groupName.toLowerCase().compareTo(
+        b.groupName.toLowerCase(),
+      );
+      if (byGroup != 0) return byGroup;
+      final byStudent = a.studentName.toLowerCase().compareTo(
+        b.studentName.toLowerCase(),
+      );
+      if (byStudent != 0) return byStudent;
+      return a.score.compareTo(b.score);
+    });
+
+    return TeacherInsightsInput(
+      scorePoints: scorePoints,
+      evaluations: evaluations,
     );
   }
 
@@ -726,9 +1122,11 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     final myCategoryIds = myGroupRefs
         .map((ref) => groupByRef[ref])
         .where((g) => g != null)
-        .map((g) => DatabaseService.stableNumericIdFromSeed(
-              _asString(g!['category_id']),
-            ))
+        .map(
+          (g) => DatabaseService.stableNumericIdFromSeed(
+            _asString(g!['category_id']),
+          ),
+        )
         .toSet();
 
     // Key by domain integer (stableNumericIdFromSeed of the UUID ref) to match
@@ -745,8 +1143,9 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     for (final c in courses) {
       final ref = _asString(c['course_id']);
       if (ref.isNotEmpty) {
-        courseById[DatabaseService.stableNumericIdFromSeed(ref)] =
-            _asString(c['name']);
+        courseById[DatabaseService.stableNumericIdFromSeed(ref)] = _asString(
+          c['name'],
+        );
       }
     }
 
@@ -758,9 +1157,9 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
           final courseName = cat == null
               ? ''
               : (courseById[DatabaseService.stableNumericIdFromSeed(
-                    _asString(cat['course_id']),
-                  )] ??
-                  '');
+                      _asString(cat['course_id']),
+                    )] ??
+                    '');
 
           final createdAt = _evalCreatedAt(row, fallback: DateTime.now());
           final closesAt = _evalClosesAt(row, fallback: createdAt);
@@ -1048,10 +1447,12 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
         continue;
       }
       final evalDomainId = DatabaseService.stableNumericIdFromSeed(evalUUID);
-      final evaluatorDomainId =
-          DatabaseService.stableNumericIdFromSeed(evaluatorUUID);
-      final evaluatedDomainId =
-          DatabaseService.stableNumericIdFromSeed(evaluatedUUID);
+      final evaluatorDomainId = DatabaseService.stableNumericIdFromSeed(
+        evaluatorUUID,
+      );
+      final evaluatedDomainId = DatabaseService.stableNumericIdFromSeed(
+        evaluatedUUID,
+      );
       final key = '$evalDomainId:$evaluatorDomainId';
       responseRowsByEvalAndEvaluator
           .putIfAbsent(key, () => <int>{})
@@ -1135,8 +1536,9 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
         // categoryRef → domain integer: evaluations store category_id using
         // stableNumericIdFromSeed(categoryRef), so use the same conversion.
-        final categoryDomainId =
-            DatabaseService.stableNumericIdFromSeed(categoryRef);
+        final categoryDomainId = DatabaseService.stableNumericIdFromSeed(
+          categoryRef,
+        );
         final activeEval = activeEvalByCategory[categoryDomainId];
         final activeEvalId = activeEval == null ? 0 : _evalDomainId(activeEval);
         final activeEvalName = activeEval == null ? '' : _evalName(activeEval);
@@ -1144,10 +1546,14 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
         // Peer IDs for completion tracking — use the same domain ID as
         // getPeersForStudent so the values match evaluated_member_id in DB.
         final peerMemberIds = groupMembers
-            .where((m) => !_isMembershipForStudent(
-                  m, normalized, studentUserId,
-                  studentRawUserId: identity.rawUserId,
-                ))
+            .where(
+              (m) => !_isMembershipForStudent(
+                m,
+                normalized,
+                studentUserId,
+                studentRawUserId: identity.rawUserId,
+              ),
+            )
             .map(_memberDomainId)
             .toSet();
 
@@ -1165,8 +1571,9 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
         final categoryDomainIdForModel =
             DatabaseService.stableNumericIdFromSeed(categoryRef);
-        final groupDomainId =
-            DatabaseService.stableNumericIdFromSeed(_asString(group['group_id']));
+        final groupDomainId = DatabaseService.stableNumericIdFromSeed(
+          _asString(group['group_id']),
+        );
 
         homeCategories.add(
           StudentHomeCategory(
@@ -1240,8 +1647,12 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     var groupUUID = '';
     for (final g in _groupsForCategoryDomain(allGroups, categoryDomainId)) {
       final gMembers = _membersForGroup(allMembers, g);
-      final hasEv = gMembers.any((m) => _asString(m['user_id']) == evaluatorUUID);
-      final hasEd = gMembers.any((m) => _asString(m['user_id']) == evaluatedUUID);
+      final hasEv = gMembers.any(
+        (m) => _asString(m['user_id']) == evaluatorUUID,
+      );
+      final hasEd = gMembers.any(
+        (m) => _asString(m['user_id']) == evaluatedUUID,
+      );
       if (hasEv && hasEd) {
         groupUUID = _asString(g['group_id']);
         break;
@@ -1293,11 +1704,9 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       final score = entry.value;
       final existingKey = existingBycriteriumId[criteriumId];
       if (existingKey != null) {
-        await _db.robleUpdate(
-          RobleTables.resultCriterium,
-          existingKey,
-          {'score': score},
-        );
+        await _db.robleUpdate(RobleTables.resultCriterium, existingKey, {
+          'score': score,
+        });
       } else {
         await _db.robleCreate(RobleTables.resultCriterium, {
           'result_id': resultEvalUUID,
@@ -1437,8 +1846,9 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       filters: {'evaluation_id': evaluationUUID, 'evaluator_id': evaluatorUUID},
     );
 
-    final evaluatedUUIDs =
-        responses.map((r) => _asString(r['evaluated_id'])).toSet();
+    final evaluatedUUIDs = responses
+        .map((r) => _asString(r['evaluated_id']))
+        .toSet();
     return peerUUIDs.every(evaluatedUUIDs.contains);
   }
 
@@ -1472,8 +1882,9 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       final reUUID = _asString(re['resultEvaluation_id']);
       final evaluatedUUID = _asString(re['evaluated_id']);
       if (reUUID.isEmpty || evaluatedUUID.isEmpty) continue;
-      final evaluatedDomainId =
-          DatabaseService.stableNumericIdFromSeed(evaluatedUUID);
+      final evaluatedDomainId = DatabaseService.stableNumericIdFromSeed(
+        evaluatedUUID,
+      );
 
       final criteriumRows = await _db.robleRead(
         RobleTables.resultCriterium,

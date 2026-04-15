@@ -11,6 +11,7 @@ import 'package:example/domain/models/student.dart';
 import 'package:example/domain/models/student_home.dart';
 import 'package:example/domain/models/teacher.dart';
 import 'package:example/domain/models/teacher_data.dart';
+import 'package:example/domain/models/teacher_insights.dart';
 import 'package:example/domain/repositories/i_auth_repository.dart';
 import 'package:example/domain/repositories/i_connectivity_repository.dart';
 import 'package:example/domain/repositories/i_course_repository.dart';
@@ -26,7 +27,10 @@ class FakeUnifiedAuthRepository implements IUnifiedAuthRepository {
   String? lastPassword;
 
   @override
-  Future<AuthLoginResult?> loginAndResolve(String email, String password) async {
+  Future<AuthLoginResult?> loginAndResolve(
+    String email,
+    String password,
+  ) async {
     lastEmail = email;
     lastPassword = password;
     if (nextError != null) {
@@ -122,6 +126,10 @@ class FakeEvaluationRepository implements IEvaluationRepository {
   List<CriterionResult> results = <CriterionResult>[];
   List<StudentHomeCourse> homeCourses = <StudentHomeCourse>[];
   List<GroupResult> groupResults = <GroupResult>[];
+  TeacherInsightsInput teacherInsightsInput = const TeacherInsightsInput(
+    scorePoints: <TeacherInsightsScorePoint>[],
+    evaluations: <TeacherInsightsEvaluationCoverage>[],
+  );
   String? groupName;
 
   Object? nextError;
@@ -180,6 +188,14 @@ class FakeEvaluationRepository implements IEvaluationRepository {
 
   @override
   Future<List<GroupResult>> getGroupResults(int evalId) async => groupResults;
+
+  @override
+  Future<TeacherInsightsInput> getTeacherInsightsInput(int teacherId) async {
+    if (nextError != null) {
+      throw nextError!;
+    }
+    return teacherInsightsInput;
+  }
 
   @override
   Future<Evaluation?> getLatestForStudent(String email) async =>
@@ -245,8 +261,7 @@ class FakeEvaluationRepository implements IEvaluationRepository {
   Future<Map<int, Map<String, int>>> getSavedPeerScores({
     required int evalId,
     required String email,
-  }) async =>
-      const <int, Map<String, int>>{};
+  }) async => const <int, Map<String, int>>{};
 
   @override
   Future<void> testSaveSubmit({
