@@ -6,6 +6,19 @@ import 'package:flutter_test/flutter_test.dart' hide Evaluation;
 import '../../helpers/repository_fakes.dart';
 
 void main() {
+  Evaluation buildEval() {
+    return Evaluation(
+      id: 1,
+      name: 'Eval',
+      categoryId: 1,
+      categoryName: 'Cat',
+      hours: 24,
+      visibility: 'private',
+      createdAt: DateTime(2026, 4, 1),
+      closesAt: DateTime(2099, 1, 1),
+    );
+  }
+
   test('overallAverage ignores zero-score groups', () async {
     final repo = FakeEvaluationRepository()
       ..groupResults = const <GroupResult>[
@@ -24,19 +37,125 @@ void main() {
       ];
 
     final ctrl = TeacherResultsController(repo);
-    await ctrl.loadGroupResults(
-      Evaluation(
-        id: 1,
-        name: 'Eval',
-        categoryId: 1,
-        categoryName: 'Cat',
-        hours: 24,
-        visibility: 'private',
-        createdAt: DateTime(2026, 4, 1),
-        closesAt: DateTime(2099, 1, 1),
-      ),
-    );
+    await ctrl.loadGroupResults(buildEval());
 
     expect(ctrl.overallAverage, 4.2);
   });
+
+  test('overviewVm exposes formatted values after loadGroupResults', () async {
+    final repo = FakeEvaluationRepository()
+      ..groupResults = const <GroupResult>[
+        GroupResult(
+          name: 'Equipo A',
+          average: 4.0,
+          criteria: <double>[4.0, 4.0, 4.0, 4.0],
+          students: <StudentResult>[],
+        ),
+        GroupResult(
+          name: 'Equipo B',
+          average: 0.0,
+          criteria: <double>[0.0, 0.0, 0.0, 0.0],
+          students: <StudentResult>[],
+        ),
+      ];
+
+    final ctrl = TeacherResultsController(repo);
+    await ctrl.loadGroupResults(buildEval());
+
+    expect(ctrl.overviewVm.overallAverageLabel, '4.0');
+    expect(ctrl.overviewVm.groupCountLabel, '2');
+    expect(ctrl.overviewVm.hasGroups, isTrue);
+    expect(ctrl.overviewVm.groups, hasLength(2));
+    expect(ctrl.overviewVm.groups.first.name, 'Equipo A');
+    expect(ctrl.overviewVm.groups.first.averageLabel, '4.0');
+    expect(ctrl.overviewVm.groups.first.progress, closeTo(0.6666666667, 1e-9));
+  });
+
+  test('openGroupDetail and closeGroupDetail manage drill state', () async {
+    final repo = FakeEvaluationRepository()
+      ..groupResults = const <GroupResult>[
+        GroupResult(
+          name: 'Equipo A',
+          average: 4.0,
+          criteria: <double>[4.0, 4.0, 4.0, 4.0],
+          students: <StudentResult>[],
+        ),
+        GroupResult(
+          name: 'Equipo B',
+          average: 3.0,
+          criteria: <double>[3.0, 3.0, 3.0, 3.0],
+          students: <StudentResult>[],
+        ),
+      ];
+
+    final ctrl = TeacherResultsController(repo);
+    await ctrl.loadGroupResults(buildEval());
+
+    expect(ctrl.drill.value, isNull);
+    expect(ctrl.selectedDetailVm, isNull);
+
+    ctrl.openGroupDetail(1);
+    expect(ctrl.drill.value, 1);
+    expect(ctrl.selectedDetailVm, isNotNull);
+    expect(ctrl.selectedDetailVm!.groupName, 'Equipo B');
+
+    ctrl.openGroupDetail(999);
+    expect(ctrl.drill.value, 1);
+
+    ctrl.openGroupDetail(-1);
+    expect(ctrl.drill.value, 1);
+
+    ctrl.closeGroupDetail();
+    expect(ctrl.drill.value, isNull);
+    expect(ctrl.selectedDetailVm, isNull);
+  });
+
+  test('loadGroupResults sets user-friendly error and clears data on failure', () async {
+    final repo = _ThrowingEvaluationRepository(_BlankError())
+      ..groupResults = const <GroupResult>[
+        GroupResult(
+          name: 'Should be cleared',
+          average: 5.0,
+          criteria: <double>[5.0, 5.0, 5.0, 5.0],
+          students: <StudentResult>[],
+        ),
+      ];
+
+    final ctrl = TeacherResultsController(repo)
+      ..groupResults.addAll(const <GroupResult>[
+        GroupResult(
+          name: 'Stale data',
+          average: 4.0,
+          criteria: <double>[4.0, 4.0, 4.0, 4.0],
+          students: <StudentResult>[],
+        ),
+      ])
+      ..drill.value = 0
+      ..resultsError.value = 'Old error';
+
+    await ctrl.loadGroupResults(buildEval());
+
+    expect(ctrl.selectedEval.value, isNotNull);
+    expect(ctrl.selectedEval.value!.id, 1);
+    expect(ctrl.resultsLoading.value, isFalse);
+    expect(ctrl.drill.value, isNull);
+    expect(ctrl.groupResults, isEmpty);
+    expect(ctrl.resultsError.value, 'Error al cargar resultados');
+  });
+}
+
+class _ThrowingEvaluationRepository extends FakeEvaluationRepository {
+  _ThrowingEvaluationRepository(this.error);
+
+  final Object error;
+
+  @override
+  Future<List<GroupResult>> getGroupResults(int evalId) async {
+    throw error;
+  }
+}
+
+class _BlankError {
+  @override
+  String toString() => '';
 }
