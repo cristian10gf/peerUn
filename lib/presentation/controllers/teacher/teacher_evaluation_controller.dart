@@ -38,6 +38,8 @@ class TeacherEvaluationController extends GetxController {
 
   late final Worker _sessionWorker;
 
+  int _lastTeacherId = 0;
+
   int get _teacherId => int.tryParse(_sessionController.teacher.value?.id ?? '') ?? 0;
 
   @override
@@ -83,6 +85,8 @@ class TeacherEvaluationController extends GetxController {
           // cache write failure is non-fatal
         }
       }
+      final tid = _teacherId;
+      if (tid != 0) _lastTeacherId = tid;
     } catch (e) {
       evaluationsLoadError.value =
           parseApiError(e, fallback: 'Error al cargar evaluaciones');
@@ -211,7 +215,11 @@ class TeacherEvaluationController extends GetxController {
     await ensureHydrated(forceRefresh: true);
   }
 
-  void resetState() {
+  Future<void> resetState() async {
+    final tid = _lastTeacherId;
+    if (tid != 0) {
+      await _cache.invalidate('teacher_evals_v1_$tid');
+    }
     evaluations.clear();
     activeEval.value = null;
     evaluationsLoadError.value = '';
@@ -224,5 +232,6 @@ class TeacherEvaluationController extends GetxController {
     selectedCategoryName.value = '';
     evalError.value = '';
     _hasHydrated.value = false;
+    _lastTeacherId = 0;
   }
 }

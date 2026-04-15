@@ -45,6 +45,8 @@ class TeacherCourseImportController extends GetxController {
 
   late final Worker _sessionWorker;
 
+  int _lastTeacherId = 0;
+
   int get totalGroups => categories.fold(0, (s, c) => s + c.groupCount);
 
   int get _teacherId => int.tryParse(_sessionController.teacher.value?.id ?? '') ?? 0;
@@ -92,6 +94,8 @@ class TeacherCourseImportController extends GetxController {
           // cache write failure is non-fatal
         }
       }
+      final tid = _teacherId;
+      if (tid != 0) _lastTeacherId = tid;
     } catch (e) {
       courseLoadError.value = parseApiError(e, fallback: 'Error al cargar cursos');
     } finally {
@@ -178,6 +182,8 @@ class TeacherCourseImportController extends GetxController {
           // cache write failure is non-fatal
         }
       }
+      final tid = _teacherId;
+      if (tid != 0) _lastTeacherId = tid;
     } catch (e) {
       categoriesLoadError.value = parseApiError(e, fallback: 'Error al cargar categorías');
     }
@@ -235,9 +241,10 @@ class TeacherCourseImportController extends GetxController {
   }
 
   Future<void> resetState() async {
-    if (_teacherId != 0) {
-      await _cache.invalidate('teacher_courses_v1_$_teacherId');
-      await _cache.invalidate('teacher_categories_v1_$_teacherId');
+    final tid = _lastTeacherId;
+    if (tid != 0) {
+      await _cache.invalidate('teacher_courses_v1_$tid');
+      await _cache.invalidate('teacher_categories_v1_$tid');
     }
     courses.clear();
     courseLoading.value = false;
@@ -256,5 +263,6 @@ class TeacherCourseImportController extends GetxController {
     importProgress.value = '';
     lastImportSummary.value = null;
     _hasHydrated.value = false;
+    _lastTeacherId = 0;
   }
 }

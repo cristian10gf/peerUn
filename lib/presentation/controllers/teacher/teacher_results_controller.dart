@@ -64,7 +64,11 @@ class TeacherResultsController extends GetxController {
     return nonZero.map((g) => g.average).reduce((a, b) => a + b) / nonZero.length;
   }
 
-  void resetState() {
+  Future<void> resetState() async {
+    final eval = selectedEval.value;
+    if (eval != null) {
+      await _cache.invalidate('teacher_results_v1_${eval.id}');
+    }
     drill.value = null;
     groupResults.clear();
     resultsLoading.value = false;
