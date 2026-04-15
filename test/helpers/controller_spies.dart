@@ -3,9 +3,11 @@ import 'package:example/domain/models/teacher.dart';
 import 'package:example/domain/repositories/i_auth_repository.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
 import 'package:example/domain/repositories/i_teacher_auth_repository.dart';
+import 'package:example/domain/services/i_cache_service.dart';
 import 'package:example/presentation/controllers/student_controller.dart';
 import 'package:example/presentation/controllers/teacher/teacher_session_controller.dart';
 
+import 'fake_cache_service.dart';
 import 'repository_fakes.dart';
 
 class SpyStudentController extends StudentController {
@@ -16,9 +18,11 @@ class SpyStudentController extends StudentController {
   SpyStudentController({
     IAuthRepository? authRepository,
     IEvaluationRepository? evaluationRepository,
+    ICacheService? cacheService,
   }) : super(
           authRepository ?? FakeAuthRepository(),
           evaluationRepository ?? FakeEvaluationRepository(),
+          cacheService ?? FakeCacheService(),
         );
 
   @override

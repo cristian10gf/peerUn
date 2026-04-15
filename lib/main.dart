@@ -101,6 +101,7 @@ class _AppBindings extends Bindings {
       StudentController(
         Get.find<IAuthRepository>(),
         Get.find<IEvaluationRepository>(),
+        Get.find<ICacheService>(),
       ),
       permanent: true,
     );

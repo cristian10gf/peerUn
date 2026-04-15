@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:example/data/utils/error_parser.dart';
@@ -8,6 +9,7 @@ import 'package:example/domain/models/student_home.dart';
 import 'package:example/domain/repositories/i_auth_repository.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
 import 'package:example/domain/services/evaluation_domain_service.dart';
+import 'package:example/domain/services/i_cache_service.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 
 typedef StudentStatusBadge = ({
@@ -17,13 +19,15 @@ typedef StudentStatusBadge = ({
 });
 
 class StudentController extends GetxController {
-  final IAuthRepository        _authRepo;
-  final IEvaluationRepository  _evalRepo;
-  final EvaluationDomainService _evaluationDomainService;
+  final IAuthRepository         _authRepo;
+  final IEvaluationRepository   _evalRepo;
+  final ICacheService            _cache;
+  final EvaluationDomainService  _evaluationDomainService;
 
   StudentController(
     this._authRepo,
-    this._evalRepo, {
+    this._evalRepo,
+    this._cache, {
     EvaluationDomainService? evaluationDomainService,
   }) : _evaluationDomainService =
            evaluationDomainService ?? const EvaluationDomainService();
@@ -91,10 +95,25 @@ class StudentController extends GetxController {
   }
 
   Future<void> logout() async {
+    final s = student.value;
+    if (s != null) {
+      await _cache.invalidate('student_home_v1_${s.email}');
+      await _cache.invalidate('student_evals_v1_${s.email}');
+    }
     await _authRepo.logout();
     student.value = null;
     _resetEvalState();
     Get.offAllNamed('/login');
+  }
+
+  /// Clears cached home + eval data and reloads from API.
+  @override
+  Future<void> refresh() async {
+    final s = student.value;
+    if (s == null) return;
+    await _cache.invalidate('student_home_v1_${s.email}');
+    await _cache.invalidate('student_evals_v1_${s.email}');
+    await loadEvalData();
   }
 
   // ── Eval data from DB ─────────────────────────────────────────────────────
@@ -243,7 +262,20 @@ class StudentController extends GetxController {
 
     isLoadingHome.value = true;
     try {
-      final courses = await _evalRepo.getStudentHomeCourses(s.email);
+      final homeKey = 'student_home_v1_${s.email}';
+      final cachedHome = await _cache.get(homeKey);
+      final List<StudentHomeCourse> courses;
+      if (cachedHome != null) {
+        courses = (jsonDecode(cachedHome) as List)
+            .map((e) => StudentHomeCourse.fromJson(e as Map<String, dynamic>))
+            .toList();
+      } else {
+        courses = await _evalRepo.getStudentHomeCourses(s.email);
+        await _cache.set(
+          homeKey,
+          jsonEncode(courses.map((c) => c.toJson()).toList()),
+        );
+      }
       homeCourses.assignAll(courses);
       expandedCourseIds
         ..clear()
@@ -259,7 +291,19 @@ class StudentController extends GetxController {
     // Load all evaluations this student is part of
     List<Evaluation> evalList = [];
     try {
-      evalList = await _evalRepo.getEvaluationsForStudent(s.email);
+      final evalsKey = 'student_evals_v1_${s.email}';
+      final cachedEvals = await _cache.get(evalsKey);
+      if (cachedEvals != null) {
+        evalList = (jsonDecode(cachedEvals) as List)
+            .map((e) => Evaluation.fromJson(e as Map<String, dynamic>))
+            .toList();
+      } else {
+        evalList = await _evalRepo.getEvaluationsForStudent(s.email);
+        await _cache.set(
+          evalsKey,
+          jsonEncode(evalList.map((e) => e.toJson()).toList()),
+        );
+      }
       evaluations.assignAll(evalList);
     } catch (e) {
       evalLoadError.value = parseApiError(e, fallback: 'Error al cargar evaluaciones');
