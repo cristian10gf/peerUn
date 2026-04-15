@@ -10,6 +10,8 @@ import 'package:example/presentation/controllers/teacher/teacher_evaluation_cont
 import 'package:example/presentation/controllers/teacher/teacher_results_controller.dart';
 import 'package:example/presentation/controllers/teacher/teacher_session_controller.dart';
 import 'package:example/presentation/models/teacher_results_view_model.dart';
+import 'package:example/presentation/controllers/teacher/teacher_insights_controller.dart';
+import 'package:example/presentation/services/teacher_insights_view_mapper.dart';
 import 'package:example/presentation/services/teacher_results_view_mapper.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
@@ -93,6 +95,26 @@ void main() {
 
     expect(identical(Get.find<TeacherCourseImportController>(), existingImportController), isTrue);
     expect(identical(Get.find<TeacherEvaluationController>(), existingEvaluationController), isTrue);
+  });
+
+  test('dependencies registers TeacherInsightsController', () {
+    _registerModuleDependencies();
+
+    expect(Get.isRegistered<TeacherInsightsController>(), isFalse);
+
+    TeacherModuleBinding().dependencies();
+
+    expect(Get.isRegistered<TeacherInsightsController>(), isTrue);
+  });
+
+  test('dependencies registers TeacherInsightsViewMapper', () {
+    _registerModuleDependencies();
+
+    expect(Get.isRegistered<TeacherInsightsViewMapper>(), isFalse);
+
+    TeacherModuleBinding().dependencies();
+
+    expect(Get.isRegistered<TeacherInsightsViewMapper>(), isTrue);
   });
 }
 
