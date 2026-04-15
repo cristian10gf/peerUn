@@ -4,6 +4,7 @@ import 'package:example/presentation/controllers/teacher/teacher_course_import_c
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../helpers/controller_spies.dart';
+import '../../helpers/fake_cache_service.dart';
 import '../../helpers/repository_fakes.dart';
 
 void main() {
@@ -25,6 +26,7 @@ void main() {
       groupRepo,
       courseRepo,
       TeacherImportCsvUseCase(groupRepo),
+      FakeCacheService(),
     );
 
     final ok = await ctrl.createCourse('Arquitectura', 'ARQ-01');

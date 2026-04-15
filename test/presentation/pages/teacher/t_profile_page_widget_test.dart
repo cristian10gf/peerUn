@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 
 import '../../../helpers/controller_spies.dart';
+import '../../../helpers/fake_cache_service.dart';
 import '../../../helpers/getx_test_harness.dart';
 import '../../../helpers/repository_fakes.dart';
 
@@ -22,7 +23,7 @@ void _register(SpyTeacherSessionController session) {
   Get.put<TeacherSessionController>(session);
   Get.put<TeacherCourseImportController>(
     TeacherCourseImportController(
-      session, gr, FakeCourseRepository(), TeacherImportCsvUseCase(gr),
+      session, gr, FakeCourseRepository(), TeacherImportCsvUseCase(gr), FakeCacheService(),
     ),
   );
 }

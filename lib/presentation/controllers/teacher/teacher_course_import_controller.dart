@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:example/data/utils/error_parser.dart';
 import 'package:example/domain/models/course_model.dart';
 import 'package:example/domain/models/group_category.dart';
 import 'package:example/domain/repositories/i_course_repository.dart';
 import 'package:example/domain/repositories/i_group_repository.dart';
+import 'package:example/domain/services/i_cache_service.dart';
 import 'package:example/domain/use_case/teacher/teacher_import_csv_use_case.dart';
 import 'package:example/presentation/controllers/teacher/teacher_session_controller.dart';
 import 'package:example/presentation/models/csv_import_summary.dart';
@@ -13,12 +15,14 @@ class TeacherCourseImportController extends GetxController {
   final IGroupRepository _groupRepo;
   final ICourseRepository _courseRepo;
   final TeacherImportCsvUseCase _teacherImportCsvUseCase;
+  final ICacheService _cache;
 
   TeacherCourseImportController(
     this._sessionController,
     this._groupRepo,
     this._courseRepo,
     this._teacherImportCsvUseCase,
+    this._cache,
   );
 
   final courses = <CourseModel>[].obs;
@@ -71,8 +75,23 @@ class TeacherCourseImportController extends GetxController {
     courseLoading.value = true;
     courseLoadError.value = '';
     try {
-      final all = await _courseRepo.getAll(_teacherId);
-      courses.assignAll(all);
+      final key = 'teacher_courses_v1_$_teacherId';
+      final cached = await _cache.get(key);
+      if (cached != null) {
+        courses.assignAll(
+          (jsonDecode(cached) as List)
+              .map((e) => CourseModel.fromJson(e as Map<String, dynamic>))
+              .toList(),
+        );
+      } else {
+        final all = await _courseRepo.getAll(_teacherId);
+        courses.assignAll(all);
+        try {
+          await _cache.set(key, jsonEncode(all.map((c) => c.toJson()).toList()));
+        } catch (_) {
+          // cache write failure is non-fatal
+        }
+      }
     } catch (e) {
       courseLoadError.value = parseApiError(e, fallback: 'Error al cargar cursos');
     } finally {
@@ -104,6 +123,7 @@ class TeacherCourseImportController extends GetxController {
         teacherId: _teacherId,
       );
       courses.insert(0, course);
+      await _cache.invalidate('teacher_courses_v1_$_teacherId');
       return true;
     } catch (e) {
       courseCreateError.value = parseApiError(e, fallback: 'Error al crear curso');
@@ -116,6 +136,7 @@ class TeacherCourseImportController extends GetxController {
   Future<void> deleteCourse(int courseId) async {
     await _courseRepo.delete(courseId);
     courses.removeWhere((c) => c.id == courseId);
+    await _cache.invalidate('teacher_courses_v1_$_teacherId');
     if (selectedCourseId.value == courseId) {
       selectedCourseId.value = null;
       selectedCourseName.value = '';
@@ -140,8 +161,23 @@ class TeacherCourseImportController extends GetxController {
   Future<void> loadCategories() async {
     categoriesLoadError.value = '';
     try {
-      final cats = await _groupRepo.getAll(_teacherId);
-      categories.assignAll(cats);
+      final key = 'teacher_categories_v1_$_teacherId';
+      final cached = await _cache.get(key);
+      if (cached != null) {
+        categories.assignAll(
+          (jsonDecode(cached) as List)
+              .map((e) => GroupCategory.fromJson(e as Map<String, dynamic>))
+              .toList(),
+        );
+      } else {
+        final cats = await _groupRepo.getAll(_teacherId);
+        categories.assignAll(cats);
+        try {
+          await _cache.set(key, jsonEncode(cats.map((c) => c.toJson()).toList()));
+        } catch (_) {
+          // cache write failure is non-fatal
+        }
+      }
     } catch (e) {
       categoriesLoadError.value = parseApiError(e, fallback: 'Error al cargar categorías');
     }
@@ -167,6 +203,7 @@ class TeacherCourseImportController extends GetxController {
 
       final cat = imported.category;
       categories.insert(0, cat);
+      await _cache.invalidate('teacher_categories_v1_$_teacherId');
       lastImportSummary.value = CsvImportSummary(
         categoryName: imported.categoryName,
         groupsCreated: imported.groupsCreated,
@@ -185,9 +222,23 @@ class TeacherCourseImportController extends GetxController {
   Future<void> deleteCategory(int id) async {
     await _groupRepo.delete(id);
     categories.removeWhere((c) => c.id == id);
+    await _cache.invalidate('teacher_categories_v1_$_teacherId');
   }
 
-  void resetState() {
+  /// Clears cached data and reloads courses + categories from API.
+  Future<void> refreshData() async {
+    final tid = _teacherId;
+    if (tid == 0) return;
+    await _cache.invalidate('teacher_courses_v1_$tid');
+    await _cache.invalidate('teacher_categories_v1_$tid');
+    await ensureHydrated(forceRefresh: true);
+  }
+
+  Future<void> resetState() async {
+    if (_teacherId != 0) {
+      await _cache.invalidate('teacher_courses_v1_$_teacherId');
+      await _cache.invalidate('teacher_categories_v1_$_teacherId');
+    }
     courses.clear();
     courseLoading.value = false;
     courseCreateLoading.value = false;

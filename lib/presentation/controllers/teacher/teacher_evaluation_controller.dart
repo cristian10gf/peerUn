@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:example/data/utils/error_parser.dart';
 import 'package:example/domain/models/evaluation.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
+import 'package:example/domain/services/i_cache_service.dart';
 import 'package:example/domain/use_case/teacher/teacher_create_evaluation_use_case.dart';
 import 'package:example/presentation/controllers/teacher/teacher_course_import_controller.dart';
 import 'package:example/presentation/controllers/teacher/teacher_session_controller.dart';
@@ -11,12 +13,14 @@ class TeacherEvaluationController extends GetxController {
   final TeacherCourseImportController _courseImportController;
   final IEvaluationRepository _evalRepo;
   final TeacherCreateEvaluationUseCase _teacherCreateEvaluationUseCase;
+  final ICacheService _cache;
 
   TeacherEvaluationController(
     this._sessionController,
     this._courseImportController,
     this._evalRepo,
     this._teacherCreateEvaluationUseCase,
+    this._cache,
   );
 
   final evaluations = <Evaluation>[].obs;
@@ -61,11 +65,27 @@ class TeacherEvaluationController extends GetxController {
   Future<void> loadEvaluations() async {
     evaluationsLoadError.value = '';
     try {
-      final all = await _evalRepo.getAll(_teacherId);
-      evaluations.assignAll(all);
-      activeEval.value = all.firstWhereOrNull((e) => e.isActive);
+      final key = 'teacher_evals_v1_$_teacherId';
+      final cached = await _cache.get(key);
+      if (cached != null) {
+        final list = (jsonDecode(cached) as List)
+            .map((e) => Evaluation.fromJson(e as Map<String, dynamic>))
+            .toList();
+        evaluations.assignAll(list);
+        activeEval.value = list.firstWhereOrNull((e) => e.isActive);
+      } else {
+        final all = await _evalRepo.getAll(_teacherId);
+        evaluations.assignAll(all);
+        activeEval.value = all.firstWhereOrNull((e) => e.isActive);
+        try {
+          await _cache.set(key, jsonEncode(all.map((e) => e.toJson()).toList()));
+        } catch (_) {
+          // cache write failure is non-fatal
+        }
+      }
     } catch (e) {
-      evaluationsLoadError.value = parseApiError(e, fallback: 'Error al cargar evaluaciones');
+      evaluationsLoadError.value =
+          parseApiError(e, fallback: 'Error al cargar evaluaciones');
     }
   }
 
@@ -126,6 +146,7 @@ class TeacherEvaluationController extends GetxController {
       );
       evaluations.insert(0, eval);
       activeEval.value = eval.isActive ? eval : activeEval.value;
+      await _cache.invalidate('teacher_evals_v1_$_teacherId');
       Get.offAllNamed('/teacher/dash');
       Get.snackbar(
         'Evaluación lanzada',
@@ -162,6 +183,7 @@ class TeacherEvaluationController extends GetxController {
           activeEval.value = evaluations[idx];
         }
       }
+      await _cache.invalidate('teacher_evals_v1_$_teacherId');
     } catch (e) {
       evalError.value = parseApiError(e, fallback: 'Error al renombrar la evaluación');
     }
@@ -175,9 +197,18 @@ class TeacherEvaluationController extends GetxController {
       if (activeEval.value?.id == evalId) {
         activeEval.value = evaluations.firstWhereOrNull((e) => e.isActive);
       }
+      await _cache.invalidate('teacher_evals_v1_$_teacherId');
     } catch (e) {
       evalError.value = parseApiError(e, fallback: 'Error al eliminar la evaluación');
     }
+  }
+
+  /// Clears cached evaluations and reloads from API.
+  Future<void> refreshData() async {
+    final tid = _teacherId;
+    if (tid == 0) return;
+    await _cache.invalidate('teacher_evals_v1_$tid');
+    await ensureHydrated(forceRefresh: true);
   }
 
   void resetState() {
