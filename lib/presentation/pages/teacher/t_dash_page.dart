@@ -132,9 +132,18 @@ class TDashPage extends StatelessWidget {
 
             // ── Body ───────────────────────────────────────────────────────
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(22),
-                child: Column(
+              child: RefreshIndicator(
+                color: tkGold,
+                onRefresh: () async {
+                  await Future.wait([
+                    evalCtrl.refreshData(),
+                    courseCtrl.refreshData(),
+                  ]);
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(22),
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Active eval card (only when there is one)
@@ -253,6 +262,7 @@ class TDashPage extends StatelessWidget {
                       );
                     }),
                   ],
+                ),
                 ),
               ),
             ),
