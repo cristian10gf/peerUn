@@ -3,18 +3,28 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'dart:async' as _i6;
+import 'dart:async' as _i9;
 
-import 'package:example/domain/models/course.dart' as _i9;
+import 'package:example/domain/models/auth_login_result.dart' as _i19;
+import 'package:example/domain/models/course.dart' as _i12;
+import 'package:example/domain/models/course_model.dart' as _i5;
 import 'package:example/domain/models/evaluation.dart' as _i3;
-import 'package:example/domain/models/peer_evaluation.dart' as _i8;
+import 'package:example/domain/models/group_category.dart' as _i6;
+import 'package:example/domain/models/peer_evaluation.dart' as _i11;
 import 'package:example/domain/models/student.dart' as _i4;
-import 'package:example/domain/models/student_home.dart' as _i10;
-import 'package:example/domain/models/teacher_data.dart' as _i7;
+import 'package:example/domain/models/student_home.dart' as _i13;
+import 'package:example/domain/models/teacher.dart' as _i7;
+import 'package:example/domain/models/teacher_data.dart' as _i10;
 import 'package:example/domain/models/teacher_insights.dart' as _i2;
-import 'package:example/domain/repositories/i_auth_repository.dart' as _i11;
+import 'package:example/domain/repositories/i_auth_repository.dart' as _i14;
+import 'package:example/domain/repositories/i_course_repository.dart' as _i15;
 import 'package:example/domain/repositories/i_evaluation_repository.dart'
-    as _i5;
+    as _i8;
+import 'package:example/domain/repositories/i_group_repository.dart' as _i16;
+import 'package:example/domain/repositories/i_teacher_auth_repository.dart'
+    as _i17;
+import 'package:example/domain/repositories/i_unified_auth_repository.dart'
+    as _i18;
 import 'package:mockito/mockito.dart' as _i1;
 
 // ignore_for_file: type=lint
@@ -48,52 +58,67 @@ class _FakeStudent_2 extends _i1.SmartFake implements _i4.Student {
     : super(parent, parentInvocation);
 }
 
+class _FakeCourseModel_3 extends _i1.SmartFake implements _i5.CourseModel {
+  _FakeCourseModel_3(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeGroupCategory_4 extends _i1.SmartFake implements _i6.GroupCategory {
+  _FakeGroupCategory_4(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeTeacher_5 extends _i1.SmartFake implements _i7.Teacher {
+  _FakeTeacher_5(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
 /// A class which mocks [IEvaluationRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockIEvaluationRepository extends _i1.Mock
-    implements _i5.IEvaluationRepository {
+    implements _i8.IEvaluationRepository {
   MockIEvaluationRepository() {
     _i1.throwOnMissingStub(this);
   }
 
   @override
-  _i6.Future<List<_i3.Evaluation>> getAll(int? teacherId) =>
+  _i9.Future<List<_i3.Evaluation>> getAll(int? teacherId) =>
       (super.noSuchMethod(
             Invocation.method(#getAll, [teacherId]),
-            returnValue: _i6.Future<List<_i3.Evaluation>>.value(
+            returnValue: _i9.Future<List<_i3.Evaluation>>.value(
               <_i3.Evaluation>[],
             ),
           )
-          as _i6.Future<List<_i3.Evaluation>>);
+          as _i9.Future<List<_i3.Evaluation>>);
 
   @override
-  _i6.Future<List<_i7.GroupResult>> getGroupResults(int? evalId) =>
+  _i9.Future<List<_i10.GroupResult>> getGroupResults(int? evalId) =>
       (super.noSuchMethod(
             Invocation.method(#getGroupResults, [evalId]),
-            returnValue: _i6.Future<List<_i7.GroupResult>>.value(
-              <_i7.GroupResult>[],
+            returnValue: _i9.Future<List<_i10.GroupResult>>.value(
+              <_i10.GroupResult>[],
             ),
           )
-          as _i6.Future<List<_i7.GroupResult>>);
+          as _i9.Future<List<_i10.GroupResult>>);
 
   @override
-  _i6.Future<_i2.TeacherInsightsInput> getTeacherInsightsInput(
+  _i9.Future<_i2.TeacherInsightsInput> getTeacherInsightsInput(
     int? teacherId,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#getTeacherInsightsInput, [teacherId]),
-            returnValue: _i6.Future<_i2.TeacherInsightsInput>.value(
+            returnValue: _i9.Future<_i2.TeacherInsightsInput>.value(
               _FakeTeacherInsightsInput_0(
                 this,
                 Invocation.method(#getTeacherInsightsInput, [teacherId]),
               ),
             ),
           )
-          as _i6.Future<_i2.TeacherInsightsInput>);
+          as _i9.Future<_i2.TeacherInsightsInput>);
 
   @override
-  _i6.Future<_i3.Evaluation> create({
+  _i9.Future<_i3.Evaluation> create({
     required String? name,
     required int? categoryId,
     required int? hours,
@@ -108,7 +133,7 @@ class MockIEvaluationRepository extends _i1.Mock
               #visibility: visibility,
               #teacherId: teacherId,
             }),
-            returnValue: _i6.Future<_i3.Evaluation>.value(
+            returnValue: _i9.Future<_i3.Evaluation>.value(
               _FakeEvaluation_1(
                 this,
                 Invocation.method(#create, [], {
@@ -121,82 +146,82 @@ class MockIEvaluationRepository extends _i1.Mock
               ),
             ),
           )
-          as _i6.Future<_i3.Evaluation>);
+          as _i9.Future<_i3.Evaluation>);
 
   @override
-  _i6.Future<void> rename(int? evalId, String? newName, int? teacherId) =>
+  _i9.Future<void> rename(int? evalId, String? newName, int? teacherId) =>
       (super.noSuchMethod(
             Invocation.method(#rename, [evalId, newName, teacherId]),
-            returnValue: _i6.Future<void>.value(),
-            returnValueForMissingStub: _i6.Future<void>.value(),
+            returnValue: _i9.Future<void>.value(),
+            returnValueForMissingStub: _i9.Future<void>.value(),
           )
-          as _i6.Future<void>);
+          as _i9.Future<void>);
 
   @override
-  _i6.Future<void> delete(int? evalId) =>
+  _i9.Future<void> delete(int? evalId) =>
       (super.noSuchMethod(
             Invocation.method(#delete, [evalId]),
-            returnValue: _i6.Future<void>.value(),
-            returnValueForMissingStub: _i6.Future<void>.value(),
+            returnValue: _i9.Future<void>.value(),
+            returnValueForMissingStub: _i9.Future<void>.value(),
           )
-          as _i6.Future<void>);
+          as _i9.Future<void>);
 
   @override
-  _i6.Future<List<_i3.Evaluation>> getEvaluationsForStudent(String? email) =>
+  _i9.Future<List<_i3.Evaluation>> getEvaluationsForStudent(String? email) =>
       (super.noSuchMethod(
             Invocation.method(#getEvaluationsForStudent, [email]),
-            returnValue: _i6.Future<List<_i3.Evaluation>>.value(
+            returnValue: _i9.Future<List<_i3.Evaluation>>.value(
               <_i3.Evaluation>[],
             ),
           )
-          as _i6.Future<List<_i3.Evaluation>>);
+          as _i9.Future<List<_i3.Evaluation>>);
 
   @override
-  _i6.Future<_i3.Evaluation?> getLatestForStudent(String? email) =>
+  _i9.Future<_i3.Evaluation?> getLatestForStudent(String? email) =>
       (super.noSuchMethod(
             Invocation.method(#getLatestForStudent, [email]),
-            returnValue: _i6.Future<_i3.Evaluation?>.value(),
+            returnValue: _i9.Future<_i3.Evaluation?>.value(),
           )
-          as _i6.Future<_i3.Evaluation?>);
+          as _i9.Future<_i3.Evaluation?>);
 
   @override
-  _i6.Future<String?> getGroupNameForStudent(int? evalId, String? email) =>
+  _i9.Future<String?> getGroupNameForStudent(int? evalId, String? email) =>
       (super.noSuchMethod(
             Invocation.method(#getGroupNameForStudent, [evalId, email]),
-            returnValue: _i6.Future<String?>.value(),
+            returnValue: _i9.Future<String?>.value(),
           )
-          as _i6.Future<String?>);
+          as _i9.Future<String?>);
 
   @override
-  _i6.Future<List<_i8.Peer>> getPeersForStudent(int? evalId, String? email) =>
+  _i9.Future<List<_i11.Peer>> getPeersForStudent(int? evalId, String? email) =>
       (super.noSuchMethod(
             Invocation.method(#getPeersForStudent, [evalId, email]),
-            returnValue: _i6.Future<List<_i8.Peer>>.value(<_i8.Peer>[]),
+            returnValue: _i9.Future<List<_i11.Peer>>.value(<_i11.Peer>[]),
           )
-          as _i6.Future<List<_i8.Peer>>);
+          as _i9.Future<List<_i11.Peer>>);
 
   @override
-  _i6.Future<List<_i9.Course>> getCoursesForStudent(String? email) =>
+  _i9.Future<List<_i12.Course>> getCoursesForStudent(String? email) =>
       (super.noSuchMethod(
             Invocation.method(#getCoursesForStudent, [email]),
-            returnValue: _i6.Future<List<_i9.Course>>.value(<_i9.Course>[]),
+            returnValue: _i9.Future<List<_i12.Course>>.value(<_i12.Course>[]),
           )
-          as _i6.Future<List<_i9.Course>>);
+          as _i9.Future<List<_i12.Course>>);
 
   @override
-  _i6.Future<List<_i10.StudentHomeCourse>> getStudentHomeCourses(
+  _i9.Future<List<_i13.StudentHomeCourse>> getStudentHomeCourses(
     String? email,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#getStudentHomeCourses, [email]),
-            returnValue: _i6.Future<List<_i10.StudentHomeCourse>>.value(
-              <_i10.StudentHomeCourse>[],
+            returnValue: _i9.Future<List<_i13.StudentHomeCourse>>.value(
+              <_i13.StudentHomeCourse>[],
             ),
           )
-          as _i6.Future<List<_i10.StudentHomeCourse>>);
+          as _i9.Future<List<_i13.StudentHomeCourse>>);
 
   @override
-  _i6.Future<void> saveResponses({
+  _i9.Future<void> saveResponses({
     required int? evalId,
     required int? evaluatorStudentId,
     required int? evaluatedMemberId,
@@ -209,13 +234,13 @@ class MockIEvaluationRepository extends _i1.Mock
               #evaluatedMemberId: evaluatedMemberId,
               #scores: scores,
             }),
-            returnValue: _i6.Future<void>.value(),
-            returnValueForMissingStub: _i6.Future<void>.value(),
+            returnValue: _i9.Future<void>.value(),
+            returnValueForMissingStub: _i9.Future<void>.value(),
           )
-          as _i6.Future<void>);
+          as _i9.Future<void>);
 
   @override
-  _i6.Future<bool> hasEvaluated({
+  _i9.Future<bool> hasEvaluated({
     required int? evalId,
     required int? evaluatorStudentId,
     required int? evaluatedMemberId,
@@ -226,12 +251,12 @@ class MockIEvaluationRepository extends _i1.Mock
               #evaluatorStudentId: evaluatorStudentId,
               #evaluatedMemberId: evaluatedMemberId,
             }),
-            returnValue: _i6.Future<bool>.value(false),
+            returnValue: _i9.Future<bool>.value(false),
           )
-          as _i6.Future<bool>);
+          as _i9.Future<bool>);
 
   @override
-  _i6.Future<bool> hasCompletedAllPeers({
+  _i9.Future<bool> hasCompletedAllPeers({
     required int? evalId,
     required String? email,
     required int? studentId,
@@ -242,25 +267,25 @@ class MockIEvaluationRepository extends _i1.Mock
               #email: email,
               #studentId: studentId,
             }),
-            returnValue: _i6.Future<bool>.value(false),
+            returnValue: _i9.Future<bool>.value(false),
           )
-          as _i6.Future<bool>);
+          as _i9.Future<bool>);
 
   @override
-  _i6.Future<List<_i8.CriterionResult>> getMyResults(
+  _i9.Future<List<_i11.CriterionResult>> getMyResults(
     int? evalId,
     String? email,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#getMyResults, [evalId, email]),
-            returnValue: _i6.Future<List<_i8.CriterionResult>>.value(
-              <_i8.CriterionResult>[],
+            returnValue: _i9.Future<List<_i11.CriterionResult>>.value(
+              <_i11.CriterionResult>[],
             ),
           )
-          as _i6.Future<List<_i8.CriterionResult>>);
+          as _i9.Future<List<_i11.CriterionResult>>);
 
   @override
-  _i6.Future<Map<int, Map<String, int>>> getSavedPeerScores({
+  _i9.Future<Map<int, Map<String, int>>> getSavedPeerScores({
     required int? evalId,
     required String? email,
   }) =>
@@ -269,14 +294,14 @@ class MockIEvaluationRepository extends _i1.Mock
               #evalId: evalId,
               #email: email,
             }),
-            returnValue: _i6.Future<Map<int, Map<String, int>>>.value(
+            returnValue: _i9.Future<Map<int, Map<String, int>>>.value(
               <int, Map<String, int>>{},
             ),
           )
-          as _i6.Future<Map<int, Map<String, int>>>);
+          as _i9.Future<Map<int, Map<String, int>>>);
 
   @override
-  _i6.Future<void> testSaveSubmit({
+  _i9.Future<void> testSaveSubmit({
     required String? evaluatorEmail,
     required Map<String, Map<String, int>>? scoresByPeerName,
   }) =>
@@ -285,69 +310,261 @@ class MockIEvaluationRepository extends _i1.Mock
               #evaluatorEmail: evaluatorEmail,
               #scoresByPeerName: scoresByPeerName,
             }),
-            returnValue: _i6.Future<void>.value(),
-            returnValueForMissingStub: _i6.Future<void>.value(),
+            returnValue: _i9.Future<void>.value(),
+            returnValueForMissingStub: _i9.Future<void>.value(),
           )
-          as _i6.Future<void>);
+          as _i9.Future<void>);
 
   @override
-  _i6.Future<List<Map<String, dynamic>>> readTestTable() =>
+  _i9.Future<List<Map<String, dynamic>>> readTestTable() =>
       (super.noSuchMethod(
             Invocation.method(#readTestTable, []),
-            returnValue: _i6.Future<List<Map<String, dynamic>>>.value(
+            returnValue: _i9.Future<List<Map<String, dynamic>>>.value(
               <Map<String, dynamic>>[],
             ),
           )
-          as _i6.Future<List<Map<String, dynamic>>>);
+          as _i9.Future<List<Map<String, dynamic>>>);
 }
 
 /// A class which mocks [IAuthRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockIAuthRepository extends _i1.Mock implements _i11.IAuthRepository {
+class MockIAuthRepository extends _i1.Mock implements _i14.IAuthRepository {
   MockIAuthRepository() {
     _i1.throwOnMissingStub(this);
   }
 
   @override
-  _i6.Future<_i4.Student?> login(String? email, String? password) =>
+  _i9.Future<_i4.Student?> login(String? email, String? password) =>
       (super.noSuchMethod(
             Invocation.method(#login, [email, password]),
-            returnValue: _i6.Future<_i4.Student?>.value(),
+            returnValue: _i9.Future<_i4.Student?>.value(),
           )
-          as _i6.Future<_i4.Student?>);
+          as _i9.Future<_i4.Student?>);
 
   @override
-  _i6.Future<_i4.Student> register(
+  _i9.Future<_i4.Student> register(
     String? name,
     String? email,
     String? password,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#register, [name, email, password]),
-            returnValue: _i6.Future<_i4.Student>.value(
+            returnValue: _i9.Future<_i4.Student>.value(
               _FakeStudent_2(
                 this,
                 Invocation.method(#register, [name, email, password]),
               ),
             ),
           )
-          as _i6.Future<_i4.Student>);
+          as _i9.Future<_i4.Student>);
 
   @override
-  _i6.Future<void> logout() =>
+  _i9.Future<void> logout() =>
       (super.noSuchMethod(
             Invocation.method(#logout, []),
-            returnValue: _i6.Future<void>.value(),
-            returnValueForMissingStub: _i6.Future<void>.value(),
+            returnValue: _i9.Future<void>.value(),
+            returnValueForMissingStub: _i9.Future<void>.value(),
           )
-          as _i6.Future<void>);
+          as _i9.Future<void>);
 
   @override
-  _i6.Future<_i4.Student?> getCurrentSession() =>
+  _i9.Future<_i4.Student?> getCurrentSession() =>
       (super.noSuchMethod(
             Invocation.method(#getCurrentSession, []),
-            returnValue: _i6.Future<_i4.Student?>.value(),
+            returnValue: _i9.Future<_i4.Student?>.value(),
           )
-          as _i6.Future<_i4.Student?>);
+          as _i9.Future<_i4.Student?>);
+}
+
+/// A class which mocks [ICourseRepository].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockICourseRepository extends _i1.Mock implements _i15.ICourseRepository {
+  MockICourseRepository() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  _i9.Future<List<_i5.CourseModel>> getAll(int? teacherId) =>
+      (super.noSuchMethod(
+            Invocation.method(#getAll, [teacherId]),
+            returnValue: _i9.Future<List<_i5.CourseModel>>.value(
+              <_i5.CourseModel>[],
+            ),
+          )
+          as _i9.Future<List<_i5.CourseModel>>);
+
+  @override
+  _i9.Future<_i5.CourseModel> create({
+    required String? name,
+    required String? code,
+    required int? teacherId,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#create, [], {
+              #name: name,
+              #code: code,
+              #teacherId: teacherId,
+            }),
+            returnValue: _i9.Future<_i5.CourseModel>.value(
+              _FakeCourseModel_3(
+                this,
+                Invocation.method(#create, [], {
+                  #name: name,
+                  #code: code,
+                  #teacherId: teacherId,
+                }),
+              ),
+            ),
+          )
+          as _i9.Future<_i5.CourseModel>);
+
+  @override
+  _i9.Future<void> delete(int? courseId) =>
+      (super.noSuchMethod(
+            Invocation.method(#delete, [courseId]),
+            returnValue: _i9.Future<void>.value(),
+            returnValueForMissingStub: _i9.Future<void>.value(),
+          )
+          as _i9.Future<void>);
+
+  @override
+  _i9.Future<List<_i6.GroupCategory>> getCategoriesForCourse(int? courseId) =>
+      (super.noSuchMethod(
+            Invocation.method(#getCategoriesForCourse, [courseId]),
+            returnValue: _i9.Future<List<_i6.GroupCategory>>.value(
+              <_i6.GroupCategory>[],
+            ),
+          )
+          as _i9.Future<List<_i6.GroupCategory>>);
+}
+
+/// A class which mocks [IGroupRepository].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockIGroupRepository extends _i1.Mock implements _i16.IGroupRepository {
+  MockIGroupRepository() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  _i9.Future<List<_i6.GroupCategory>> getAll(int? teacherId) =>
+      (super.noSuchMethod(
+            Invocation.method(#getAll, [teacherId]),
+            returnValue: _i9.Future<List<_i6.GroupCategory>>.value(
+              <_i6.GroupCategory>[],
+            ),
+          )
+          as _i9.Future<List<_i6.GroupCategory>>);
+
+  @override
+  _i9.Future<_i6.GroupCategory> importCsv(
+    String? csvContent,
+    String? categoryName,
+    int? teacherId,
+    int? courseId,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#importCsv, [
+              csvContent,
+              categoryName,
+              teacherId,
+              courseId,
+            ]),
+            returnValue: _i9.Future<_i6.GroupCategory>.value(
+              _FakeGroupCategory_4(
+                this,
+                Invocation.method(#importCsv, [
+                  csvContent,
+                  categoryName,
+                  teacherId,
+                  courseId,
+                ]),
+              ),
+            ),
+          )
+          as _i9.Future<_i6.GroupCategory>);
+
+  @override
+  _i9.Future<void> delete(int? categoryId) =>
+      (super.noSuchMethod(
+            Invocation.method(#delete, [categoryId]),
+            returnValue: _i9.Future<void>.value(),
+            returnValueForMissingStub: _i9.Future<void>.value(),
+          )
+          as _i9.Future<void>);
+}
+
+/// A class which mocks [ITeacherAuthRepository].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockITeacherAuthRepository extends _i1.Mock
+    implements _i17.ITeacherAuthRepository {
+  MockITeacherAuthRepository() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  _i9.Future<_i7.Teacher?> login(String? email, String? password) =>
+      (super.noSuchMethod(
+            Invocation.method(#login, [email, password]),
+            returnValue: _i9.Future<_i7.Teacher?>.value(),
+          )
+          as _i9.Future<_i7.Teacher?>);
+
+  @override
+  _i9.Future<_i7.Teacher> register(
+    String? name,
+    String? email,
+    String? password,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#register, [name, email, password]),
+            returnValue: _i9.Future<_i7.Teacher>.value(
+              _FakeTeacher_5(
+                this,
+                Invocation.method(#register, [name, email, password]),
+              ),
+            ),
+          )
+          as _i9.Future<_i7.Teacher>);
+
+  @override
+  _i9.Future<void> logout() =>
+      (super.noSuchMethod(
+            Invocation.method(#logout, []),
+            returnValue: _i9.Future<void>.value(),
+            returnValueForMissingStub: _i9.Future<void>.value(),
+          )
+          as _i9.Future<void>);
+
+  @override
+  _i9.Future<_i7.Teacher?> getCurrentSession() =>
+      (super.noSuchMethod(
+            Invocation.method(#getCurrentSession, []),
+            returnValue: _i9.Future<_i7.Teacher?>.value(),
+          )
+          as _i9.Future<_i7.Teacher?>);
+}
+
+/// A class which mocks [IUnifiedAuthRepository].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockIUnifiedAuthRepository extends _i1.Mock
+    implements _i18.IUnifiedAuthRepository {
+  MockIUnifiedAuthRepository() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  _i9.Future<_i19.AuthLoginResult?> loginAndResolve(
+    String? email,
+    String? password,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#loginAndResolve, [email, password]),
+            returnValue: _i9.Future<_i19.AuthLoginResult?>.value(),
+          )
+          as _i9.Future<_i19.AuthLoginResult?>);
 }
