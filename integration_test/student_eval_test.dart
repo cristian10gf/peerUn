@@ -39,7 +39,7 @@ void main() {
 
   setUp(resetGetxTestState);
 
-  ({_RealStudentCtrl ctrl, FakeDatabaseServiceEvalLevel3 db}) _buildChain([
+  ({_RealStudentCtrl ctrl, FakeDatabaseServiceEvalLevel3 db}) buildChain([
     ICacheService? cache,
   ]) {
     final db = FakeDatabaseServiceEvalLevel3();
@@ -58,7 +58,7 @@ void main() {
   testWidgets(
     'level3: getPeersForStudent populates peers via real repository chain',
     (tester) async {
-      final (:ctrl, db: _) = _buildChain();
+      final (:ctrl, db: _) = buildChain();
 
       await tester.pumpWidget(
         buildGetxTestApp(
@@ -91,7 +91,7 @@ void main() {
     'level3: submitEvaluation creates resultEvaluation + result_criterium '
     'records through real chain',
     (tester) async {
-      final (:ctrl, :db) = _buildChain();
+      final (:ctrl, :db) = buildChain();
 
       await tester.pumpWidget(
         buildGetxTestApp(
