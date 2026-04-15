@@ -48,19 +48,19 @@ void main() {
           {
             '_id': 'membership-a',
             'id': 1001,
-            'group_id': 10,
+            'group_id': '10',
             'email': 'alice@uninorte.edu.co',
             'name': 'Alice',
           },
         ],
         RobleTables.groups: [
-          {'_id': 'group-a', 'id': 10, 'name': 'Equipo A', 'category_id': 7},
+          {'_id': 'group-a', 'id': 10, 'group_id': '10', 'name': 'Equipo A', 'category_id': 7},
         ],
         RobleTables.category: [
-          {'_id': 'cat-7', 'id': 7, 'name': 'Sprint 1', 'course_id': 3},
+          {'_id': 'cat-7', 'id': 7, 'category_id': '7', 'name': 'Sprint 1', 'course_id': 3},
         ],
         RobleTables.course: [
-          {'_id': 'course-3', 'id': 3, 'name': 'Arquitectura de Software'},
+          {'_id': 'course-3', 'id': 3, 'course_id': '3', 'name': 'Arquitectura de Software'},
         ],
         RobleTables.evaluation: [
           {
@@ -107,20 +107,26 @@ void main() {
           },
         ],
         RobleTables.groups: [
-          {'_id': 'group-a', 'id': 10, 'name': 'Equipo A', 'category_id': 7},
+          {'_id': 'group-a', 'id': 10, 'group_id': '10', 'name': 'Equipo A', 'category_id': 7},
+        ],
+        RobleTables.users: [
+          {'_id': 'user-alice', 'user_id': '501', 'name': 'Alice', 'email': 'alice@uninorte.edu.co'},
+          {'_id': 'user-bob',   'user_id': '502', 'name': 'Bob',   'email': 'bob@uninorte.edu.co'},
         ],
         RobleTables.userGroup: [
           {
             '_id': 'membership-a',
             'id': 501,
-            'group_id': 10,
+            'group_id': '10',
+            'user_id': '501',
             'email': 'alice@uninorte.edu.co',
             'name': 'Alice',
           },
           {
             '_id': 'membership-b',
             'id': 502,
-            'group_id': 10,
+            'group_id': '10',
+            'user_id': '502',
             'email': 'bob@uninorte.edu.co',
             'name': 'Bob',
           },
@@ -172,19 +178,19 @@ void main() {
           },
         ],
         RobleTables.course: [
-          {'_id': 'course-3', 'id': 3, 'name': 'Arquitectura de Software'},
+          {'_id': 'course-3', 'id': 3, 'course_id': '3', 'name': 'Arquitectura de Software'},
         ],
         RobleTables.category: [
-          {'_id': 'cat-7', 'id': 7, 'name': 'Sprint 1', 'course_id': 3},
+          {'_id': 'cat-7', 'id': 7, 'category_id': '7', 'name': 'Sprint 1', 'course_id': '3'},
         ],
         RobleTables.groups: [
-          {'_id': 'group-a', 'id': 10, 'name': 'Equipo A', 'category_id': 7},
+          {'_id': 'group-a', 'id': 10, 'group_id': '10', 'name': 'Equipo A', 'category_id': '7'},
         ],
         RobleTables.userGroup: [
           {
             '_id': 'membership-a',
             'id': 501,
-            'group_id': 10,
+            'group_id': '10',
             'email': 'alice@uninorte.edu.co',
             'user_id': '42',
             'name': 'Alice',
@@ -192,7 +198,7 @@ void main() {
           {
             '_id': 'membership-b',
             'id': 502,
-            'group_id': 10,
+            'group_id': '10',
             'email': 'bob@uninorte.edu.co',
             'user_id': '50',
             'name': 'Bob',
@@ -209,15 +215,16 @@ void main() {
             'description': 'public',
           },
         ],
-        RobleTables.evaluationCriterium: [
+        // getStudentHomeCourses reads resultEvaluation (not evaluationCriterium)
+        // for completion tracking. evaluatorId=42 (Alice), evaluatedId=50 (Bob),
+        // evalId=77 — all as strings so stableNumericIdFromSeed matches.
+        RobleTables.resultEvaluation: [
           {
-            '_id': 'resp-1',
-            'id': 900,
-            'eval_id': 77,
-            'evaluator_id': 42,
-            'evaluated_member_id': 502,
-            'criterion_id': 'punct',
-            'score': 5,
+            '_id': 'result-eval-1',
+            'resultEvaluation_id': 'result-eval-uuid-1',
+            'evaluation_id': '77',
+            'evaluator_id': '42',
+            'evaluated_id': '50',
           },
         ],
       });

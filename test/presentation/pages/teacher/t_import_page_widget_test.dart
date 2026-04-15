@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 
 import '../../../helpers/controller_spies.dart';
+import '../../../helpers/fake_cache_service.dart';
 import '../../../helpers/getx_test_harness.dart';
 import '../../../helpers/repository_fakes.dart';
 
@@ -32,6 +33,7 @@ TeacherCourseImportController _buildCtrl({
     gr,
     FakeCourseRepository(),
     TeacherImportCsvUseCase(gr),
+    FakeCacheService(),
   );
   Get.put<TeacherSessionController>(session);
   Get.put<TeacherCourseImportController>(ctrl);

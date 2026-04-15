@@ -25,6 +25,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 
+import '../../helpers/fake_cache_service.dart';
 import '../../helpers/fake_database_service_eval_level3.dart';
 import '../../helpers/getx_test_harness.dart';
 import '../../helpers/repository_fakes.dart';
@@ -35,7 +36,7 @@ class _RealStudentCtrl extends StudentController {
   _RealStudentCtrl(
     AuthRepositoryImpl authRepo,
     EvaluationRepositoryImpl evalRepo,
-  ) : super(authRepo, evalRepo);
+  ) : super(authRepo, evalRepo, FakeCacheService());
 
   // Expose a direct setter so the test can inject the student session without
   // going through the full auth flow (which would need a real login).

@@ -22,4 +22,20 @@ class CourseModel {
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at'] as int),
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'teacherId': teacherId,
+    'name': name,
+    'code': code,
+    'createdAt': createdAt.millisecondsSinceEpoch,
+  };
+
+  factory CourseModel.fromJson(Map<String, dynamic> j) => CourseModel(
+    id:        j['id']        as int,
+    teacherId: j['teacherId'] as int,
+    name:      j['name']      as String,
+    code:      (j['code']     as String?) ?? '',
+    createdAt: DateTime.fromMillisecondsSinceEpoch(j['createdAt'] as int, isUtc: true),
+  );
 }

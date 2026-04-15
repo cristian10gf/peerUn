@@ -5,25 +5,64 @@ import 'package:example/data/services/roble_schema.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _FakeResponseDb extends DatabaseService {
+  /// Rows written to the resultCriterium table (the scores table the test checks).
   final List<Map<String, dynamic>> _rows = [];
+
+  /// Rows written to the resultEvaluation table.
+  final List<Map<String, dynamic>> _resultEvalRows = [];
+
+  /// Rows written to the criterium metadata table (tracked separately, not in createCalls).
+  final List<Map<String, dynamic>> _criteriumMetaRows = [];
+
+  /// criterium_id values passed to resultCriterium creates, in order.
   final List<String> createCalls = [];
+
+  /// Row _ids passed to resultCriterium updates, in order.
   final List<String> updateCalls = [];
+
+  List<Map<String, dynamic>> _filteredFrom(
+    List<Map<String, dynamic>> source,
+    Map<String, dynamic>? filters,
+  ) {
+    if (filters == null || filters.isEmpty) {
+      return source.map((r) => Map<String, dynamic>.from(r)).toList();
+    }
+    return source
+        .where((r) => filters.entries.every(
+              (e) => (r[e.key] ?? '').toString() == e.value.toString(),
+            ))
+        .map((r) => Map<String, dynamic>.from(r))
+        .toList();
+  }
 
   @override
   Future<List<Map<String, dynamic>>> robleRead(
     String tableName, {
     Map<String, dynamic>? filters,
   }) async {
-    if (tableName != RobleTables.evaluationCriterium) return const [];
-    if (filters == null || filters.isEmpty) {
-      return _rows.map((r) => Map<String, dynamic>.from(r)).toList();
+    if (tableName == RobleTables.evaluation) {
+      // id=1 → _rowId==1 → _findEvalById(rows, 1) finds it.
+      return [
+        {'id': 1, 'category_id': 0},
+      ];
     }
-    return _rows
-        .where((r) => filters.entries.every(
-              (e) => r[e.key].toString() == e.value.toString(),
-            ))
-        .map((r) => Map<String, dynamic>.from(r))
-        .toList();
+    if (tableName == RobleTables.users) {
+      // stableNumericIdFromSeed('2')==2, stableNumericIdFromSeed('3')==3.
+      return [
+        {'id': 2, '_id': 'user-2', 'user_id': 'uuid-user-2'},
+        {'id': 3, '_id': 'user-3', 'user_id': 'uuid-user-3'},
+      ];
+    }
+    if (tableName == RobleTables.resultEvaluation) {
+      return _filteredFrom(_resultEvalRows, filters);
+    }
+    if (tableName == RobleTables.criterium) {
+      return _filteredFrom(_criteriumMetaRows, filters);
+    }
+    if (tableName == RobleTables.resultCriterium) {
+      return _filteredFrom(_rows, filters);
+    }
+    return const [];
   }
 
   @override
@@ -31,10 +70,26 @@ class _FakeResponseDb extends DatabaseService {
     String tableName,
     Map<String, dynamic> data,
   ) async {
+    if (tableName == RobleTables.resultEvaluation) {
+      final idx = _resultEvalRows.length + 1;
+      final row = Map<String, dynamic>.from(data)
+        ..['_id'] = 'result-eval-$idx'
+        ..['resultEvaluation_id'] = 'result-eval-uuid-$idx';
+      _resultEvalRows.add(row);
+      return row;
+    }
+    if (tableName == RobleTables.criterium) {
+      // Return WITHOUT criterium_id so _getOrCreateCriteriaMap falls back to criterion.id.
+      final row = Map<String, dynamic>.from(data)
+        ..['_id'] = 'meta-${_criteriumMetaRows.length + 1}';
+      _criteriumMetaRows.add(row);
+      return row;
+    }
+    // resultCriterium — the actual scores table tracked by the test.
     final row = Map<String, dynamic>.from(data)
       ..['_id'] = 'row-${_rows.length + 1}';
     _rows.add(row);
-    createCalls.add(data['criterion_id'].toString());
+    createCalls.add(data['criterium_id']?.toString() ?? '');
     return row;
   }
 

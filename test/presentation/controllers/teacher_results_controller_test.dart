@@ -3,6 +3,7 @@ import 'package:example/domain/models/teacher_data.dart';
 import 'package:example/presentation/controllers/teacher/teacher_results_controller.dart';
 import 'package:flutter_test/flutter_test.dart' hide Evaluation;
 
+import '../../helpers/fake_cache_service.dart';
 import '../../helpers/repository_fakes.dart';
 
 void main() {
@@ -23,7 +24,7 @@ void main() {
         ),
       ];
 
-    final ctrl = TeacherResultsController(repo);
+    final ctrl = TeacherResultsController(repo, FakeCacheService());
     await ctrl.loadGroupResults(
       Evaluation(
         id: 1,
