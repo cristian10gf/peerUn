@@ -12,10 +12,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:integration_test/integration_test.dart';
 
-import '../test/helpers/fake_cache_service.dart';
-import '../test/helpers/fake_database_service_level3.dart';
-import '../test/helpers/getx_test_harness.dart';
-import '../test/helpers/repository_fakes.dart';
+import 'helpers/fake_cache_service.dart';
+import 'helpers/fake_database_service_level3.dart';
+import 'helpers/getx_test_harness.dart';
+import 'helpers/repository_fakes.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();

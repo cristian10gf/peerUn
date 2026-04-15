@@ -9,8 +9,8 @@ import 'package:flutter_test/flutter_test.dart' hide Evaluation;
 import 'package:integration_test/integration_test.dart';
 import 'package:mockito/mockito.dart';
 
-import '../test/helpers/fake_cache_service.dart';
-import '../test/helpers/getx_test_harness.dart';
+import 'helpers/fake_cache_service.dart';
+import 'helpers/getx_test_harness.dart';
 import 'helpers/mocks.dart';
 
 const _student = Student(
