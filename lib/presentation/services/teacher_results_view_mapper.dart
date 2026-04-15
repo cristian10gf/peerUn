@@ -1,4 +1,5 @@
 import 'package:example/domain/models/teacher_data.dart';
+import 'package:example/presentation/constants/evaluation_ui_constants.dart';
 import 'package:example/presentation/models/teacher_results_view_model.dart';
 
 class TeacherResultsViewMapper {
@@ -7,13 +8,6 @@ class TeacherResultsViewMapper {
     'contrib',
     'commit',
     'attitude',
-  ];
-
-  static const List<String> criteriaLabels = <String>[
-    'PUNTU',
-    'CONTRIB',
-    'COMPRO',
-    'ACTITU',
   ];
 
   const TeacherResultsViewMapper();
@@ -48,17 +42,14 @@ class TeacherResultsViewMapper {
     );
   }
 
-  TeacherResultsDetailVm buildDetail(
-    GroupResult group, {
-    int groupIndex = 0,
-  }) {
-    final criteria = List<TeacherResultsCriterionVm>.generate(4, (
+  TeacherResultsDetailVm buildDetail(GroupResult group) {
+    final criteria = List<TeacherResultsCriterionVm>.generate(criteriaIds.length, (
       index,
     ) {
       final value = index < group.criteria.length ? group.criteria[index] : 0.0;
       return TeacherResultsCriterionVm(
         id: criteriaIds[index],
-        label: criteriaLabels[index],
+        label: EvaluationUiConstants.criteriaLabels[index],
         score: value,
         progress: toProgress(value),
         scoreLabel: scoreLabel(value),
