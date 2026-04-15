@@ -8,6 +8,7 @@ import 'package:example/presentation/controllers/teacher/teacher_course_import_c
 import 'package:example/presentation/controllers/teacher/teacher_evaluation_controller.dart';
 import 'package:example/presentation/controllers/teacher/teacher_results_controller.dart';
 import 'package:example/presentation/controllers/teacher/teacher_session_controller.dart';
+import 'package:example/presentation/services/teacher_results_view_mapper.dart';
 
 class TeacherModuleBinding extends Bindings {
   @override
@@ -36,9 +37,19 @@ class TeacherModuleBinding extends Bindings {
       );
     }
 
+    if (!Get.isRegistered<TeacherResultsViewMapper>()) {
+      Get.put<TeacherResultsViewMapper>(
+        const TeacherResultsViewMapper(),
+        permanent: true,
+      );
+    }
+
     if (!Get.isRegistered<TeacherResultsController>()) {
       Get.put<TeacherResultsController>(
-        TeacherResultsController(Get.find<IEvaluationRepository>()),
+        TeacherResultsController(
+          Get.find<IEvaluationRepository>(),
+          viewMapper: Get.find<TeacherResultsViewMapper>(),
+        ),
         permanent: true,
       );
     }
