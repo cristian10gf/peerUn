@@ -96,6 +96,7 @@ void main() {
       expect(ctrl.overviewVm!.showNoEvaluationsState, isFalse);
       expect(ctrl.lastUpdatedAt.value, isNotNull);
       expect(db.readCallsByTable['evaluation'] ?? 0, greaterThan(0));
+      expect(db.readCallsByTable.length, greaterThanOrEqualTo(7));
     },
   );
 

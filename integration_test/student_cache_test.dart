@@ -51,6 +51,8 @@ void main() {
       final cache = FakeCacheService();
       final ctrl = _buildCtrl(evalRepo, authRepo, cache);
 
+      // Controller is not registered with Get, so onInit (and its ever listener)
+      // is never called — setting student.value does not trigger loadEvalData.
       ctrl.student.value = _student;
       await ctrl.loadEvalData();
 
@@ -69,6 +71,8 @@ void main() {
       final cache = FakeCacheService();
       final ctrl = _buildCtrl(evalRepo, authRepo, cache);
 
+      // Controller is not registered with Get, so onInit (and its ever listener)
+      // is never called — setting student.value does not trigger loadEvalData.
       ctrl.student.value = _student;
       await ctrl.loadEvalData(); // cache miss
       verify(evalRepo.getStudentHomeCourses('student@uni.edu')).called(1);
@@ -88,6 +92,8 @@ void main() {
       final cache = FakeCacheService();
       final ctrl = _buildCtrl(evalRepo, authRepo, cache);
 
+      // Controller is not registered with Get, so onInit (and its ever listener)
+      // is never called — setting student.value does not trigger loadEvalData.
       ctrl.student.value = _student;
       await ctrl.loadEvalData(); // miss
 

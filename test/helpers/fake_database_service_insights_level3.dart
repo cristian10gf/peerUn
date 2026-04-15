@@ -10,7 +10,7 @@ class FakeDatabaseServiceInsightsLevel3 extends FakeDatabaseServiceLevel3 {
       'evaluation_id': '600',
       '_id': '600',
       'title': 'Eval Insights',
-      'teacher_id': 10,
+      'teacher_id': '10',
       'category_id': '700',
       'description': 'public',
       'start_date': '2026-01-01T00:00:00.000Z',
