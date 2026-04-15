@@ -41,7 +41,7 @@ void main() {
         buildGroup(name: 'G2', average: 4.2, criteria: <double>[4, 4, 4, 4]),
       ];
 
-    final ctrl = TeacherResultsController(repo);
+    final ctrl = TeacherResultsController(repo, FakeCacheService());
     await ctrl.loadGroupResults(buildEval());
 
     expect(ctrl.overallAverage, 4.2);
@@ -54,7 +54,7 @@ void main() {
         buildGroup(name: 'Equipo B', average: 0.0),
       ];
 
-    final ctrl = TeacherResultsController(repo);
+    final ctrl = TeacherResultsController(repo, FakeCacheService());
     await ctrl.loadGroupResults(buildEval());
 
     expect(ctrl.overviewVm.overallAverageLabel, '4.0');
@@ -73,7 +73,7 @@ void main() {
         buildGroup(name: 'Equipo B', average: 3.0),
       ];
 
-    final ctrl = TeacherResultsController(repo);
+    final ctrl = TeacherResultsController(repo, FakeCacheService());
     await ctrl.loadGroupResults(buildEval());
 
     expect(ctrl.selectedGroupIndex, isNull);
@@ -98,7 +98,7 @@ void main() {
   test('loadGroupResults sets user-friendly error and clears data on failure', () async {
     final repo = _ThrowingEvaluationRepository(_BlankError());
 
-    final ctrl = TeacherResultsController(repo)
+    final ctrl = TeacherResultsController(repo, FakeCacheService())
       ..groupResults.add(buildGroup(name: 'Stale data', average: 4.0))
       ..resultsError.value = 'Old error';
     ctrl.openGroupDetail(0);

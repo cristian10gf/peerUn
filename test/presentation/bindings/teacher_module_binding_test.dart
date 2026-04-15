@@ -1,6 +1,7 @@
 import 'package:example/domain/repositories/i_course_repository.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
 import 'package:example/domain/repositories/i_group_repository.dart';
+import 'package:example/domain/services/i_cache_service.dart';
 import 'package:example/domain/use_case/teacher/teacher_create_evaluation_use_case.dart';
 import 'package:example/domain/use_case/teacher/teacher_import_csv_use_case.dart';
 import 'package:example/presentation/bindings/teacher_module_binding.dart';
@@ -14,6 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 
 import '../../helpers/controller_spies.dart';
+import '../../helpers/fake_cache_service.dart';
 import '../../helpers/repository_fakes.dart';
 
 void _registerModuleDependencies() {
@@ -24,6 +26,7 @@ void _registerModuleDependencies() {
   Get.put<ICourseRepository>(FakeCourseRepository(), permanent: true);
   Get.put<IGroupRepository>(groupRepo, permanent: true);
   Get.put<IEvaluationRepository>(evalRepo, permanent: true);
+  Get.put<ICacheService>(FakeCacheService(), permanent: true);
   Get.put<TeacherImportCsvUseCase>(TeacherImportCsvUseCase(groupRepo), permanent: true);
   Get.put<TeacherCreateEvaluationUseCase>(
     TeacherCreateEvaluationUseCase(evalRepo),
@@ -73,6 +76,7 @@ void main() {
       Get.find<IGroupRepository>(),
       Get.find<ICourseRepository>(),
       Get.find<TeacherImportCsvUseCase>(),
+      FakeCacheService(),
     );
     Get.put<TeacherCourseImportController>(existingImportController, permanent: true);
 
@@ -81,6 +85,7 @@ void main() {
       existingImportController,
       Get.find<IEvaluationRepository>(),
       Get.find<TeacherCreateEvaluationUseCase>(),
+      FakeCacheService(),
     );
     Get.put<TeacherEvaluationController>(existingEvaluationController, permanent: true);
 

@@ -1,11 +1,15 @@
+import 'dart:convert';
+
 import 'package:example/domain/models/teacher.dart';
 import 'package:example/domain/models/teacher_insights.dart';
+import 'package:example/domain/services/i_cache_service.dart';
 import 'package:example/domain/services/teacher_insights_domain_service.dart';
 import 'package:example/presentation/controllers/teacher/teacher_insights_controller.dart';
 import 'package:example/presentation/services/teacher_insights_view_mapper.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../helpers/controller_spies.dart';
+import '../../helpers/fake_cache_service.dart';
 import '../../helpers/repository_fakes.dart';
 
 void main() {
@@ -92,6 +96,7 @@ void main() {
       const TeacherInsightsDomainService(),
       const TeacherInsightsViewMapper(),
       buildLoggedTeacherSession(),
+      FakeCacheService(),
     );
 
     await ctrl.loadInsights();
@@ -117,6 +122,7 @@ void main() {
         const TeacherInsightsDomainService(),
         const TeacherInsightsViewMapper(),
         buildLoggedTeacherSession(),
+        FakeCacheService(),
       );
 
       await ctrl.loadInsights();
@@ -136,6 +142,7 @@ void main() {
       const TeacherInsightsDomainService(),
       const TeacherInsightsViewMapper(),
       buildLoggedTeacherSession(),
+      FakeCacheService(),
     );
 
     await ctrl.loadInsights();
@@ -166,6 +173,7 @@ void main() {
       const TeacherInsightsDomainService(),
       const TeacherInsightsViewMapper(),
       buildLoggedTeacherSession(),
+      FakeCacheService(),
     );
 
     await ctrl.loadInsights();
@@ -187,6 +195,7 @@ void main() {
       const TeacherInsightsDomainService(),
       const TeacherInsightsViewMapper(),
       session,
+      FakeCacheService(),
     );
 
     await ctrl.loadInsights();
@@ -213,6 +222,7 @@ void main() {
       const TeacherInsightsDomainService(),
       const TeacherInsightsViewMapper(),
       session,
+      FakeCacheService(),
     );
 
     await ctrl.loadInsights();
@@ -243,6 +253,7 @@ void main() {
       const TeacherInsightsDomainService(),
       const TeacherInsightsViewMapper(),
       buildLoggedTeacherSession(),
+      FakeCacheService(),
     );
 
     await ctrl.loadInsights();
@@ -255,6 +266,98 @@ void main() {
     expect(ctrl.loadError.value, isEmpty);
     expect(ctrl.overviewVm, isNull);
     expect(ctrl.lastUpdatedAt.value, isNull);
+  });
+
+  test('loadInsights skips repository on cache hit', () async {
+    final repo = _CountingInsightsRepository()
+      ..teacherInsightsInput = const TeacherInsightsInput(
+        scorePoints: [],
+        evaluations: [],
+      );
+    final cache = FakeCacheService();
+    final primed = const TeacherInsightsInput(
+      scorePoints: [],
+      evaluations: [
+        TeacherInsightsEvaluationCoverage(
+          evaluationId: 'e1',
+          evaluationName: 'Eval 1',
+          courseId: 'c1',
+          courseName: 'IS',
+          categoryId: 'cat1',
+          categoryName: 'Sprint',
+        ),
+      ],
+    );
+    cache.seed('teacher_insights_v1_10', jsonEncode(primed.toJson()));
+
+    final ctrl = TeacherInsightsController(
+      repo,
+      const TeacherInsightsDomainService(),
+      const TeacherInsightsViewMapper(),
+      buildLoggedTeacherSession(),
+      cache,
+    );
+
+    await ctrl.loadInsights();
+
+    expect(repo.readCalls, 0);
+    expect(ctrl.overviewVm, isNotNull);
+  });
+
+  test('loadInsights writes to cache on cache miss', () async {
+    final repo = FakeEvaluationRepository()
+      ..teacherInsightsInput = const TeacherInsightsInput(
+        scorePoints: [],
+        evaluations: [
+          TeacherInsightsEvaluationCoverage(
+            evaluationId: 'e1',
+            evaluationName: 'Eval 1',
+            courseId: 'c1',
+            courseName: 'IS',
+            categoryId: 'cat1',
+            categoryName: 'Sprint',
+          ),
+        ],
+      );
+    final cache = FakeCacheService();
+
+    final ctrl = TeacherInsightsController(
+      repo,
+      const TeacherInsightsDomainService(),
+      const TeacherInsightsViewMapper(),
+      buildLoggedTeacherSession(),
+      cache,
+    );
+
+    await ctrl.loadInsights();
+
+    expect(cache.setCalls, hasLength(1));
+    expect(await cache.get('teacher_insights_v1_10'), isNotNull);
+  });
+
+  test('refreshInsights invalidates cache then reloads from repository', () async {
+    final repo = _CountingInsightsRepository()
+      ..teacherInsightsInput = const TeacherInsightsInput(
+        scorePoints: [],
+        evaluations: [],
+      );
+    final cache = FakeCacheService();
+    cache.seed('teacher_insights_v1_10', '{"scorePoints":[],"evaluations":[]}');
+
+    final ctrl = TeacherInsightsController(
+      repo,
+      const TeacherInsightsDomainService(),
+      const TeacherInsightsViewMapper(),
+      buildLoggedTeacherSession(),
+      cache,
+    );
+
+    await ctrl.loadInsights(); // cache hit — repo not called
+    expect(repo.readCalls, 0);
+
+    await ctrl.refreshInsights(); // invalidates cache → repo called
+    expect(repo.readCalls, 1);
+    expect(cache.invalidateCalls, hasLength(1));
   });
 }
 

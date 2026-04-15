@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import 'package:example/data/utils/error_parser.dart';
+import 'package:example/domain/models/teacher_insights.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
+import 'package:example/domain/services/i_cache_service.dart';
 import 'package:example/domain/services/teacher_insights_domain_service.dart';
 import 'package:example/presentation/controllers/teacher/teacher_session_controller.dart';
 import 'package:example/presentation/models/teacher_data_insights_view_model.dart';
@@ -11,12 +15,14 @@ class TeacherInsightsController extends GetxController {
   final TeacherInsightsDomainService _domainService;
   final TeacherInsightsViewMapper _viewMapper;
   final TeacherSessionController _sessionController;
+  final ICacheService _cache;
 
   TeacherInsightsController(
     this._evaluationRepository,
     this._domainService,
     this._viewMapper,
     this._sessionController,
+    this._cache,
   );
 
   final isLoading = false.obs;
@@ -25,6 +31,10 @@ class TeacherInsightsController extends GetxController {
 
   TeacherDataInsightsViewModel? _overviewVm;
   TeacherDataInsightsViewModel? get overviewVm => _overviewVm;
+
+  int? _lastTeacherId;
+
+  static String _cacheKey(int teacherId) => 'teacher_insights_v1_$teacherId';
 
   Future<void> loadInsights() async {
     final teacher = _sessionController.teacher.value;
@@ -41,15 +51,30 @@ class TeacherInsightsController extends GetxController {
       return;
     }
 
+    _lastTeacherId = teacherId;
     isLoading.value = true;
     loadError.value = '';
 
     try {
-      final input = await _evaluationRepository.getTeacherInsightsInput(
-        teacherId,
-      );
+      TeacherInsightsInput input;
+
+      final cached = await _cache.get(_cacheKey(teacherId));
+      if (cached != null) {
+        input = TeacherInsightsInput.fromJson(
+          jsonDecode(cached) as Map<String, dynamic>,
+        );
+      } else {
+        input = await _evaluationRepository.getTeacherInsightsInput(teacherId);
+        try {
+          await _cache.set(_cacheKey(teacherId), jsonEncode(input.toJson()));
+        } catch (_) {
+          // cache write failure is non-fatal
+        }
+      }
+
       final aggregate = _domainService.build(input);
       _overviewVm = _viewMapper.build(aggregate);
+
       final now = DateTime.now();
       final previous = lastUpdatedAt.value;
       if (previous != null && !now.isAfter(previous)) {
@@ -65,12 +90,19 @@ class TeacherInsightsController extends GetxController {
     }
   }
 
-  Future<void> refreshInsights() => loadInsights();
+  Future<void> refreshInsights() async {
+    final teacherId = _lastTeacherId;
+    if (teacherId != null) {
+      await _cache.invalidate(_cacheKey(teacherId));
+    }
+    await loadInsights();
+  }
 
   void resetState() {
     isLoading.value = false;
     loadError.value = '';
     _overviewVm = null;
     lastUpdatedAt.value = null;
+    _lastTeacherId = null;
   }
 }

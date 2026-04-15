@@ -90,7 +90,7 @@ void main() {
       ),
     ];
 
-    final ctrl = TeacherResultsController(er);
+    final ctrl = TeacherResultsController(er, FakeCacheService());
     Get.put<TeacherResultsController>(ctrl);
 
     ctrl.groupResults.assignAll(er.groupResults);
@@ -138,7 +138,7 @@ void main() {
       ),
     ];
 
-    final ctrl = TeacherResultsController(er);
+    final ctrl = TeacherResultsController(er, FakeCacheService());
     Get.put<TeacherResultsController>(ctrl);
 
     ctrl.groupResults.assignAll(er.groupResults);
@@ -208,7 +208,7 @@ void main() {
       ),
     ];
 
-    final ctrl = TeacherResultsController(er);
+    final ctrl = TeacherResultsController(er, FakeCacheService());
     Get.put<TeacherResultsController>(ctrl);
 
     ctrl.groupResults.assignAll(er.groupResults);
