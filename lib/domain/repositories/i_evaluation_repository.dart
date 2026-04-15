@@ -2,6 +2,7 @@ import 'package:example/domain/models/course.dart';
 import 'package:example/domain/models/evaluation.dart';
 import 'package:example/domain/models/peer_evaluation.dart';
 import 'package:example/domain/models/student_home.dart';
+import 'package:example/domain/models/teacher_insights.dart';
 import 'package:example/domain/models/teacher_data.dart';
 
 abstract class IEvaluationRepository {
@@ -10,6 +11,10 @@ abstract class IEvaluationRepository {
 
   /// Returns per-group results (real data) for a given evaluation.
   Future<List<GroupResult>> getGroupResults(int evalId);
+
+  /// Returns normalized raw score rows and evaluation coverage data for
+  /// teacher-scoped global insights.
+  Future<TeacherInsightsInput> getTeacherInsightsInput(int teacherId);
 
   /// Create and persist a new evaluation.
   /// Throws [Exception] if an evaluation with [name] already exists for this teacher.
@@ -74,7 +79,7 @@ abstract class IEvaluationRepository {
 
   /// Returns saved scores keyed by evaluated peer domain ID.
   /// Used to restore partial evaluation state after logout.
-  /// Map<evaluatedMemberId, Map<criterionShortId, score>>
+  /// Shape: `Map<evaluatedMemberId, Map<criterionShortId, score>>`.
   Future<Map<int, Map<String, int>>> getSavedPeerScores({
     required int evalId,
     required String email,
