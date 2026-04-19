@@ -4,14 +4,15 @@ import 'package:example/presentation/controllers/teacher/teacher_results_control
 import 'package:example/presentation/constants/evaluation_ui_constants.dart';
 import 'package:example/domain/models/teacher_data.dart';
 import 'package:example/presentation/pages/teacher/widgets/teacher_back_button.dart';
-
-Color _tkScore(double v) => v >= 4.0 ? tkSuccess : tkWarning;
-const _kAvatarColors = [tkBlue, tkPurple, tkSuccess, tkPink];
 import 'package:example/presentation/pages/teacher/widgets/results/teacher_results_detail_body.dart';
 import 'package:example/presentation/pages/teacher/widgets/results/teacher_results_header.dart';
 import 'package:example/presentation/pages/teacher/widgets/results/teacher_results_overview_body.dart';
 import 'package:example/presentation/pages/teacher/widgets/results/teacher_results_state_cards.dart';
 import 'package:example/presentation/theme/teacher_colors.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+Color _tkScore(double v) => v >= 4.0 ? tkSuccess : tkWarning;
+const _kAvatarColors = [tkBlue, tkPurple, tkSuccess, tkPink];
 
 class TResultsPage extends StatelessWidget {
   const TResultsPage({super.key});
@@ -24,7 +25,7 @@ class TResultsPage extends StatelessWidget {
       backgroundColor: tkBackground,
       body: SafeArea(
         child: Obx(() {
-          final drill = ctrl.drill.value;
+          final drill = ctrl.selectedGroupIndex;
           return Column(
             children: [
               // ── Header ───────────────────────────────────────────────────
@@ -42,7 +43,7 @@ class TResultsPage extends StatelessWidget {
                           iconColor: tkText,
                           onTap: () {
                             if (drill != null) {
-                              ctrl.drill.value = null;
+                              ctrl.closeGroupDetail();
                             } else {
                               Get.offNamed('/teacher/dash');
                             }
@@ -89,7 +90,7 @@ class TResultsPage extends StatelessWidget {
                       ),
                     );
                   }
-                  final d = ctrl.drill.value;
+                  final d = ctrl.selectedGroupIndex;
                   return d == null
                       ? _OverviewBody(ctrl: ctrl)
                       : _DetailBody(ctrl: ctrl, group: ctrl.groupResults[d]);
@@ -195,7 +196,7 @@ class _OverviewBody extends StatelessWidget {
                   .map(
                     (e) => _GroupCard(
                       group: e.value,
-                      onTap: () => ctrl.drill.value = e.key,
+                      onTap: () => ctrl.openGroupDetail(e.key),
                     ),
                   )
                   .toList(),
@@ -258,6 +259,8 @@ class _GroupCard extends StatelessWidget {
   final GroupResult group;
   final VoidCallback onTap;
   const _GroupCard({required this.group, required this.onTap});
+
+  TeacherResultsController get ctrl => Get.find<TeacherResultsController>();
 
   @override
   Widget build(BuildContext context) {
