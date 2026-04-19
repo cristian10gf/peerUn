@@ -111,8 +111,7 @@ class TProfilePage extends StatelessWidget {
 
             /// Bottom nav
             const TeacherBottomNav(
-              activeIndex: 3,
-              importRoute: '/teacher/profile',
+              activeIndex: 0,
             ),
           ],
         ),

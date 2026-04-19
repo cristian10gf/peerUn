@@ -1,3 +1,17 @@
+import 'package:example/presentation/pages/auth/inicio_newUI.dart';
+import 'package:example/presentation/pages/auth/login_newUI.dart';
+import 'package:example/presentation/pages/auth/register_newUI.dart';
+import 'package:example/presentation/pages/student/student_course_page_newUI.dart';
+import 'package:example/presentation/pages/student/student_home_newUI.dart';
+import 'package:example/presentation/pages/teacher/teacher_course_page_newUI.dart';
+import 'package:example/presentation/pages/teacher/teacher_create_category_newUI.dart';
+import 'package:example/presentation/pages/teacher/teacher_create_course_newUI.dart';
+import 'package:example/presentation/pages/teacher/teacher_create_eval_newUI.dart';
+import 'package:example/presentation/pages/teacher/teacher_criteria_page_newUI.dart';
+import 'package:example/presentation/pages/teacher/teacher_edit_category_newUI.dart';
+import 'package:example/presentation/pages/teacher/teacher_edit_criteria_page.dart';
+import 'package:example/presentation/pages/teacher/teacher_home_newUI.dart';
+import 'package:example/presentation/pages/teacher/teacher_reports_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
@@ -80,7 +94,10 @@ class _AppBindings extends Bindings {
       permanent: true,
     );
     Get.put<IGroupRepository>(GroupRepositoryImpl(db), permanent: true);
-    Get.put<IEvaluationRepository>(EvaluationRepositoryImpl(db), permanent: true);
+    Get.put<IEvaluationRepository>(
+      EvaluationRepositoryImpl(db),
+      permanent: true,
+    );
     Get.put<ICourseRepository>(CourseRepositoryImpl(db), permanent: true);
     Get.put(
       TeacherImportCsvUseCase(Get.find<IGroupRepository>()),
@@ -122,7 +139,9 @@ class PeerEvalApp extends StatelessWidget {
   const PeerEvalApp({super.key});
 
   String get _appName {
-    final fromEnv = dotenv.isInitialized ? dotenv.env['APP_NAME']?.trim() : null;
+    final fromEnv = dotenv.isInitialized
+        ? dotenv.env['APP_NAME']?.trim()
+        : null;
     if (fromEnv != null && fromEnv.isNotEmpty) return fromEnv;
     return 'Evalia';
   }
@@ -153,22 +172,25 @@ class PeerEvalApp extends StatelessWidget {
       home: const _SplashPage(),
       getPages: [
         // Unified auth
-        GetPage(name: '/login', page: () => const LoginPage()),
-        GetPage(name: '/register', page: () => const RegisterPage()),
+        GetPage(name: '/inicio_newUI', page: () => const InicioNewUI()),
+        GetPage(name: '/login_newUI', page: () => const LoginNewUI()),
+        GetPage(name: '/register_newUI', page: () => const RegisterNewUI()),
         // Student
-        GetPage(name: '/student/courses', page: () => const SCoursesPage()),
+        GetPage(name: '/student/courses', page: () => const StudentHomeNewUI()),
+        GetPage(name: '/student/course', page:() => const StudentCoursePage()),
         GetPage(name: '/student/eval-list', page: () => const SEvalListPage()),
         GetPage(
           name: '/student/peer-score',
           page: () => const SPeerScorePage(),
         ),
-        GetPage(name: '/student/peers',  page: () => const SPeersPage()),
+        GetPage(name: '/student/peers', page: () => const SPeersPage()),
         GetPage(name: '/student/results', page: () => const SMyResultsPage()),
         GetPage(name: '/student/profile', page: () => const SProfilePage()),
+
         // Teacher
         GetPage(
           name: '/teacher/dash',
-          page: () => const TDashPage(),
+          page: () => const TeacherHomeNewUI(),
           binding: TeacherModuleBinding(),
         ),
         GetPage(
@@ -178,12 +200,12 @@ class PeerEvalApp extends StatelessWidget {
         ),
         GetPage(
           name: '/teacher/new-eval',
-          page: () => const TNewEvalPage(),
+          page: () => const TeacherCreateEvalNewUI(),
           binding: TeacherModuleBinding(),
         ),
         GetPage(
           name: '/teacher/results',
-          page: () => const TResultsPage(),
+          page: () => const TeacherReportsUI(),
           binding: TeacherModuleBinding(),
         ),
         GetPage(
@@ -196,6 +218,35 @@ class PeerEvalApp extends StatelessWidget {
           page: () => const TCourseManagePage(),
           binding: TeacherModuleBinding(),
         ),
+        GetPage(
+          name: '/teacher/course',
+          page: () => const TeacherCoursePage(),
+          binding: TeacherModuleBinding(),
+        ),
+        GetPage(
+          name: '/teacher/new-category',
+          page: () => const TeacherCreateCategoryPage(),
+          binding: TeacherModuleBinding(),
+        ),
+        GetPage(
+          name: '/teacher/edit-category',
+          page: () => const TeacherEditCategoryNewUI(),
+        ),
+        GetPage(
+          name: '/teacher/new-course',
+          page: () => const TeacherCreateCourseNewUI(),
+          binding: TeacherModuleBinding(),
+        ),
+        GetPage(
+          name: '/teacher/criteria',
+          page: () => const TeacherCriteriaPage(),
+        ),
+
+        GetPage(
+          name: '/teacher/edit-criteria',
+          page: () => const TeacherEditCriteriaPage(),
+        ),
+
       ],
     );
   }
@@ -222,8 +273,10 @@ class _SplashPageState extends State<_SplashPage> {
     final teacher = Get.find<TeacherSessionController>();
 
     try {
-      await Future.wait([student.checkSession(), teacher.checkSession()])
-          .timeout(const Duration(seconds: 8));
+      await Future.wait([
+        student.checkSession(),
+        teacher.checkSession(),
+      ]).timeout(const Duration(seconds: 8));
     } catch (_) {
       // timeout or error — fall through to login
     }
@@ -235,7 +288,7 @@ class _SplashPageState extends State<_SplashPage> {
     } else if (student.isLoggedIn) {
       Get.offAllNamed('/student/courses');
     } else {
-      Get.offAllNamed('/login');
+      Get.offAllNamed('/inicio_newUI');
     }
   }
 
