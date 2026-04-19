@@ -105,7 +105,7 @@ class TeacherHomeNewUI extends StatelessWidget {
 
                             return _courseCard(
                               title: course.name,
-                              subtitle: "${courseCtrl.totalGroups} grupos",
+                              subtitle: "${courseCtrl.totalGroupsForCourse(course.id)} grupos",
                               color: i.isEven
                                   ? const Color(0xFF7B83EB)
                                   : const Color(0xFFF4B860),
