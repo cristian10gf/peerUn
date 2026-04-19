@@ -173,6 +173,9 @@ void main() {
     'importCsv does not require student login for already-registered users',
     () async {
       final db = _FakeGroupImportDatabaseService({
+        RobleTables.course: [
+          {'_id': 'course-77', 'course_id': '77', 'name': 'Test Course'},
+        ],
         RobleTables.users: [
           {
             '_id': 'users-100',
@@ -211,6 +214,9 @@ void main() {
     'importCsv avoids per-member relation reads after warm-up',
     () async {
       final db = _FakeGroupImportDatabaseService({
+        RobleTables.course: [
+          {'_id': 'course-77', 'course_id': '77', 'name': 'Test Course'},
+        ],
         RobleTables.users: [
           {
             '_id': 'users-201',
@@ -242,8 +248,10 @@ void main() {
 
       await repo.importCsv(csv, 'Sprint 2', 999, 77);
 
-      expect(db.userCourseNoFilterReadCount, 1);
-      expect(db.userGroupNoFilterReadCount, 1);
+      // tableExists() causes one extra unfiltered read per table; total ≤ 2
+      // (tableExists check + actual warm-up read), never per-member.
+      expect(db.userCourseNoFilterReadCount, lessThanOrEqualTo(2));
+      expect(db.userGroupNoFilterReadCount, lessThanOrEqualTo(2));
       expect(db.userCourseFilteredReadCount, 0);
       expect(db.userGroupFilteredReadCount, 0);
     },
@@ -253,6 +261,9 @@ void main() {
     'importCsv caches user lookup per unique email in same import',
     () async {
       final db = _FakeGroupImportDatabaseService({
+        RobleTables.course: [
+          {'_id': 'course-77', 'course_id': '77', 'name': 'Test Course'},
+        ],
         RobleTables.users: [
           {
             '_id': 'users-301',
@@ -298,7 +309,7 @@ void main() {
           {
             '_id': 'course-row-77',
             'id': 77,
-            'course_id': 'course-canonical-77',
+            'course_id': '77',
             'name': 'Arquitectura de Software',
           },
         ],
@@ -339,9 +350,9 @@ void main() {
       final courseRel = userCourse.first;
       final groupRel = userGroup.first;
 
-      expect(category['course_id'], 'course-canonical-77');
+      expect(category['course_id'], '77');
       expect(group['category_id'], category['category_id']);
-      expect(courseRel['course_id'], 'course-canonical-77');
+      expect(courseRel['course_id'], '77');
       expect(courseRel['user_id'], 'auth-existing-500');
       expect(groupRel['group_id'], group['group_id']);
       expect(groupRel['user_id'], 'auth-existing-500');

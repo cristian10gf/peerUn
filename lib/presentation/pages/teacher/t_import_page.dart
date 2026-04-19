@@ -228,9 +228,13 @@ class TImportPage extends StatelessWidget {
 
             // ── BODY ───────────────────────────────────────────────
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(22),
-                child: Column(
+              child: RefreshIndicator(
+                color: tkGold,
+                onRefresh: () => courseCtrl.refreshData(),
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(22),
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     /// 🚀 Import button
@@ -282,6 +286,7 @@ class TImportPage extends StatelessWidget {
                       );
                     }),
                   ],
+                ),
                 ),
               ),
             ),

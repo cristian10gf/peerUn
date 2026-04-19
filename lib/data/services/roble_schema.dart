@@ -130,6 +130,7 @@ class RobleSchema {
     RobleTables.evaluationCriterium: RobleFields.rowId,
     RobleTables.resultEvaluation: RobleFields.resultEvaluationId,
     RobleTables.resultCriterium: RobleFields.rowId,
+    'test_submit': RobleFields.rowId,
   };
 
   // Canonical field -> accepted aliases by logical table name.

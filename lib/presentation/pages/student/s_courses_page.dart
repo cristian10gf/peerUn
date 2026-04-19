@@ -94,11 +94,15 @@ class SCoursesPage extends StatelessWidget {
 
             // ── Body ───────────────────────────────────────────────────────
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(22),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+              child: RefreshIndicator(
+                color: skPrimary,
+                onRefresh: () => ctrl.refreshData(),
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(22),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                     Text(
                       'MIS CURSOS',
                       style: GoogleFonts.sora(
@@ -282,7 +286,8 @@ class SCoursesPage extends StatelessWidget {
                             .toList(),
                       );
                     }),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -472,62 +477,6 @@ class _StudentCategoryCard extends StatelessWidget {
             Text(
               group.name,
               style: GoogleFonts.dmMono(fontSize: 11, color: skTextMid),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(99),
-                    child: LinearProgressIndicator(
-                      minHeight: 4,
-                      value: category.progress,
-                      backgroundColor: skBorder,
-                      valueColor: const AlwaysStoppedAnimation(skPrimary),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '${category.completedPeerCount}/${category.totalPeerCount}',
-                  style: GoogleFonts.dmMono(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: skTextMid,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: category.hasActiveEvaluation
-                    ? () => ctrl.openActiveEvaluationForCategory(category)
-                    : null,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: skPrimary,
-                  disabledForegroundColor: skTextMid,
-                  disabledBackgroundColor: skSurface,
-                  side: BorderSide(
-                    color: category.hasActiveEvaluation ? skPrimary : skBorder,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                ),
-                child: Text(
-                  category.hasActiveEvaluation
-                      ? 'Evaluar ${category.activeEvaluationName}'
-                      : 'Sin evaluacion activa',
-                  style: GoogleFonts.sora(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
             ),
             const SizedBox(height: 8),
             Wrap(

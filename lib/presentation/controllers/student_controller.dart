@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:example/data/utils/error_parser.dart';
@@ -8,6 +9,7 @@ import 'package:example/domain/models/student_home.dart';
 import 'package:example/domain/repositories/i_auth_repository.dart';
 import 'package:example/domain/repositories/i_evaluation_repository.dart';
 import 'package:example/domain/services/evaluation_domain_service.dart';
+import 'package:example/domain/services/i_cache_service.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 
 typedef StudentStatusBadge = ({
@@ -17,13 +19,15 @@ typedef StudentStatusBadge = ({
 });
 
 class StudentController extends GetxController {
-  final IAuthRepository        _authRepo;
-  final IEvaluationRepository  _evalRepo;
-  final EvaluationDomainService _evaluationDomainService;
+  final IAuthRepository         _authRepo;
+  final IEvaluationRepository   _evalRepo;
+  final ICacheService            _cache;
+  final EvaluationDomainService  _evaluationDomainService;
 
   StudentController(
     this._authRepo,
-    this._evalRepo, {
+    this._evalRepo,
+    this._cache, {
     EvaluationDomainService? evaluationDomainService,
   }) : _evaluationDomainService =
            evaluationDomainService ?? const EvaluationDomainService();
@@ -91,10 +95,24 @@ class StudentController extends GetxController {
   }
 
   Future<void> logout() async {
+    final s = student.value;
+    if (s != null) {
+      await _cache.invalidate('student_home_v1_${s.email}');
+      await _cache.invalidate('student_evals_v1_${s.email}');
+    }
     await _authRepo.logout();
     student.value = null;
     _resetEvalState();
     Get.offAllNamed('/login');
+  }
+
+  /// Clears cached home + eval data and reloads from API.
+  Future<void> refreshData() async {
+    final s = student.value;
+    if (s == null) return;
+    await _cache.invalidate('student_home_v1_${s.email}');
+    await _cache.invalidate('student_evals_v1_${s.email}');
+    await loadEvalData();
   }
 
   // ── Eval data from DB ─────────────────────────────────────────────────────
@@ -108,6 +126,7 @@ class StudentController extends GetxController {
   final peerLoadError    = ''.obs;
   final myResultsError   = ''.obs;
   final submitError      = ''.obs;
+  final isSubmitting     = false.obs;
   final isLoadingHome    = false.obs;
 
   final homeCourses = <StudentHomeCourse>[].obs;
@@ -242,7 +261,24 @@ class StudentController extends GetxController {
 
     isLoadingHome.value = true;
     try {
-      final courses = await _evalRepo.getStudentHomeCourses(s.email);
+      final homeKey = 'student_home_v1_${s.email}';
+      final cachedHome = await _cache.get(homeKey);
+      final List<StudentHomeCourse> courses;
+      if (cachedHome != null) {
+        courses = (jsonDecode(cachedHome) as List)
+            .map((e) => StudentHomeCourse.fromJson(e as Map<String, dynamic>))
+            .toList();
+      } else {
+        courses = await _evalRepo.getStudentHomeCourses(s.email);
+        try {
+          await _cache.set(
+            homeKey,
+            jsonEncode(courses.map((c) => c.toJson()).toList()),
+          );
+        } catch (_) {
+          // cache write failure is non-fatal
+        }
+      }
       homeCourses.assignAll(courses);
       expandedCourseIds
         ..clear()
@@ -258,7 +294,23 @@ class StudentController extends GetxController {
     // Load all evaluations this student is part of
     List<Evaluation> evalList = [];
     try {
-      evalList = await _evalRepo.getEvaluationsForStudent(s.email);
+      final evalsKey = 'student_evals_v1_${s.email}';
+      final cachedEvals = await _cache.get(evalsKey);
+      if (cachedEvals != null) {
+        evalList = (jsonDecode(cachedEvals) as List)
+            .map((e) => Evaluation.fromJson(e as Map<String, dynamic>))
+            .toList();
+      } else {
+        evalList = await _evalRepo.getEvaluationsForStudent(s.email);
+        try {
+          await _cache.set(
+            evalsKey,
+            jsonEncode(evalList.map((e) => e.toJson()).toList()),
+          );
+        } catch (_) {
+          // cache write failure is non-fatal
+        }
+      }
       evaluations.assignAll(evalList);
     } catch (e) {
       evalLoadError.value = parseApiError(e, fallback: 'Error al cargar evaluaciones');
@@ -341,6 +393,28 @@ class StudentController extends GetxController {
       peerLoadError.value = parseApiError(e, fallback: 'Error al cargar pares');
     }
     peers.assignAll(peerList);
+
+    // Restore any previously saved scores so the student can resume.
+    if (peerList.isNotEmpty) {
+      try {
+        final saved = await _evalRepo.getSavedPeerScores(
+          evalId: eval.id,
+          email:  s.email,
+        );
+        if (saved.isNotEmpty) {
+          for (final peer in peers) {
+            final savedScores = saved[int.parse(peer.id)];
+            if (savedScores != null && savedScores.isNotEmpty) {
+              peer.scores    = Map<String, int>.from(savedScores);
+              peer.evaluated = true;
+            }
+          }
+          peers.refresh();
+        }
+      } catch (_) {
+        // Best-effort: peer list is still usable without restored scores.
+      }
+    }
   }
 
   /// Select an eval for peer-scoring (loads peers, sets active eval).
@@ -403,19 +477,37 @@ class StudentController extends GetxController {
   bool get allCriteriaScored =>
       EvalCriterion.defaults.every((c) => scores.containsKey(c.id));
 
-  void savePeerScore() {
+  Future<void> savePeerScore() async {
     final peer = currentPeer.value;
     if (peer == null || !allCriteriaScored) return;
     peer.scores    = Map<String, int>.from(scores);
     peer.evaluated = true;
     peers.refresh();
     _refreshActiveEvalCard();
-  }
 
-  Future<void> submitEvaluation() async {
+    // Persist immediately so partial progress survives logout.
     final s    = student.value;
     final eval = activeEvalDb.value;
     if (s == null || eval == null) return;
+    try {
+      await _evalRepo.saveResponses(
+        evalId:             eval.id,
+        evaluatorStudentId: int.parse(s.id),
+        evaluatedMemberId:  int.parse(peer.id),
+        scores:             peer.scores,
+      );
+    } catch (_) {
+      // Best-effort: the score is already in memory and will be
+      // re-saved on final submit.
+    }
+  }
+
+  Future<void> submitEvaluation() async {
+    if (isSubmitting.value) return;
+    final s    = student.value;
+    final eval = activeEvalDb.value;
+    if (s == null || eval == null) return;
+    isSubmitting.value = true;
 
     submitError.value = '';
     final studentId = int.parse(s.id);
@@ -440,6 +532,7 @@ class StudentController extends GetxController {
     if (failedSaves > 0) {
       submitError.value = 'No se pudieron guardar $failedSaves evaluaciones';
     }
+
     await _loadMyResultsInternal(eval.id, s.email);
 
     // Refresh status for this eval now that responses are saved
@@ -457,6 +550,8 @@ class StudentController extends GetxController {
       submitError.value = submitError.value.isEmpty
           ? 'No se pudo actualizar el estado: $e'
           : submitError.value;
+    } finally {
+      isSubmitting.value = false;
     }
   }
 

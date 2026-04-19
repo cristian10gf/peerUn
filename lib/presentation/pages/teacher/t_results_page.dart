@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:example/presentation/theme/teacher_colors.dart';
 import 'package:example/presentation/controllers/teacher/teacher_results_controller.dart';
 import 'package:example/presentation/constants/evaluation_ui_constants.dart';
 import 'package:example/domain/models/teacher_data.dart';
@@ -9,6 +7,11 @@ import 'package:example/presentation/pages/teacher/widgets/teacher_back_button.d
 
 Color _tkScore(double v) => v >= 4.0 ? tkSuccess : tkWarning;
 const _kAvatarColors = [tkBlue, tkPurple, tkSuccess, tkPink];
+import 'package:example/presentation/pages/teacher/widgets/results/teacher_results_detail_body.dart';
+import 'package:example/presentation/pages/teacher/widgets/results/teacher_results_header.dart';
+import 'package:example/presentation/pages/teacher/widgets/results/teacher_results_overview_body.dart';
+import 'package:example/presentation/pages/teacher/widgets/results/teacher_results_state_cards.dart';
+import 'package:example/presentation/theme/teacher_colors.dart';
 
 class TResultsPage extends StatelessWidget {
   const TResultsPage({super.key});
@@ -16,6 +19,7 @@ class TResultsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ctrl = Get.find<TeacherResultsController>();
+
     return Scaffold(
       backgroundColor: tkBackground,
       body: SafeArea(
@@ -268,48 +272,49 @@ class _GroupCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  group.name,
-                  style: GoogleFonts.sora(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: tkText,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _tkScore(group.average).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    group.average.toStringAsFixed(1),
-                    style: GoogleFonts.dmMono(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: _tkScore(group.average),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(99),
-              child: LinearProgressIndicator(
-                value: group.barFraction,
-                backgroundColor: tkBorder,
-                valueColor: AlwaysStoppedAnimation(_tkScore(group.average)),
-                minHeight: 3,
-              ),
+            Obx(() {
+              final detailVm = ctrl.selectedDetailVm;
+              final isDrillDown = ctrl.selectedGroupIndex != null;
+              final evalName = ctrl.selectedEval.value?.name ?? '-';
+
+              return TeacherResultsHeader(
+                backLabel: isDrillDown ? 'Grupos' : 'Volver',
+                title: detailVm?.groupName ?? 'Resultados',
+                subtitle:
+                    '$evalName · ${isDrillDown ? 'Desglose completo' : 'Vista general'}',
+                onBackTap: () {
+                  if (isDrillDown) {
+                    ctrl.closeGroupDetail();
+                    return;
+                  }
+                  Get.offNamed('/teacher/dash');
+                },
+              );
+            }),
+            const Divider(height: 1, color: tkBorder),
+            Expanded(
+              child: Obx(() {
+                if (ctrl.resultsLoading.value) {
+                  return const TeacherResultsLoadingStateCard();
+                }
+
+                if (ctrl.resultsError.value.isNotEmpty) {
+                  return TeacherResultsErrorStateCard(
+                    message: ctrl.resultsError.value,
+                  );
+                }
+
+                final detailVm = ctrl.selectedDetailVm;
+                if (detailVm != null) {
+                  return TeacherResultsDetailBody(vm: detailVm);
+                }
+
+                return TeacherResultsOverviewBody(
+                  vm: ctrl.overviewVm,
+                  onGroupTap: ctrl.openGroupDetail,
+                );
+              }),
             ),
           ],
         ),

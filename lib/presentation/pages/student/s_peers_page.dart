@@ -101,30 +101,44 @@ class SPeersPage extends StatelessWidget {
                     // Submit button
                     Obx(() {
                       if (!ctrl.allEvaluated) return const SizedBox.shrink();
+                      final submitting = ctrl.isSubmitting.value;
                       return Column(
                         children: [
                           const SizedBox(height: 8),
                           GestureDetector(
-                            onTap: () async {
-                              await ctrl.submitEvaluation();
-                              Get.offNamed('/student/courses');
-                            },
+                            onTap: submitting
+                                ? null
+                                : () async {
+                                    await ctrl.submitEvaluation();
+                                    Get.offNamed('/student/courses');
+                                  },
                             child: Container(
                               width: double.infinity,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               decoration: BoxDecoration(
-                                color: skPrimary,
+                                color: submitting
+                                    ? skPrimary.withValues(alpha: 0.5)
+                                    : skPrimary,
                                 borderRadius: BorderRadius.circular(14),
                               ),
                               alignment: Alignment.center,
-                              child: Text(
-                                'Enviar evaluación completa',
-                                style: GoogleFonts.sora(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              ),
+                              child: submitting
+                                  ? const SizedBox(
+                                      height: 18,
+                                      width: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Text(
+                                      'Enviar evaluación completa',
+                                      style: GoogleFonts.sora(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
+                                    ),
                             ),
                           ),
                         ],

@@ -22,4 +22,28 @@ class Evaluation {
   });
 
   bool get isActive => DateTime.now().isBefore(closesAt);
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'categoryId': categoryId,
+    'categoryName': categoryName,
+    'courseName': courseName,
+    'hours': hours,
+    'visibility': visibility,
+    'createdAt': createdAt.toIso8601String(),
+    'closesAt': closesAt.toIso8601String(),
+  };
+
+  factory Evaluation.fromJson(Map<String, dynamic> j) => Evaluation(
+    id: j['id'] as int,
+    name: j['name'] as String,
+    categoryId: j['categoryId'] as int,
+    categoryName: j['categoryName'] as String,
+    courseName: (j['courseName'] as String?) ?? '',
+    hours: j['hours'] as int,
+    visibility: j['visibility'] as String,
+    createdAt: DateTime.parse(j['createdAt'] as String),
+    closesAt: DateTime.parse(j['closesAt'] as String),
+  );
 }

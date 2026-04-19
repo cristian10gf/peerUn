@@ -27,8 +27,15 @@ class _FakeRollbackDb extends DatabaseService {
   Future<List<Map<String, dynamic>>> robleRead(
     String tableName, {
     Map<String, dynamic>? filters,
-  }) async =>
-      const <Map<String, dynamic>>[];
+  }) async {
+    if (tableName == RobleTables.course) {
+      // courseId=1 → stableNumericIdFromSeed('1')==1 ✓
+      return [
+        {'_id': 'course-1', 'course_id': '1', 'name': 'Test Course'},
+      ];
+    }
+    return const <Map<String, dynamic>>[];
+  }
 
   @override
   Future<Map<String, dynamic>> robleCreate(
