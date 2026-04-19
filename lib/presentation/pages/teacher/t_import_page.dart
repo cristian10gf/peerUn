@@ -3,17 +3,34 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import 'package:example/presentation/theme/teacher_colors.dart';
+
+// controllers
 import 'package:example/presentation/controllers/teacher/teacher_course_import_controller.dart';
 import 'package:example/presentation/controllers/teacher/teacher_session_controller.dart';
+
+// models
 import 'package:example/presentation/models/csv_import_summary.dart';
+
+// widgets
 import 'package:example/presentation/pages/teacher/widgets/teacher_bottom_nav.dart';
 import 'package:example/presentation/pages/teacher/widgets/teacher_category_card.dart';
+
+
 import 'package:example/presentation/pages/teacher/widgets/import/t_import_header.dart';
 import 'package:example/presentation/pages/teacher/widgets/import/t_import_empty_state.dart';
+import 'package:example/presentation/pages/teacher/widgets/teacher_import_button.dart';
+import 'package:example/presentation/pages/teacher/widgets/teacher_import_progress.dart';
+import 'package:example/presentation/pages/teacher/widgets/teacher_import_error.dart';
+import 'package:example/presentation/pages/teacher/widgets/teacher_section_label.dart';
 
 class TImportPage extends StatelessWidget {
   const TImportPage({super.key});
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 📂 CSV FLOW
+  // ─────────────────────────────────────────────────────────────────────────────
 
   Future<void> _pickAndImport(
     BuildContext context,
@@ -25,6 +42,7 @@ class TImportPage extends StatelessWidget {
       withData: false,
       withReadStream: false,
     );
+
     if (result == null || result.files.isEmpty) return;
 
     final file = result.files.first;
@@ -34,17 +52,21 @@ class TImportPage extends StatelessWidget {
     final content = await File(path).readAsString();
 
     if (!context.mounted) return;
+
     final courseId = await _showCoursePicker(context, ctrl);
-    if (courseId == null) return; // user cancelled
+    if (courseId == null) return;
 
     await ctrl.importCsvFromFilename(content, file.name, courseId);
 
     if (!context.mounted) return;
+
     final summary = ctrl.lastImportSummary.value;
     if (summary == null) return;
 
     await _showImportSummaryDialog(context, summary);
+
     if (!context.mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -58,6 +80,10 @@ class TImportPage extends StatelessWidget {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 📊 RESULT DIALOG
+  // ─────────────────────────────────────────────────────────────────────────────
+
   Future<void> _showImportSummaryDialog(
     BuildContext context,
     CsvImportSummary summary,
@@ -67,7 +93,9 @@ class TImportPage extends StatelessWidget {
       builder: (ctx) {
         return Dialog(
           backgroundColor: tkSurface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
             child: Column(
@@ -152,8 +180,10 @@ class TImportPage extends StatelessWidget {
     );
   }
 
-  /// Shows a bottom sheet to pick (or quick-create) a course.
-  /// Returns the selected courseId (0 = sin curso), or null if cancelled.
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 📚 COURSE PICKER
+  // ─────────────────────────────────────────────────────────────────────────────
+
   Future<int?> _showCoursePicker(
     BuildContext context,
     TeacherCourseImportController ctrl,
@@ -161,8 +191,6 @@ class TImportPage extends StatelessWidget {
     return showModalBottomSheet<int>(
       context: context,
       isScrollControlled: true,
-      isDismissible: false,
-      enableDrag: false,
       backgroundColor: tkSurface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -171,29 +199,34 @@ class TImportPage extends StatelessWidget {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 🧱 UI
+  // ─────────────────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final sessionCtrl = Get.find<TeacherSessionController>();
     final courseCtrl = Get.find<TeacherCourseImportController>();
+
     return Scaffold(
       backgroundColor: tkBackground,
       body: SafeArea(
         child: Column(
           children: [
-            // ── Header ─────────────────────────────────────────────────────
-            Container(
-              child: Obx(() {
-                final t = sessionCtrl.teacher.value;
-                if (t == null) return const SizedBox.shrink();
-                return TImportHeader(
-                  teacher: t,
-                  onCoursesTap: () => Get.toNamed('/teacher/courses'),
-                );
-              }),
-            ),
+            // ── HEADER ─────────────────────────────────────────────
+            Obx(() {
+              final t = sessionCtrl.teacher.value;
+              if (t == null) return const SizedBox.shrink();
+
+              return TImportHeader(
+                teacher: t,
+                onCoursesTap: () => Get.toNamed('/teacher/courses'),
+              );
+            }),
+
             const Divider(height: 1, color: tkBorder),
 
-            // ── Body ───────────────────────────────────────────────────────
+            // ── BODY ───────────────────────────────────────────────
             Expanded(
               child: RefreshIndicator(
                 color: tkGold,
@@ -204,139 +237,49 @@ class TImportPage extends StatelessWidget {
                   child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Import button
-                    Obx(() {
-                      final loading = courseCtrl.importLoading.value;
-                      return GestureDetector(
-                        onTap: loading
-                            ? null
-                            : () => _pickAndImport(context, courseCtrl),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            color: loading ? tkSurfaceAlt : tkGold,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          alignment: Alignment.center,
-                          child: loading
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    color: tkBackground,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.upload_file_rounded,
-                                      size: 16,
-                                      color: tkBackground,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Importar CSV',
-                                      style: GoogleFonts.sora(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                        color: tkBackground,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                        ),
-                      );
-                    }),
+                    /// 🚀 Import button
+                    Obx(() => TeacherImportButton(
+                          loading: courseCtrl.importLoading.value,
+                          onTap: () =>
+                              _pickAndImport(context, courseCtrl),
+                        )),
 
-                    Obx(() {
-                      final loading = courseCtrl.importLoading.value;
-                      final status = courseCtrl.importProgress.value;
-                      if (!loading || status.isEmpty) {
-                        return const SizedBox(height: 12);
-                      }
-                      return Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.only(top: 10),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: tkSurface,
-                          border: Border.all(color: tkBorder),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: tkGold,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                status,
-                                style: GoogleFonts.sora(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: tkTextMid,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
+                    /// ⏳ Progress
+                    Obx(() => TeacherImportProgress(
+                          status: courseCtrl.importLoading.value
+                              ? courseCtrl.importProgress.value
+                              : '',
+                        )),
 
-                    // Error message
-                    Obx(() {
-                      final err = courseCtrl.importError.value;
-                      if (err.isEmpty) return const SizedBox(height: 6);
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 10),
-                        child: Text(
-                          err,
-                          style: GoogleFonts.sora(
-                            fontSize: 12,
-                            color: tkDanger,
-                          ),
-                        ),
-                      );
-                    }),
+                    /// ❌ Error
+                    Obx(() => TeacherImportError(
+                          message: courseCtrl.importError.value,
+                        )),
 
                     const SizedBox(height: 18),
 
-                    // Section label
-                    Text(
+                    /// 📂 Section title
+                    const TeacherSectionLabel(
                       'CATEGORÍAS IMPORTADAS',
-                      style: GoogleFonts.sora(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: tkTextFaint,
-                        letterSpacing: 1.5,
-                      ),
                     ),
+
                     const SizedBox(height: 10),
 
-                    // Category list or empty state
+                    /// 📋 Categories
                     Obx(() {
                       final cats = courseCtrl.categories;
+
                       if (cats.isEmpty) {
                         return const TImportEmptyState();
                       }
+
                       return Column(
                         children: cats
                             .map(
                               (c) => TeacherCategoryCard(
                                 category: c,
-                                onDelete: () => courseCtrl.deleteCategory(c.id),
+                                onDelete: () =>
+                                    courseCtrl.deleteCategory(c.id),
                               ),
                             )
                             .toList(),
@@ -348,8 +291,8 @@ class TImportPage extends StatelessWidget {
               ),
             ),
 
-            // ── Bottom nav ─────────────────────────────────────────────────
-            TeacherBottomNav(activeIndex: 3),
+            // ── BOTTOM NAV ─────────────────────────────────────────
+            const TeacherBottomNav(activeIndex: 3),
           ],
         ),
       ),
@@ -357,12 +300,9 @@ class TImportPage extends StatelessWidget {
   }
 }
 
-// ── Category card ──────────────────────────────────────────────────────────────
-
-// ── Course picker sheet ────────────────────────────────────────────────────────
-
 class _CoursePickerSheet extends StatefulWidget {
   final TeacherCourseImportController ctrl;
+
   const _CoursePickerSheet({required this.ctrl});
 
   @override
@@ -384,6 +324,7 @@ class _CoursePickerSheetState extends State<_CoursePickerSheet> {
   @override
   Widget build(BuildContext context) {
     final ctrl = widget.ctrl;
+
     return Padding(
       padding: EdgeInsets.fromLTRB(
         22,
@@ -403,25 +344,12 @@ class _CoursePickerSheetState extends State<_CoursePickerSheet> {
               color: tkText,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Selecciona el curso al que pertenece esta importación',
-            style: GoogleFonts.sora(fontSize: 12, color: tkTextFaint),
-          ),
           const SizedBox(height: 16),
 
-          // Existing courses
+          /// 📋 cursos
           Obx(() {
             final courses = ctrl.courses;
-            if (courses.isEmpty && !_creating) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Text(
-                  'No tienes cursos. Crea uno abajo.',
-                  style: GoogleFonts.sora(fontSize: 12, color: tkTextFaint),
-                ),
-              );
-            }
+
             return Column(
               children: courses
                   .map(
@@ -448,20 +376,13 @@ class _CoursePickerSheetState extends State<_CoursePickerSheet> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                c.code.isNotEmpty
-                                    ? '${c.name}  ·  ${c.code}'
-                                    : c.name,
+                                c.name,
                                 style: GoogleFonts.sora(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                   color: tkText,
                                 ),
                               ),
-                            ),
-                            const Icon(
-                              Icons.chevron_right_rounded,
-                              size: 16,
-                              color: tkTextFaint,
                             ),
                           ],
                         ),
@@ -472,181 +393,66 @@ class _CoursePickerSheetState extends State<_CoursePickerSheet> {
             );
           }),
 
-          // Quick-create form toggle
+          const SizedBox(height: 12),
+
+          /// ➕ crear nuevo
           if (_creating) ...[
-            const SizedBox(height: 4),
             TextField(
               controller: _nameCtrl,
-              style: GoogleFonts.sora(fontSize: 14, color: tkText),
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 hintText: 'Nombre del curso',
-                hintStyle: GoogleFonts.sora(fontSize: 14, color: tkTextFaint),
-                filled: true,
-                fillColor: tkSurfaceAlt,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: tkBorder),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: tkBorder),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: tkGold),
-                ),
               ),
             ),
             const SizedBox(height: 8),
             TextField(
               controller: _codeCtrl,
-              style: GoogleFonts.sora(fontSize: 14, color: tkText),
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 hintText: 'Código (opcional)',
-                hintStyle: GoogleFonts.sora(fontSize: 14, color: tkTextFaint),
-                filled: true,
-                fillColor: tkSurfaceAlt,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: tkBorder),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: tkBorder),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: tkGold),
-                ),
               ),
             ),
             const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: Obx(
-                () => GestureDetector(
-                  onTap: ctrl.courseCreateLoading.value
-                      ? null
-                      : () async {
-                          final name = _nameCtrl.text.trim();
-                          if (name.isEmpty) return;
 
-                          final nav = Navigator.of(context);
-                          final ok = await ctrl.createCourse(
-                            name,
-                            _codeCtrl.text.trim(),
-                          );
-                          if (!ok) {
-                            if (!mounted) return;
-                            Get.snackbar(
-                              'No se pudo crear',
-                              ctrl.courseCreateError.value,
-                              snackPosition: SnackPosition.BOTTOM,
-                            );
-                            return;
-                          }
+            GestureDetector(
+              onTap: () async {
+                final name = _nameCtrl.text.trim();
+                if (name.isEmpty) return;
 
-                          final newId = ctrl.courses.isNotEmpty
-                              ? ctrl.courses.first.id
-                              : null;
-                          if (mounted) nav.pop(newId);
-                        },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    decoration: BoxDecoration(
-                      color: ctrl.courseCreateLoading.value
-                          ? tkGold.withValues(alpha: 0.45)
-                          : tkGold,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    alignment: Alignment.center,
-                    child: ctrl.courseCreateLoading.value
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: tkBackground,
-                            ),
-                          )
-                        : Text(
-                            'Crear y seleccionar',
-                            style: GoogleFonts.sora(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: tkBackground,
-                            ),
-                          ),
+                final ok = await ctrl.createCourse(
+                  name,
+                  _codeCtrl.text.trim(),
+                );
+
+                if (ok && mounted) {
+                  Navigator.pop(context, ctrl.courses.first.id);
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: tkGold,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  'Crear y seleccionar',
+                  style: GoogleFonts.sora(
+                    color: tkBackground,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
             ),
           ] else ...[
-            const SizedBox(height: 8),
             GestureDetector(
               onTap: () => setState(() => _creating = true),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.add_circle_outline_rounded,
-                    size: 16,
-                    color: tkGold,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Crear nuevo curso',
-                    style: GoogleFonts.sora(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: tkGold,
-                    ),
-                  ),
-                ],
+              child: Text(
+                '+ Crear nuevo curso',
+                style: GoogleFonts.sora(color: tkGold),
               ),
             ),
           ],
-
-          const SizedBox(height: 20),
-          const Divider(height: 1, color: tkBorder),
-          const SizedBox(height: 12),
-
-          // Footer: only cancel (a course is required)
-          SizedBox(
-            width: double.infinity,
-            child: GestureDetector(
-              onTap: () => Navigator.pop(context, null),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: tkSurfaceAlt,
-                  border: Border.all(color: tkBorder),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'Cancelar importación',
-                  style: GoogleFonts.sora(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: tkTextMid,
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 }
-
-// ── Bottom nav ─────────────────────────────────────────────────────────────────

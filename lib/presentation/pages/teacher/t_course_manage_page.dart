@@ -12,106 +12,127 @@ class TCourseManagePage extends StatelessWidget {
   void _showCreateSheet(BuildContext context, TeacherCourseImportController ctrl) {
     final nameCtrl = TextEditingController();
     final codeCtrl = TextEditingController();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: tkSurface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setState) {
-            return Padding(
-              padding: EdgeInsets.fromLTRB(
-                22,
-                20,
-                22,
-                MediaQuery.of(ctx).viewInsets.bottom + 24,
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            22,
+            20,
+            22,
+            MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              /// drag indicator
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: tkBorder,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Nuevo curso',
-                    style: GoogleFonts.sora(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      color: tkText,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  _FieldLabel('Nombre'),
-                  const SizedBox(height: 6),
-                  _SheetTextField(
-                    controller: nameCtrl,
-                    hint: 'Ej: Estructuras de Datos',
-                  ),
-                  const SizedBox(height: 14),
-                  _FieldLabel('Código (opcional)'),
-                  const SizedBox(height: 6),
-                  _SheetTextField(controller: codeCtrl, hint: 'Ej: DM2026-10'),
-                  const SizedBox(height: 22),
-                  SizedBox(
-                    width: double.infinity,
-                    child: Obx(
-                      () => GestureDetector(
-                        onTap: ctrl.courseCreateLoading.value
-                            ? null
-                            : () async {
-                                final name = nameCtrl.text.trim();
-                                if (name.isEmpty) return;
 
-                                final ok = await ctrl.createCourse(
-                                  name,
-                                  codeCtrl.text.trim(),
-                                );
-                                if (!ok) {
-                                  Get.snackbar(
-                                    'No se pudo crear',
-                                    ctrl.courseCreateError.value,
-                                    snackPosition: SnackPosition.BOTTOM,
-                                  );
-                                  return;
-                                }
+              const SizedBox(height: 16),
 
-                                if (ctx.mounted) Navigator.pop(ctx);
-                              },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            color: ctrl.courseCreateLoading.value
-                                ? tkGold.withValues(alpha: 0.45)
-                                : tkGold,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          alignment: Alignment.center,
-                          child: ctrl.courseCreateLoading.value
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: tkBackground,
-                                  ),
-                                )
-                              : Text(
-                                  'Crear curso',
-                                  style: GoogleFonts.sora(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: tkBackground,
-                                  ),
-                                ),
-                        ),
+              Text(
+                'Nuevo curso',
+                style: GoogleFonts.sora(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: tkText,
+                ),
+              ),
+
+              const SizedBox(height: 18),
+
+              _FieldLabel('Nombre'),
+              const SizedBox(height: 6),
+              _SheetTextField(
+                controller: nameCtrl,
+                hint: 'Ej: Estructuras de Datos',
+              ),
+
+              const SizedBox(height: 14),
+
+              _FieldLabel('Código (opcional)'),
+              const SizedBox(height: 6),
+              _SheetTextField(
+                controller: codeCtrl,
+                hint: 'Ej: DS2026-1',
+              ),
+
+              const SizedBox(height: 22),
+
+              SizedBox(
+                width: double.infinity,
+                child: Obx(
+                  () => GestureDetector(
+                    onTap: ctrl.courseCreateLoading.value
+                        ? null
+                        : () async {
+                            final name = nameCtrl.text.trim();
+                            if (name.isEmpty) return;
+
+                            final ok = await ctrl.createCourse(
+                              name,
+                              codeCtrl.text.trim(),
+                            );
+
+                            if (!ok) {
+                              Get.snackbar(
+                                'No se pudo crear',
+                                ctrl.courseCreateError.value,
+                                snackPosition: SnackPosition.BOTTOM,
+                              );
+                              return;
+                            }
+
+                            Get.back();
+                          },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: ctrl.courseCreateLoading.value
+                            ? tkGold.withOpacity(0.45)
+                            : tkGold,
+                        borderRadius: BorderRadius.circular(14),
                       ),
+                      alignment: Alignment.center,
+                      child: ctrl.courseCreateLoading.value
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: tkBackground,
+                              ),
+                            )
+                          : Text(
+                              'Crear curso',
+                              style: GoogleFonts.sora(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: tkBackground,
+                              ),
+                            ),
                     ),
                   ),
-                ],
+                ),
               ),
-            );
-          },
+            ],
+          ),
         );
       },
     );
@@ -126,38 +147,46 @@ class TCourseManagePage extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: tkSurface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
         title: Text(
           'Eliminar curso',
           style: GoogleFonts.sora(
             fontSize: 16,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
             color: tkText,
           ),
         ),
         content: Text(
-          '¿Eliminar "${course.name}"? Las categorías asociadas quedarán sin curso asignado.',
-          style: GoogleFonts.sora(fontSize: 13, color: tkTextMid),
+          '¿Eliminar "${course.name}"?',
+          style: GoogleFonts.sora(
+            fontSize: 13,
+            color: tkTextMid,
+          ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Get.back(),
             child: Text(
               'Cancelar',
-              style: GoogleFonts.sora(color: tkTextFaint, fontSize: 13),
+              style: GoogleFonts.sora(
+                fontSize: 13,
+                color: tkTextFaint,
+              ),
             ),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(ctx);
+              Get.back();
               await ctrl.deleteCourse(course.id);
             },
             child: Text(
               'Eliminar',
               style: GoogleFonts.sora(
-                color: tkDanger,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
+                color: tkDanger,
               ),
             ),
           ),
@@ -169,21 +198,26 @@ class TCourseManagePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ctrl = Get.find<TeacherCourseImportController>();
+
     return Scaffold(
       backgroundColor: tkBackground,
       body: SafeArea(
         child: Column(
           children: [
-            // ── Header ───────────────────────────────────────────────────────
-            Container(
-              width: double.infinity,
-              color: tkSurface,
-              padding: const EdgeInsets.fromLTRB(22, 4, 22, 16),
+            /// HEADER
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 10, 22, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TeacherBackButton(label: 'Volver', route: '/teacher/dash'),
+                  TeacherBackButton(
+                    backgroundColor: tkSurfaceAlt,
+                    iconColor: tkText,
+                    onTap: () => Get.back(),
+                  ),
+
                   const SizedBox(height: 16),
+
                   Row(
                     children: [
                       Expanded(
@@ -193,52 +227,36 @@ class TCourseManagePage extends StatelessWidget {
                             Text(
                               'Mis cursos',
                               style: GoogleFonts.sora(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.5,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
                                 color: tkText,
                               ),
                             ),
-                            const SizedBox(height: 3),
+                            const SizedBox(height: 4),
                             Text(
-                              'Organiza tus evaluaciones por curso',
-                              style: GoogleFonts.dmMono(
-                                fontSize: 11,
+                              'Organiza tus evaluaciones',
+                              style: GoogleFonts.sora(
+                                fontSize: 12,
                                 color: tkTextFaint,
                               ),
                             ),
                           ],
                         ),
                       ),
+
+                      /// botón nuevo
                       GestureDetector(
                         onTap: () => _showCreateSheet(context, ctrl),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
+                          padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: tkGold,
-                            borderRadius: BorderRadius.circular(10),
+                            color: tkGold.withOpacity(0.15),
+                            shape: BoxShape.circle,
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.add_rounded,
-                                size: 15,
-                                color: tkBackground,
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                'Nuevo',
-                                style: GoogleFonts.sora(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: tkBackground,
-                                ),
-                              ),
-                            ],
+                          child: const Icon(
+                            Icons.add_rounded,
+                            size: 20,
+                            color: tkGold,
                           ),
                         ),
                       ),
@@ -247,9 +265,8 @@ class TCourseManagePage extends StatelessWidget {
                 ],
               ),
             ),
-            const Divider(height: 1, color: tkBorder),
 
-            // ── Body ─────────────────────────────────────────────────────────
+            /// BODY
             Expanded(
               child: Obx(() {
                 if (ctrl.courseLoading.value) {
@@ -257,7 +274,9 @@ class TCourseManagePage extends StatelessWidget {
                     child: CircularProgressIndicator(color: tkGold),
                   );
                 }
+
                 final courses = ctrl.courses;
+
                 if (courses.isEmpty) {
                   return Center(
                     child: Padding(
@@ -267,41 +286,35 @@ class TCourseManagePage extends StatelessWidget {
                         children: [
                           const Icon(
                             Icons.school_outlined,
-                            size: 36,
+                            size: 40,
                             color: tkTextFaint,
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'Sin cursos creados',
+                            'Sin cursos',
                             style: GoogleFonts.sora(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                               color: tkTextFaint,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Toca "Nuevo" para añadir tu primer curso',
-                            style: GoogleFonts.sora(
-                              fontSize: 11,
-                              color: tkTextFaint,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
                         ],
                       ),
                     ),
                   );
                 }
+
                 return ListView.separated(
-                  padding: const EdgeInsets.all(22),
+                  padding: const EdgeInsets.fromLTRB(22, 10, 22, 22),
                   itemCount: courses.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(height: 12),
                   itemBuilder: (_, i) {
                     final course = courses[i];
                     return _CourseCard(
                       course: course,
-                      onDelete: () => _confirmDelete(context, ctrl, course),
+                      onDelete: () =>
+                          _confirmDelete(context, ctrl, course),
                     );
                   },
                 );
@@ -314,35 +327,42 @@ class TCourseManagePage extends StatelessWidget {
   }
 }
 
-// ── Course card ────────────────────────────────────────────────────────────────
+/// ── Course Card ─────────────────────────────────────────────
 
 class _CourseCard extends StatelessWidget {
   final CourseModel course;
   final VoidCallback onDelete;
-  const _CourseCard({required this.course, required this.onDelete});
+
+  const _CourseCard({
+    required this.course,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: tkSurface,
-        border: Border.all(color: tkBorder),
-        borderRadius: BorderRadius.circular(14),
+        color: tkSurfaceAlt,
+        borderRadius: BorderRadius.circular(16),
       ),
-      padding: const EdgeInsets.all(14),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: tkGold.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+              color: tkGold.withOpacity(0.15),
+              shape: BoxShape.circle,
             ),
-            alignment: Alignment.center,
-            child: const Icon(Icons.school_rounded, size: 20, color: tkGold),
+            child: const Icon(
+              Icons.school_rounded,
+              size: 18,
+              color: tkGold,
+            ),
           ),
+
           const SizedBox(width: 12),
+
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -350,34 +370,29 @@ class _CourseCard extends StatelessWidget {
                 Text(
                   course.name,
                   style: GoogleFonts.sora(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                     color: tkText,
                   ),
                 ),
-                if (course.code.isNotEmpty) ...[
-                  const SizedBox(height: 2),
+                if (course.code.isNotEmpty)
                   Text(
                     course.code,
-                    style: GoogleFonts.dmMono(fontSize: 11, color: tkTextFaint),
+                    style: GoogleFonts.sora(
+                      fontSize: 11,
+                      color: tkTextFaint,
+                    ),
                   ),
-                ],
               ],
             ),
           ),
+
           GestureDetector(
             onTap: onDelete,
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: tkDanger.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.delete_outline_rounded,
-                size: 16,
-                color: tkDanger,
-              ),
+            child: const Icon(
+              Icons.delete_outline_rounded,
+              size: 18,
+              color: tkDanger,
             ),
           ),
         ],
@@ -386,7 +401,7 @@ class _CourseCard extends StatelessWidget {
   }
 }
 
-// ── Sheet helpers ──────────────────────────────────────────────────────────────
+/// ── Helpers ─────────────────────────────────────────────
 
 class _FieldLabel extends StatelessWidget {
   final String text;
@@ -409,7 +424,11 @@ class _FieldLabel extends StatelessWidget {
 class _SheetTextField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
-  const _SheetTextField({required this.controller, required this.hint});
+
+  const _SheetTextField({
+    required this.controller,
+    required this.hint,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -427,15 +446,7 @@ class _SheetTextField extends StatelessWidget {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: tkBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: tkBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: tkGold),
+          borderSide: BorderSide.none,
         ),
       ),
     );

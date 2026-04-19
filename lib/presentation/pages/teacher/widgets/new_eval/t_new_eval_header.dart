@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:example/presentation/theme/teacher_colors.dart';
 import 'package:example/presentation/pages/teacher/widgets/teacher_back_button.dart';
@@ -8,21 +9,24 @@ class TNewEvalHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      color: tkSurface,
-      padding: const EdgeInsets.fromLTRB(22, 4, 22, 16),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 10, 22, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const TeacherBackButton(label: 'Volver', route: '/teacher/dash'),
+          TeacherBackButton(
+            backgroundColor: tkSurfaceAlt,
+            iconColor: tkText,
+            onTap: () => Get.back(),
+          ),
+
           const SizedBox(height: 16),
+
           Text(
             'Nueva evaluación',
             style: GoogleFonts.sora(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
               color: tkText,
             ),
           ),

@@ -228,6 +228,7 @@ class TeacherCourseImportController extends GetxController {
   Future<void> deleteCategory(int id) async {
     await _groupRepo.delete(id);
     categories.removeWhere((c) => c.id == id);
+    categoriesForCourse.removeWhere((c) => c.id == id);
     await _cache.invalidate('teacher_categories_v1_$_teacherId');
   }
 
