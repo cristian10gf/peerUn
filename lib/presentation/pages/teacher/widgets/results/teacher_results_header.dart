@@ -28,7 +28,8 @@ class TeacherResultsHeader extends StatelessWidget {
         children: [
           TeacherBackButton(
             key: const Key('results-back-button'),
-            label: backLabel,
+            backgroundColor: tkPurple,
+            iconColor: tkText,
             onTap: onBackTap,
           ),
           const SizedBox(height: 16),

@@ -29,7 +29,8 @@ class TeacherInsightsHeader extends StatelessWidget {
             children: [
               TeacherBackButton(
                 key: const Key('insights-back-button'),
-                label: 'Volver',
+                backgroundColor: tkPurple,
+                iconColor: tkText,
                 onTap: onBackTap,
               ),
               IconButton(
