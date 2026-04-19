@@ -48,6 +48,10 @@ class TeacherCourseImportController extends GetxController {
   int _lastTeacherId = 0;
 
   int get totalGroups => categories.fold(0, (s, c) => s + c.groupCount);
+  
+  int totalGroupsForCourse(int courseId) => categories
+      .where((c) => c.courseId == courseId)
+      .fold(0, (s, c) => s + c.groupCount);
 
   int get _teacherId => int.tryParse(_sessionController.teacher.value?.id ?? '') ?? 0;
 
