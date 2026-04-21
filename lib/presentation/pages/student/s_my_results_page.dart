@@ -59,55 +59,152 @@ class SMyResultsPage extends StatelessWidget {
 
             // ── Body ───────────────────────────────────────────────────────
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(22),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Average card
-                    Obx(
-                      () => StudentResultsAverageCard(
-                        average: ctrl.myAverage,
-                        badge: ctrl.performanceBadge,
-                      ),
+              child: Obx(() {
+                if (ctrl.isLoadingMyResults.value && ctrl.myResults.isEmpty) {
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      color: skPrimary,
+                      strokeWidth: 2,
                     ),
-                    const SizedBox(height: 20),
+                  );
+                }
 
-                    // Section label
-                    Text(
-                      'DESGLOSE POR CRITERIO',
-                      style: GoogleFonts.sora(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: skTextFaint,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
+                return RefreshIndicator(
+                  key: const Key('student-results-refresh-indicator'),
+                  onRefresh: ctrl.refreshMyResults,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    key: const Key('student-results-scroll'),
+                    padding: const EdgeInsets.all(22),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        StudentResultsAverageCard(
+                          average: ctrl.myAverage,
+                          badge: ctrl.performanceBadge,
+                        ),
+                        const SizedBox(height: 20),
 
-                    // Criteria cards
-                    Obx(
-                      () => Column(
-                        children: ctrl.myResults
-                            .asMap()
-                            .entries
-                            .map(
-                              (e) => StudentResultsCriterionCard(
-                                result: e.value,
-                                color:
-                                    StudentCriterionPalette.colors[e.key %
-                                        StudentCriterionPalette.colors.length],
-                              ),
-                            )
-                            .toList(),
-                      ),
+                        Text(
+                          'DESGLOSE POR CRITERIO',
+                          style: GoogleFonts.sora(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: skTextFaint,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+
+                        if (ctrl.myResultsError.value.isNotEmpty &&
+                            ctrl.myResults.isEmpty)
+                          _StudentResultsErrorCard(
+                            message: ctrl.myResultsError.value,
+                          )
+                        else if (ctrl.myResults.isEmpty)
+                          const _StudentResultsEmptyCard()
+                        else
+                          Column(
+                            children: ctrl.myResults
+                                .asMap()
+                                .entries
+                                .map(
+                                  (e) => StudentResultsCriterionCard(
+                                    result: e.value,
+                                    color:
+                                        StudentCriterionPalette.colors[e.key %
+                                            StudentCriterionPalette
+                                                .colors
+                                                .length],
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              }),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _StudentResultsErrorCard extends StatelessWidget {
+  final String message;
+
+  const _StudentResultsErrorCard({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: skSurfaceAlt,
+        border: Border.all(color: skBorder),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.error_outline, size: 30, color: critAmber),
+          const SizedBox(height: 10),
+          Text(
+            'No se pudieron cargar tus resultados',
+            style: GoogleFonts.sora(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: skText,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            message,
+            style: GoogleFonts.sora(fontSize: 11, color: skTextFaint),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StudentResultsEmptyCard extends StatelessWidget {
+  const _StudentResultsEmptyCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 32),
+      decoration: BoxDecoration(
+        color: skSurfaceAlt,
+        border: Border.all(color: skBorder),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.inbox_outlined, size: 32, color: skTextFaint),
+          const SizedBox(height: 10),
+          Text(
+            'Sin resultados aún',
+            style: GoogleFonts.sora(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: skText,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Tus notas aparecerán cuando se registren evaluaciones válidas',
+            style: GoogleFonts.sora(fontSize: 11, color: skTextFaint),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }

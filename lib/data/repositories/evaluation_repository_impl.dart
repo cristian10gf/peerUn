@@ -71,7 +71,22 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
   int _asInt(dynamic value, {int fallback = 0}) =>
       asInt(value, fallback: fallback);
 
+  double _asDouble(dynamic value, {double fallback = 0.0}) =>
+      asDouble(value, fallback: fallback);
+
   String _asString(dynamic value) => asString(value);
+
+  String _resultEvalId(Map<String, dynamic> row) {
+    final ref = _asString(row['resultEvaluation_id']);
+    if (ref.isNotEmpty) return ref;
+    return _asString(row['_id']);
+  }
+
+  String _evalIdUUID(Map<String, dynamic> row) {
+    final ref = _asString(row['evaluation_id']);
+    if (ref.isNotEmpty) return ref;
+    return _asString(row['_id']);
+  }
 
   int _rowId(Map<String, dynamic> row) => rowIdFromMap(row);
 
@@ -88,7 +103,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
   /// Roble stores the evaluation PK in `evaluation_id` (varchar), not in `id`
   /// (integer), so _rowId returns 0 for all evaluation rows.
   int _evalDomainId(Map<String, dynamic> row) {
-    final evalRef = _asString(row['evaluation_id']);
+    final evalRef = _evalIdUUID(row);
     if (evalRef.isNotEmpty) {
       return DatabaseService.stableNumericIdFromSeed(evalRef);
     }
@@ -694,7 +709,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     final evalRows = await _db.robleRead(RobleTables.evaluation);
     final eval = _findEvalById(evalRows, evalId);
     if (eval == null) return [];
-    final evaluationUUID = _asString(eval['evaluation_id']);
+    final evaluationUUID = _evalIdUUID(eval);
     final categoryDomainId = _asInt(eval['category_id']);
 
     final allGroups = await _db.robleRead(RobleTables.groups);
@@ -749,7 +764,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
     final inputResponses = <GroupResultsInputResponse>[];
     for (final re in resultEvals) {
-      final reUUID = _asString(re['resultEvaluation_id']);
+      final reUUID = _resultEvalId(re);
       final evaluatedUUID = _asString(re['evaluated_id']);
       if (reUUID.isEmpty || evaluatedUUID.isEmpty) continue;
       final evaluatedDomainId = DatabaseService.stableNumericIdFromSeed(
@@ -767,7 +782,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
           GroupResultsInputResponse(
             evaluatedMemberId: evaluatedDomainId,
             criterionId: shortId,
-            score: _asInt(cr['score']),
+            score: _asDouble(cr['score']),
           ),
         );
       }
@@ -844,7 +859,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     final evalCategoryDomainByEvalRef = <String, int>{};
 
     for (final eval in teacherEvalRows) {
-      final evalRef = _asString(eval['evaluation_id']);
+      final evalRef = _evalIdUUID(eval);
       if (evalRef.isEmpty) continue;
 
       final categoryDomainId = _domainIdFromValue(eval['category_id']);
@@ -959,11 +974,11 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
     final scopedResults = <_ScopedInsightsResult>[];
     for (final resultEval in resultEvalRows) {
-      final evalRef = _asString(resultEval['evaluation_id']);
+      final evalRef = _evalIdUUID(resultEval);
       final coverage = coverageByEvalRef[evalRef];
       if (coverage == null) continue;
 
-      final resultId = _asString(resultEval['resultEvaluation_id']);
+      final resultId = _resultEvalId(resultEval);
       if (resultId.isEmpty) continue;
 
       var evaluatedUserRef = _asString(resultEval['evaluated_id']);
@@ -1048,7 +1063,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
             groupName: scoped.membership.groupName,
             studentId: scoped.evaluatedUserId,
             studentName: studentName,
-            score: _asInt(row['score']),
+            score: _asDouble(row['score']),
           ),
         );
       }
@@ -1440,7 +1455,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     // key = '$evalDomainId:$evaluatorDomainId', value = set of evaluatedDomainIds.
     final responseRowsByEvalAndEvaluator = <String, Set<int>>{};
     for (final row in resultEvals) {
-      final evalUUID = _asString(row['evaluation_id']);
+      final evalUUID = _evalIdUUID(row);
       final evaluatorUUID = _asString(row['evaluator_id']);
       final evaluatedUUID = _asString(row['evaluated_id']);
       if (evalUUID.isEmpty || evaluatorUUID.isEmpty || evaluatedUUID.isEmpty) {
@@ -1630,7 +1645,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     final evalRows = await _db.robleRead(RobleTables.evaluation);
     final evalRow = _findEvalById(evalRows, evalId);
     if (evalRow == null) throw Exception('Evaluación no encontrada');
-    final evaluationUUID = _asString(evalRow['evaluation_id']);
+    final evaluationUUID = _evalIdUUID(evalRow);
     final categoryDomainId = _asInt(evalRow['category_id']);
 
     // 2. Reverse-lookup evaluator and evaluated user_id UUIDs from domain ints.
@@ -1670,7 +1685,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       },
     );
     if (existing.isNotEmpty) {
-      resultEvalUUID = _asString(existing.first['resultEvaluation_id']);
+      resultEvalUUID = _resultEvalId(existing.first);
     } else {
       final created = await _db.robleCreate(RobleTables.resultEvaluation, {
         'evaluation_id': evaluationUUID,
@@ -1680,7 +1695,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
         'comment': '',
         'created_at': DateTime.now().toIso8601String(),
       });
-      resultEvalUUID = _asString(created['resultEvaluation_id']);
+      resultEvalUUID = _resultEvalId(created);
     }
     if (resultEvalUUID.isEmpty) return;
 
@@ -1726,7 +1741,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     final evalRows = await _db.robleRead(RobleTables.evaluation);
     final evalRow = _findEvalById(evalRows, evalId);
     if (evalRow == null) return false;
-    final evaluationUUID = _asString(evalRow['evaluation_id']);
+    final evaluationUUID = _evalIdUUID(evalRow);
 
     final users = await _db.robleRead(RobleTables.users);
     final evaluatorUUID = _findUserUUIDByDomainId(users, evaluatorStudentId);
@@ -1751,7 +1766,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     final evalRows = await _db.robleRead(RobleTables.evaluation);
     final eval = _findEvalById(evalRows, evalId);
     if (eval == null) return [];
-    final evaluationUUID = _asString(eval['evaluation_id']);
+    final evaluationUUID = _evalIdUUID(eval);
 
     final myUUID = identity.rawUserId;
     if (myUUID.isEmpty) return [];
@@ -1774,7 +1789,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     final counts = <String, int>{};
 
     for (final re in resultEvals) {
-      final reUUID = _asString(re['resultEvaluation_id']);
+      final reUUID = _resultEvalId(re);
       if (reUUID.isEmpty) continue;
 
       final criteriumRows = await _db.robleRead(
@@ -1813,7 +1828,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     final evalRows = await _db.robleRead(RobleTables.evaluation);
     final eval = _findEvalById(evalRows, evalId);
     if (eval == null) return false;
-    final evaluationUUID = _asString(eval['evaluation_id']);
+    final evaluationUUID = _evalIdUUID(eval);
 
     final categoryId = _asInt(eval['category_id']);
     final allGroups = await _db.robleRead(RobleTables.groups);
@@ -1864,7 +1879,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
     final evalRows = await _db.robleRead(RobleTables.evaluation);
     final eval = _findEvalById(evalRows, evalId);
     if (eval == null) return {};
-    final evaluationUUID = _asString(eval['evaluation_id']);
+    final evaluationUUID = _evalIdUUID(eval);
 
     final resultEvals = await _db.robleRead(
       RobleTables.resultEvaluation,
@@ -1879,7 +1894,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
 
     final result = <int, Map<String, int>>{};
     for (final re in resultEvals) {
-      final reUUID = _asString(re['resultEvaluation_id']);
+      final reUUID = _resultEvalId(re);
       final evaluatedUUID = _asString(re['evaluated_id']);
       if (reUUID.isEmpty || evaluatedUUID.isEmpty) continue;
       final evaluatedDomainId = DatabaseService.stableNumericIdFromSeed(

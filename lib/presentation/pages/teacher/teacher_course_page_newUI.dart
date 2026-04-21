@@ -4,6 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:example/presentation/controllers/teacher/teacher_course_import_controller.dart';
 import 'package:example/presentation/controllers/teacher/teacher_evaluation_controller.dart';
+import 'package:example/presentation/controllers/teacher/teacher_results_controller.dart';
+import 'package:example/presentation/controllers/teacher/teacher_insights_controller.dart';
+import 'package:example/presentation/models/teacher_data_insights_view_model.dart';
 
 class TeacherCoursePage extends StatefulWidget {
   const TeacherCoursePage({super.key});
@@ -18,11 +21,16 @@ class _TeacherCoursePageState extends State<TeacherCoursePage>
 
   final courseCtrl = Get.find<TeacherCourseImportController>();
   final evalCtrl = Get.find<TeacherEvaluationController>();
+  final insightsCtrl = Get.find<TeacherInsightsController>();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Disparar siempre loadInsights para revalidar usando SWR en background
+      insightsCtrl.loadInsights();
+    });
   }
 
   @override
@@ -35,7 +43,8 @@ class _TeacherCoursePageState extends State<TeacherCoursePage>
         child: Column(
           children: [
             // ── HEADER ─────────────────────────────
-            _header(),
+            _header(courseId),
+            _titleSection(),
 
             // ── BODY ───────────────────────────────
             Expanded(
@@ -69,50 +78,232 @@ class _TeacherCoursePageState extends State<TeacherCoursePage>
     );
   }
 
+// ── TITLE SECTION ─────────────────────────
+  Widget _titleSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Obx(() => Text(
+                courseCtrl.selectedCourseName.value,
+                style: GoogleFonts.sora(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF2C3140),
+                ),
+              )),
+          const SizedBox(height: 8),
+          const Text(
+            "En las calificaciones importan tus compañeros y profesores por que el feedback despues de perder una nota es importante y el agradecimiento despues de ganarla tambien.",
+            style: TextStyle(
+              fontSize: 12,
+              fontStyle: FontStyle.italic,
+              color: Color(0xFF8E92A4),
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+      ),
+    );
+  }
+
   // ── HEADER ────────────────────────────────────
-  Widget _header() {
+Widget _header(int? courseId) {
     return Container(
-      height: 180,
-      padding: const EdgeInsets.all(20),
       decoration: const BoxDecoration(
-        color: Color(0xFF4B4F63),
+        color: Color(0xFF3e3e50), // Color base según mockup
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
       ),
       child: Stack(
         children: [
-          // 🔙 Back
-          Align(
-            alignment: Alignment.topLeft,
-            child: GestureDetector(
-              onTap: () => Get.back(),
-              child: const CircleAvatar(
-                backgroundColor: Colors.white24,
-                child: Icon(Icons.arrow_back, color: Colors.white),
-              ),
-            ),
+          // Nubes de fondo (decorativas simples)
+          Positioned(
+            top: -20,
+            right: -20,
+            child: Icon(Icons.cloud, size: 100, color: Colors.white.withValues(alpha: 0.05)),
+          ),
+          Positioned(
+            bottom: 10,
+            left: -10,
+            child: Icon(Icons.cloud, size: 150, color: Colors.white.withValues(alpha: 0.05)),
+          ),
+          Positioned(
+            bottom: -30,
+            right: 50,
+            child: Icon(Icons.cloud, size: 120, color: Colors.white.withValues(alpha: 0.05)),
           ),
 
-          // ✏️ Edit (placeholder)
-          Align(
-            alignment: Alignment.topRight,
-            child: const CircleAvatar(
-              backgroundColor: Colors.white24,
-              child: Icon(Icons.edit, color: Colors.white),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
+            child: Column(
+              children: [
+                // 🔙 Back / Edit Row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    GestureDetector(
+                      onTap: () => Get.back(),
+                      child: const CircleAvatar(
+                        backgroundColor: Colors.white,
+                        radius: 20,
+                        child: Icon(Icons.arrow_back, color: Colors.black87),   
+                      ),
+                    ),
+                    const CircleAvatar(
+                      backgroundColor: Colors.white,
+                      radius: 20,
+                      child: Icon(Icons.edit_outlined, color: Colors.black87, size: 18),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                
+                // ✨ REAL COURSE AVERAGE (From Insights)
+                Obx(() {
+                  if (insightsCtrl.isLoading.value) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: 24.0),
+                        child: CircularProgressIndicator(color: Colors.white),
+                      ),
+                    );
+                  }
+
+                  final vm = insightsCtrl.overviewVm;
+                  double courseAvg = 0.0;
+                  String avgLabel = "0.0";
+
+                  if (vm != null && courseId != null) {
+                    final strId = courseId.toString();
+                    final match = vm.courseAverages.firstWhere(
+                      (c) => c.courseId == strId,
+                      orElse: () => const TeacherInsightsCourseAverageVm(
+                        courseId: '', courseName: '', average: 0.0, sampleCount: 0, averageLabel: "N/A", sampleCountLabel: '',
+                      ),
+                    );
+                    courseAvg = match.average;
+                    avgLabel = match.averageLabel;
+                  }
+
+                  if (courseAvg > 0) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: Column(
+                        children: [
+                          Text(
+                            "Promedio del Curso",
+                            style: GoogleFonts.sora(
+                              color: Colors.white70,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            avgLabel,
+                            style: GoogleFonts.sora(
+                              color: Colors.white,
+                              fontSize: 34,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  } else {
+                    return const SizedBox(height: 12);
+                  }
+                }),
+                
+                // 📊 Progress Bars (Mockup data para criterios individuales no provistos agregados en DB)
+                _buildCriteriaBar("Puntualidad", score: null),
+                _buildCriteriaBar("Compromiso", score: null),
+                _buildCriteriaBar("Actitud", score: null),
+                _buildCriteriaBar("Participacion", score: null),
+              ],
             ),
           ),
+        ],
+      ),
+    );
+  }
 
-          // 📚 Title
-          Align(
-            alignment: Alignment.bottomLeft,
+  Widget _buildCriteriaBar(String label, {double? score}) {
+    final bool hasData = score != null && score > 0;
+    final double safeScore = score ?? 0.0;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          // Etiqueta
+          Container(
+            width: 90,
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),    
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Text(
-              courseCtrl.selectedCourseName.value,
-              style: GoogleFonts.sora(
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
                 color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
+          const SizedBox(width: 12),
+          // Barra o "Sin datos"
+          if (!hasData)
+            const Expanded(
+              child: Text(
+                "Sin datos",
+                style: TextStyle(
+                  color: Colors.white54,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: Stack(
+                children: [
+                  Container(
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                  FractionallySizedBox(
+                    widthFactor: safeScore / 5.0,
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(width: 16),
+          // Score Text
+          if (hasData)
+            Text(
+              safeScore.toStringAsFixed(1),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
         ],
       ),
     );
@@ -189,6 +380,7 @@ class _TeacherCoursePageState extends State<TeacherCoursePage>
 
   // ── EVALUATIONS TAB ──────────────────────────
   Widget _evaluationsTab() {
+    final resultsCtrl = Get.find<TeacherResultsController>();
     return Obx(() {
       final categoryIds = courseCtrl.categoriesForCourse
           .map((c) => c.id)
@@ -213,8 +405,9 @@ class _TeacherCoursePageState extends State<TeacherCoursePage>
                     "Cierra: ${e.closesAt.day}/${e.closesAt.month}/${e.closesAt.year}",
                   ),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Get.toNamed('/teacher/results');
+                  onTap: () async {
+                    await resultsCtrl.loadGroupResults(e);
+                    Get.toNamed('/teacher/eval-results');
                   },
                 );
               },

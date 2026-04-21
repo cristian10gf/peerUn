@@ -15,6 +15,18 @@ final _extraRoutes = <GetPage>[
   GetPage(name: '/teacher/dash', page: () => const SizedBox.shrink()),
 ];
 
+class _SpyTeacherResultsController extends TeacherResultsController {
+  int refreshCalls = 0;
+
+  _SpyTeacherResultsController()
+      : super(FakeEvaluationRepository(), FakeCacheService());
+
+  @override
+  Future<void> refreshResults() async {
+    refreshCalls++;
+  }
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   setUp(resetGetxTestState);
@@ -224,5 +236,31 @@ void main() {
     expect(find.text('No se pudieron cargar los resultados'), findsOneWidget);
     expect(find.text('Fallo de red'), findsOneWidget);
     expect(find.text('Equipo Alfa'), findsNothing);
+  });
+
+  testWidgets('TResultsPage pull-to-refresh triggers refreshResults',
+      (tester) async {
+    final ctrl = _SpyTeacherResultsController();
+    ctrl.groupResults.assignAll(const <GroupResult>[
+      GroupResult(
+        name: 'Equipo Alfa',
+        average: 4.2,
+        criteria: [4.0, 4.5, 4.0, 4.3],
+        students: <StudentResult>[],
+      ),
+    ]);
+
+    Get.put<TeacherResultsController>(ctrl);
+
+    await tester.pumpWidget(
+      buildGetxTestApp(home: const TResultsPage(), extraRoutes: _extraRoutes),
+    );
+    await tester.pump();
+
+    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, 300));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 800));
+
+    expect(ctrl.refreshCalls, 1);
   });
 }

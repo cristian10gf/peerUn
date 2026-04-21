@@ -48,32 +48,58 @@ class TeacherResultsController extends GetxController {
     _drill.value = null;
   }
 
-  Future<void> loadGroupResults(Evaluation eval) async {
+  String _cacheKeyForEval(int evalId) => 'teacher_results_v1_$evalId';
+
+Future<void> loadGroupResults(Evaluation eval, {bool forceRefresh = false}) async {
     selectedEval.value = eval;
     closeGroupDetail();
-    resultsLoading.value = true;
+
+    final key = _cacheKeyForEval(eval.id);
     resultsError.value = '';
-    try {
-      final key = 'teacher_results_v1_${eval.id}';
-      final cached = await _cache.get(key);
-      if (cached != null) {
-        groupResults.assignAll(
-          (jsonDecode(cached) as List)
+
+    // Always clear in-memory results first to prevent stale rows from a
+    // previous evaluation from appearing when the new fetch fails.
+    groupResults.clear();
+
+    // Estrategia Stale-While-Revalidate: Cargar de caché inmediatamente para fluidez de UI
+    if (!forceRefresh) {
+      try {
+        final cached = await _cache.get(key);
+        if (cached != null) {
+          final cachedList = (jsonDecode(cached) as List)
               .map((e) => GroupResult.fromJson(e as Map<String, dynamic>))
-              .toList(),
-        );
-      } else {
-        final results = await _evalRepo.getGroupResults(eval.id);
-        groupResults.assignAll(results);
-        try {
-          await _cache.set(key, jsonEncode(results.map((r) => r.toJson()).toList()));
-        } catch (_) {
-          // cache write failure is non-fatal
+              .toList();
+          groupResults.assignAll(cachedList);
         }
+      } catch (_) {
+        // Ignorado, forzará load de red
       }
-    } catch (e) {
-      groupResults.clear();
-      resultsError.value = parseApiError(e, fallback: 'Error al cargar resultados');
+    }
+
+    // Mostrar loader explícito si no hay grupos (bloquea la pantalla)
+    if (groupResults.isEmpty) {
+      resultsLoading.value = true;
+    }
+
+    try {
+      // Revalidación: Fetch en background para traer datos frescos de las coevaluaciones de los estudiantes
+      final results = await _evalRepo.getGroupResults(eval.id);
+      groupResults.assignAll(results);
+      
+      // Guardar a cache los nuevos datos devueltos por la base de datos
+      try {
+        await _cache.set(key, jsonEncode(results.map((r) => r.toJson()).toList()));
+      } catch (_) {
+        // Ignorar falla de escribir cache
+      }
+    } catch (e, stackTrace) {
+      print("CRITICAL ERROR IN LOAD GROUP RESULTS: $e");
+      print(stackTrace);
+      // Mantener los resultados en pantalla (caché) si falla el fetch en el framework
+      if (groupResults.isEmpty) {
+        groupResults.clear();
+        resultsError.value = parseApiError(e, fallback: 'Error al cargar resultados');
+      }
     } finally {
       resultsLoading.value = false;
     }
@@ -83,8 +109,8 @@ class TeacherResultsController extends GetxController {
   Future<void> refreshResults() async {
     final eval = selectedEval.value;
     if (eval == null) return;
-    await _cache.invalidate('teacher_results_v1_${eval.id}');
-    await loadGroupResults(eval);
+    await _cache.invalidate(_cacheKeyForEval(eval.id));
+    await loadGroupResults(eval, forceRefresh: true);
   }
 
   double get overallAverage {
@@ -97,7 +123,7 @@ class TeacherResultsController extends GetxController {
   Future<void> resetState() async {
     final eval = selectedEval.value;
     if (eval != null) {
-      await _cache.invalidate('teacher_results_v1_${eval.id}');
+      await _cache.invalidate(_cacheKeyForEval(eval.id));
     }
     _drill.value = null;
     groupResults.clear();

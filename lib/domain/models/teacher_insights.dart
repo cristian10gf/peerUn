@@ -33,7 +33,7 @@ class TeacherInsightsScorePoint {
   final String groupName;
   final String studentId;
   final String studentName;
-  final int score;
+  final double score;
 
   const TeacherInsightsScorePoint({
     required this.evaluationId,
@@ -72,7 +72,7 @@ class TeacherInsightsScorePoint {
         groupName: json['groupName'] as String,
         studentId: json['studentId'] as String,
         studentName: json['studentName'] as String,
-        score: json['score'] as int,
+        score: (json['score'] as num).toDouble(),
       );
 }
 

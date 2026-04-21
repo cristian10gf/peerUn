@@ -14,6 +14,7 @@ class SpyStudentController extends StudentController {
   bool activateSessionCalled = false;
   bool clearSessionStateCalled = false;
   bool logoutCalled = false;
+  int refreshMyResultsCalls = 0;
 
   SpyStudentController({
     IAuthRepository? authRepository,
@@ -39,6 +40,11 @@ class SpyStudentController extends StudentController {
   @override
   Future<void> loadEvalData() async {
     // No-op for deterministic tests.
+  }
+
+  @override
+  Future<void> refreshMyResults() async {
+    refreshMyResultsCalls++;
   }
 
   @override

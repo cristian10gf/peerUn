@@ -157,6 +157,13 @@ class TeacherCourseImportController extends GetxController {
     final course = courses.firstWhereOrNull((c) => c.id == courseId);
     selectedCourseName.value = course?.name ?? '';
     categoriesForCourseError.value = '';
+    
+    // Usar la estrategia de caché: las categorías ya están en memoria gracias a loadCategories()
+    if (categories.isNotEmpty) {
+      categoriesForCourse.assignAll(categories.where((c) => c.courseId == courseId));
+      return;
+    }
+
     try {
       final cats = await _courseRepo.getCategoriesForCourse(courseId);
       categoriesForCourse.assignAll(cats);

@@ -91,4 +91,53 @@ void main() {
 
     expect(find.text('Sin evaluación'), findsOneWidget);
   });
+
+  testWidgets('SMyResultsPage shows loading indicator while loading results',
+      (tester) async {
+    final ctrl = SpyStudentController();
+    ctrl.isLoadingMyResults.value = true;
+
+    Get.put<StudentController>(ctrl);
+    await tester.pumpWidget(
+      buildGetxTestApp(home: const SMyResultsPage(), extraRoutes: _extraRoutes),
+    );
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+  });
+
+  testWidgets('SMyResultsPage shows error state when loading fails',
+      (tester) async {
+    final ctrl = SpyStudentController();
+    ctrl.myResultsError.value = 'Fallo de red';
+
+    Get.put<StudentController>(ctrl);
+    await tester.pumpWidget(
+      buildGetxTestApp(home: const SMyResultsPage(), extraRoutes: _extraRoutes),
+    );
+    await tester.pump();
+
+    expect(find.text('No se pudieron cargar tus resultados'), findsOneWidget);
+    expect(find.text('Fallo de red'), findsOneWidget);
+  });
+
+  testWidgets('SMyResultsPage pull-to-refresh triggers refreshMyResults',
+      (tester) async {
+    final ctrl = SpyStudentController();
+    ctrl.myResults.addAll(const <CriterionResult>[
+      CriterionResult(label: 'Puntualidad', value: 4.2),
+    ]);
+
+    Get.put<StudentController>(ctrl);
+    await tester.pumpWidget(
+      buildGetxTestApp(home: const SMyResultsPage(), extraRoutes: _extraRoutes),
+    );
+    await tester.pump();
+
+    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, 300));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 800));
+
+    expect(ctrl.refreshMyResultsCalls, 1);
+  });
 }

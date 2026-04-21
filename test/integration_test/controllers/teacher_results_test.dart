@@ -120,6 +120,22 @@ void main() {
     expect(ctrl.groupResults, isEmpty);
     expect(ctrl.resultsError.value, 'Error al cargar resultados');
   });
+
+  test('refreshResults invalidates cache key and forces fresh fetch', () async {
+    final mockRepo = MockIEvaluationRepository();
+    final cache = FakeCacheService();
+
+    when(mockRepo.getGroupResults(1)).thenAnswer((_) async => <GroupResult>[
+          _buildGroup(name: 'Equipo A', average: 4.1),
+        ]);
+
+    final ctrl = TeacherResultsController(mockRepo, cache);
+    await ctrl.loadGroupResults(_buildEval());
+    await ctrl.refreshResults();
+
+    expect(cache.invalidateCalls, contains('teacher_results_v1_1'));
+    verify(mockRepo.getGroupResults(1)).called(greaterThanOrEqualTo(2));
+  });
 }
 
 class _BlankError {

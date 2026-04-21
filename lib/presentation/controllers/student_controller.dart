@@ -99,6 +99,7 @@ class StudentController extends GetxController {
     if (s != null) {
       await _cache.invalidate('student_home_v1_${s.email}');
       await _cache.invalidate('student_evals_v1_${s.email}');
+      await _invalidateMyResultsCacheForStudent(s.email);
     }
     await _authRepo.logout();
     student.value = null;
@@ -112,6 +113,7 @@ class StudentController extends GetxController {
     if (s == null) return;
     await _cache.invalidate('student_home_v1_${s.email}');
     await _cache.invalidate('student_evals_v1_${s.email}');
+    await _invalidateMyResultsCacheForStudent(s.email);
     await loadEvalData();
   }
 
@@ -125,6 +127,7 @@ class StudentController extends GetxController {
   final homeLoadError    = ''.obs;
   final peerLoadError    = ''.obs;
   final myResultsError   = ''.obs;
+  final isLoadingMyResults = false.obs;
   final submitError      = ''.obs;
   final isSubmitting     = false.obs;
   final isLoadingHome    = false.obs;
@@ -332,6 +335,7 @@ class StudentController extends GetxController {
       hasActiveEval.value = false;
       peers.clear();
       myResults.clear();
+      isLoadingMyResults.value = false;
       currentGroupName.value = '';
       return;
     }
@@ -444,14 +448,99 @@ class StudentController extends GetxController {
     await _loadMyResultsInternal(eval.id, s.email);
   }
 
-  Future<void> _loadMyResultsInternal(int evalId, String email) async {
+  String _myResultsCacheKey(int evalId, String email) =>
+      'student_results_v1_${email.toLowerCase()}_$evalId';
+
+  Future<void> _invalidateMyResultsCacheForStudent(
+    String email, {
+    Iterable<int>? evalIds,
+  }) async {
+    final ids = <int>{
+      ...?evalIds,
+      ...evaluations.map((e) => e.id),
+      if (activeEvalDb.value != null) activeEvalDb.value!.id,
+    };
+
+    for (final evalId in ids) {
+      await _cache.invalidate(_myResultsCacheKey(evalId, email));
+    }
+  }
+
+  List<CriterionResult> _decodeMyResultsCache(String cached) {
+    return (jsonDecode(cached) as List)
+        .map((entry) => entry as Map<String, dynamic>)
+        .map(
+          (entry) => CriterionResult(
+            label: entry['label']?.toString() ?? '',
+            value: (entry['value'] as num?)?.toDouble() ?? 0.0,
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  Future<void> refreshMyResults() async {
+    final s = student.value;
+    final eval = activeEvalDb.value;
+    if (s == null || eval == null) return;
+    await _loadMyResultsInternal(eval.id, s.email, forceRefresh: true);
+  }
+
+  Future<void> _loadMyResultsInternal(
+    int evalId,
+    String email, {
+    bool forceRefresh = false,
+  }) async {
     myResultsError.value = '';
+
+    final key = _myResultsCacheKey(evalId, email);
+
+    if (forceRefresh) {
+      try {
+        await _cache.invalidate(key);
+      } catch (_) {
+        // cache invalidate failure is non-fatal
+      }
+    } else {
+      try {
+        final cached = await _cache.get(key);
+        if (cached != null) {
+          myResults.assignAll(_decodeMyResultsCache(cached));
+        }
+      } catch (_) {
+        // cache read failure is non-fatal
+      }
+    }
+
+    if (myResults.isEmpty) {
+      isLoadingMyResults.value = true;
+    }
+
     try {
       final results = await _evalRepo.getMyResults(evalId, email);
       myResults.assignAll(results);
+
+      try {
+        await _cache.set(
+          key,
+          jsonEncode(
+            results
+                .map((result) => {'label': result.label, 'value': result.value})
+                .toList(),
+          ),
+        );
+      } catch (_) {
+        // cache write failure is non-fatal
+      }
     } catch (e) {
-      myResultsError.value = parseApiError(e, fallback: 'Error al cargar resultados');
-      myResults.clear();
+      if (myResults.isEmpty) {
+        myResultsError.value = parseApiError(
+          e,
+          fallback: 'Error al cargar resultados',
+        );
+        myResults.clear();
+      }
+    } finally {
+      isLoadingMyResults.value = false;
     }
   }
 
@@ -533,7 +622,7 @@ class StudentController extends GetxController {
       submitError.value = 'No se pudieron guardar $failedSaves evaluaciones';
     }
 
-    await _loadMyResultsInternal(eval.id, s.email);
+    await _loadMyResultsInternal(eval.id, s.email, forceRefresh: true);
 
     // Refresh status for this eval now that responses are saved
     try {
@@ -581,6 +670,7 @@ class StudentController extends GetxController {
     expandedCourseIds.clear();
     expandedCategoryIds.clear();
     myResults.clear();
+    isLoadingMyResults.value = false;
     currentPeer.value = null;
     scores.clear();
   }

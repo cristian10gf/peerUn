@@ -39,6 +39,9 @@ import 'package:example/domain/use_case/teacher/teacher_create_evaluation_use_ca
 import 'package:example/presentation/bindings/teacher_module_binding.dart';
 import 'package:example/presentation/controllers/connectivity_controller.dart';
 import 'package:example/presentation/controllers/teacher/teacher_session_controller.dart';
+import 'package:example/presentation/controllers/teacher/teacher_insights_controller.dart';
+import 'package:example/domain/services/teacher_insights_domain_service.dart';
+import 'package:example/presentation/services/teacher_insights_view_mapper.dart';
 import 'package:example/presentation/theme/app_colors.dart';
 //import 'package:example/presentation/theme/teacher_colors.dart';
 
@@ -139,6 +142,24 @@ class _AppBindings extends Bindings {
       ),
       permanent: true,
     );
+    Get.put<TeacherInsightsDomainService>(
+      const TeacherInsightsDomainService(),
+      permanent: true,
+    );
+    Get.put<TeacherInsightsViewMapper>(
+      const TeacherInsightsViewMapper(),
+      permanent: true,
+    );
+    Get.put(
+      TeacherInsightsController(
+        Get.find<IEvaluationRepository>(),
+        Get.find<TeacherInsightsDomainService>(),
+        Get.find<TeacherInsightsViewMapper>(),
+        Get.find<TeacherSessionController>(),
+        Get.find<ICacheService>(),
+      ),
+      permanent: true,
+    );
   }
 }
 
@@ -215,6 +236,11 @@ class PeerEvalApp extends StatelessWidget {
         GetPage(
           name: '/teacher/results',
           page: () => const TeacherReportsUI(),
+          binding: TeacherModuleBinding(),
+        ),
+        GetPage(
+          name: '/teacher/eval-results',
+          page: () => TResultsPage(),
           binding: TeacherModuleBinding(),
         ),
         GetPage(

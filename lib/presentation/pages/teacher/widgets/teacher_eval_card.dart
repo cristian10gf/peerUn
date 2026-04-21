@@ -51,7 +51,7 @@ class TEvalCard extends StatelessWidget {
           GestureDetector(
             onTap: () async {
               await resultsCtrl.loadGroupResults(eval);
-              Get.toNamed('/teacher/results');
+              Get.toNamed('/teacher/eval-results');
             },
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 8),

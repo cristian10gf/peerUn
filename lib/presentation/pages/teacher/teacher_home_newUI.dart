@@ -165,8 +165,9 @@ class TeacherHomeNewUI extends StatelessWidget {
                           final isActive = e.isActive;
 
                           return GestureDetector(
-                            onTap: () {
-                              Get.toNamed('/teacher/results');
+                            onTap: () async {
+                              await resultsCtrl.loadGroupResults(e);
+                              Get.toNamed('/teacher/eval-results');
                             },
                             child: Container(
                               margin: const EdgeInsets.only(bottom: 12),

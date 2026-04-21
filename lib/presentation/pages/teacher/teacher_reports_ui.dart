@@ -3,7 +3,10 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:example/presentation/controllers/teacher/teacher_course_import_controller.dart';
+import 'package:example/presentation/controllers/teacher/teacher_evaluation_controller.dart';
+import 'package:example/presentation/controllers/teacher/teacher_results_controller.dart';
 import 'package:example/presentation/pages/teacher/widgets/teacher_bottom_nav.dart';
+import 'package:example/presentation/pages/teacher/widgets/teacher_eval_card.dart';
 
 class TeacherReportsUI extends StatefulWidget {
   const TeacherReportsUI({super.key});
@@ -17,6 +20,8 @@ class _TeacherReportsUIState extends State<TeacherReportsUI>
   late TabController _tabController;
 
   final courseCtrl = Get.find<TeacherCourseImportController>();
+  final evalCtrl = Get.find<TeacherEvaluationController>();
+  final resultsCtrl = Get.find<TeacherResultsController>();
 
 @override
 void initState() {
@@ -135,52 +140,75 @@ void initState() {
         itemCount: categories.length,
         itemBuilder: (_, i) {
           final c = categories[i];
+          final catEvals = evalCtrl.evaluations.where((e) => e.categoryId == c.id).toList();
 
           return Container(
             margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Row(
-              children: [
-                const Icon(Icons.folder, color: Colors.black54),
-
-                const SizedBox(width: 12),
-
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        c.name,
-                        style: GoogleFonts.sora(
-                          fontWeight: FontWeight.w600,
-                        ),
+            child: Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                title: Row(
+                  children: [
+                    const Icon(Icons.folder, color: Colors.black54),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            c.name,
+                            style: GoogleFonts.sora(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          Text(
+                            "${c.groupCount} grupos",
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        "${c.groupCount} grupos",
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black54,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-
-                // ⬇️ botón visual (como diseño)
-                Container(
+                trailing: Container(
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: Colors.black12),
                   ),
-                  child: const Icon(Icons.arrow_downward, size: 18),
+                  child: const Icon(Icons.arrow_drop_down, size: 18),
                 ),
-              ],
+                children: [
+                  if (catEvals.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      child: const Text(
+                        "No hay evaluaciones para esta categoría",
+                        style: TextStyle(color: Colors.black54, fontSize: 13),
+                      ),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
+                      child: Column(
+                        children: catEvals.map((e) => TEvalCard(
+                          eval: e,
+                          resultsCtrl: resultsCtrl,
+                        )).toList(),
+                      ),
+                    ),
+                ],
+              ),
             ),
           );
         },

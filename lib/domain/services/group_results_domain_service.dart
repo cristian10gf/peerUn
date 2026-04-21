@@ -25,7 +25,7 @@ class GroupResultsInputMember {
 class GroupResultsInputResponse {
   final int evaluatedMemberId;
   final String criterionId;
-  final int score;
+  final double score;
 
   const GroupResultsInputResponse({
     required this.evaluatedMemberId,
@@ -56,15 +56,15 @@ class GroupResultsDomainService {
         final memberScores = responses
             .where((response) =>
                 response.evaluatedMemberId == member.memberId &&
-                response.score >= 2)
-            .map((response) => response.score.toDouble())
+                response.score >= 0)
+            .map((response) => response.score)
             .toList(growable: false);
 
         final studentAverage = _average(memberScores);
 
         students.add(
           StudentResult(
-            initial: member.name.isEmpty ? '?' : member.name[0].toUpperCase(),
+            initial: member.name.isEmpty ? '?' : member.name[0].toUpperCase(),  
             name: member.name,
             score: studentAverage,
           ),
@@ -77,10 +77,9 @@ class GroupResultsDomainService {
             .where((response) =>
                 memberIds.contains(response.evaluatedMemberId) &&
                 response.criterionId == criterionId &&
-                response.score >= 2)
-            .map((response) => response.score.toDouble())
+                response.score >= 0)
+            .map((response) => response.score)
             .toList(growable: false);
-
         criteriaAverages.add(_average(criterionScores));
       }
 

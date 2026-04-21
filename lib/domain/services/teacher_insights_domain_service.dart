@@ -180,7 +180,7 @@ class TeacherInsightsDomainService {
     return winners;
   }
 
-  bool _isValidScore(int score) =>
+  bool _isValidScore(double score) =>
       score >= minValidScore && score <= maxValidScore;
 
   double _round1(double value) => double.parse(value.toStringAsFixed(1));
@@ -291,7 +291,7 @@ class _StatsBucket {
   final String parentId;
   final String parentName;
 
-  int _sum = 0;
+  double _sum = 0;
   int _count = 0;
 
   _StatsBucket({
@@ -308,7 +308,7 @@ class _StatsBucket {
     return _sum / _count;
   }
 
-  void add(int score) {
+  void add(double score) {
     _sum += score;
     _count++;
   }
