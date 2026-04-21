@@ -99,3 +99,4 @@ skills-*
 !.env.example
 *.png
 /docs/superpowers/plans
+/windows
