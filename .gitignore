@@ -98,3 +98,5 @@ skills-*
 .env.*
 !.env.example
 /docs/superpowers/plans
+*.png
+/windows
