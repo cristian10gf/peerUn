@@ -7,10 +7,16 @@
 Cristian Gonzalez · Sandro Torres · Jorge Sanchez · Flavio Arregoces
 
 ---
-### Lista de Reproduccion de demos de la aplicación
+### Lista de demos de la aplicación
 
-1. https://youtube.com/playlist?list=PLMmWS-wQZz0tdo-ewFpPAVKbTFryHhaI3&si=bM17mEYonFhqa3eG
 
+
+1. [Demo de gestión académica](https://youtube.com/playlist?list=PLMmWS-wQZz0tdo-ewFpPAVKbTFryHhaI3&si=bM17mEYonFhqa3eG)
+2. [Demo de evaluación y reportes](https://youtube.com/playlist?list=PLMmWS-wQZz0tdo-ewFpPAVKbTFryHhaI3&si=bM17mEYonFhqa3eG)
+3. [Pruebas de widget](https://youtube.com/playlist?list=PLMmWS-wQZz0tdo-ewFpPAVKbTFryHhaI3&si=bM17mEYonFhqa3eG)
+4. [Pruebas de integración](https://youtube.com/playlist?list=PLMmWS-wQZz0tdo-ewFpPAVKbTFryHhaI3&si=bM17mEYonFhqa3eG)
+5. [Implementacion del cache](https://youtube.com/playlist?list=PLMmWS-wQZz0tdo-ewFpPAVKbTFryHhaI3&si=bM17mEYonFhqa3eG)
+6. [Revision del codigo](https://youtube.com/playlist?list=PLMmWS-wQZz0tdo-ewFpPAVKbTFryHhaI3&si=bM17mEYonFhqa3eG)
 ## Tabla de contenidos
 
 1. [Descripción de la aplicación](#1-descripción-de-la-aplicación)
