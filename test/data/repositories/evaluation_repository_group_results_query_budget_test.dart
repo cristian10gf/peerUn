@@ -244,9 +244,11 @@ void main() {
     expect(reads[RobleTables.users] ?? 0, 1);
     expect(reads[RobleTables.criterium] ?? 0, 1);
     expect(reads[RobleTables.resultEvaluation] ?? 0, 1);
-    expect(reads[RobleTables.resultCriterium] ?? 0, 2);
+    // result_criterium is now pre-loaded once (client-side grouping by result_id)
+    // instead of N filtered reads — more reliable and avoids Roble filter issues.
+    expect(reads[RobleTables.resultCriterium] ?? 0, 1);
 
     final totalReads = reads.values.fold<int>(0, (sum, value) => sum + value);
-    expect(totalReads, 8);
+    expect(totalReads, 7);
   });
 }

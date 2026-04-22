@@ -741,11 +741,32 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
       for (final entry in criteriaMap.entries) entry.value: entry.key,
     };
 
-    // Read all resultEvaluation for this evaluation, then their result_criterium.
-    final resultEvals = await _db.robleRead(
+    // Read all resultEvaluation for this evaluation.
+    // Roble server-side filters can be unreliable; fall back to client-side
+    // filtering when the filtered read returns empty (same pattern used in
+    // robleFindUserByEmail and group_repository_impl.dart).
+    var resultEvals = await _db.robleRead(
       RobleTables.resultEvaluation,
       filters: {'evaluation_id': evaluationUUID},
     );
+    if (resultEvals.isEmpty && evaluationUUID.isNotEmpty) {
+      final all = await _db.robleRead(RobleTables.resultEvaluation);
+      resultEvals = all
+          .where((r) => _asString(r['evaluation_id']) == evaluationUUID)
+          .toList(growable: false);
+    }
+
+    // Pre-load all result_criterium rows once and group by result_id
+    // client-side.  This avoids N filtered reads (one per result-eval) and is
+    // immune to Roble server-side filter unreliability on this table.
+    final allResultCriterium = await _db.robleRead(RobleTables.resultCriterium);
+    final criteriumByResultId = <String, List<Map<String, dynamic>>>{};
+    for (final cr in allResultCriterium) {
+      final resultId = _asString(cr['result_id']);
+      if (resultId.isNotEmpty) {
+        criteriumByResultId.putIfAbsent(resultId, () => []).add(cr);
+      }
+    }
 
     final inputResponses = <GroupResultsInputResponse>[];
     for (final re in resultEvals) {
@@ -756,11 +777,7 @@ class EvaluationRepositoryImpl implements IEvaluationRepository {
         evaluatedUUID,
       );
 
-      final criteriumRows = await _db.robleRead(
-        RobleTables.resultCriterium,
-        filters: {'result_id': reUUID},
-      );
-      for (final cr in criteriumRows) {
+      for (final cr in criteriumByResultId[reUUID] ?? const []) {
         final cUUID = _asString(cr['criterium_id']);
         final shortId = criteriumIdToShortId[cUUID] ?? cUUID;
         inputResponses.add(
