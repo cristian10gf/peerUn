@@ -91,3 +91,7 @@ coverage/
 .github/agents/
 /f_web_authentication
 skills-*
+/docs
+.env
+*.png
+/windows
